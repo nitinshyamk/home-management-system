@@ -1,0 +1,47 @@
+.PHONY: build run test lint generate deps clean setup verify fmt
+
+DB_PATH ?= ./hms.db
+
+## build: compile to bin/hms
+build:
+	go build -o bin/hms ./cmd/hms
+
+## run: run the application directly
+run:
+	go run ./cmd/hms --db-path=$(DB_PATH)
+
+## test: run every test
+test:
+	go test ./...
+
+## lint: enforce the architectural boundaries (plan §1.1)
+lint:
+	@./scripts/archlint.sh
+
+## generate: regenerate SQLC and any go:generate output
+generate:
+	@if ls internal/db/queries/*.sql >/dev/null 2>&1; then \
+		sqlc generate; \
+	else \
+		echo "sqlc: no query files yet — skipping (activates in Stage 2)"; \
+	fi
+	go generate ./...
+
+## fmt: format and vet
+fmt:
+	go fmt ./...
+	go vet ./...
+
+## deps: tidy the module
+deps:
+	go mod tidy
+
+## setup: full build from a clean checkout
+setup: deps generate build
+
+## check: everything CI runs
+check: fmt lint test
+
+## clean: remove build artifacts
+clean:
+	rm -rf bin/

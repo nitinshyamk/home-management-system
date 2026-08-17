@@ -1,0 +1,26 @@
+version: "2"
+sql:
+  # Production queries. Files are named for the write path that owns them —
+  # origin_*, ledger_*, annotate_*, query_* — which is what lets archlint.sh
+  # enforce that ledger-owned statements are called only from internal/ledger.
+  - engine: "sqlite"
+    queries: "internal/db/queries"
+    schema: "internal/db/migrations"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/db/sqlc"
+        emit_json_tags: false
+        emit_empty_slices: true
+
+  # Queries that exist only to be rejected by the schema. The production query
+  # set is designed to make violations inexpressible, so it cannot prove the
+  # database rejects them. Never imported outside _test.go — archlint enforces.
+  - engine: "sqlite"
+    queries: "internal/db/probe"
+    schema: "internal/db/migrations"
+    gen:
+      go:
+        package: "probe"
+        out: "internal/db/probe"
+        emit_empty_slices: true
