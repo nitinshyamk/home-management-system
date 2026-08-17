@@ -119,6 +119,17 @@ func (p *Processor) ApplyBatch(ctx context.Context, events []domain.Event) ([]do
 // Neither is permitted without the other — that is the completeness half of O3,
 // and it is the only failure mode H10 can report.
 func (p *Processor) applyOne(ctx context.Context, q *sqlc.Queries, e domain.Event) (domain.EventID, error) {
+	// The ledger records WHEN something happened; it does not invent it.
+	//
+	// An earlier version substituted now() for a zero OccurredAt while storing
+	// the event, then folded the caller's original — so Apply and Replay folded
+	// the same function over DIFFERENT inputs, and custody_since diverged
+	// permanently. Rejecting is the honest fix: a missing timestamp is missing
+	// information, and the alternative is a silent, unrepairable divergence.
+	if e.Base().OccurredAt.IsZero() {
+		return 0, fmt.Errorf("%w: %s has no OccurredAt", ErrInvalidInput, e.Type())
+	}
+
 	kind, subject := e.Subject()
 
 	id, err := p.append(ctx, q, e)
@@ -150,16 +161,11 @@ func (p *Processor) append(ctx context.Context, q *sqlc.Queries, e domain.Event)
 	kind, subject := e.Subject()
 	base := e.Base()
 
-	occurred := base.OccurredAt
-	if occurred.IsZero() {
-		occurred = p.now()
-	}
-
 	raw, err := q.InsertEvent(ctx, sqlc.InsertEventParams{
 		SubjectKind: string(kind),
 		SubjectID:   subject,
 		Type:        string(e.Type()),
-		OccurredAt:  db.FormatTime(occurred),
+		OccurredAt:  db.FormatTime(base.OccurredAt),
 		RecordedAt:  db.FormatTime(p.now()),
 		Note:        db.NullString(base.Note),
 	})

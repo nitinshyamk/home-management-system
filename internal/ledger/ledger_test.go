@@ -17,6 +17,11 @@ import (
 
 var clock = time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
 
+// evAt stamps an event with the fixture clock. Required: the ledger records when
+// something happened and refuses to invent it, because inventing it made Apply
+// and Replay fold over different inputs.
+func evAt() domain.EventBase { return domain.EventBase{OccurredAt: clock} }
+
 type fixture struct {
 	ctx      context.Context
 	conn     *sql.DB
@@ -172,7 +177,7 @@ func TestCreationRecordsAnEvent(t *testing.T) {
 // ledger.
 func TestNoOrphans(t *testing.T) {
 	f := newFixture(t)
-	f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(2_000_000)})
+	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(2_000_000)})
 
 	orphans, err := f.p.FindOrphans(f.ctx)
 	if err != nil {
@@ -247,65 +252,65 @@ func sampleEvent(t *testing.T, f *fixture, proto domain.Event) domain.Event {
 
 	// Most Bulk events need stock, and most Unique events need to be checked out
 	// first, so seed both.
-	f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(1_000_000)})
+	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(1_000_000)})
 
 	switch proto.(type) {
 	case domain.HoldingCreated:
 		return nil // covered by TestCreationRecordsAnEvent; creation happens once
 	case domain.Acquired:
-		return domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(500), Source: "shop"}
+		return domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(500), Source: "shop"}
 	case domain.Moved:
-		return domain.Moved{Holding: f.rice, From: f.pantry, To: f.garage}
+		return domain.Moved{EventBase: evAt(), Holding: f.rice, From: f.pantry, To: f.garage}
 	case domain.Rehomed:
-		return domain.Rehomed{Holding: f.rice, From: f.pantry, To: f.garage}
+		return domain.Rehomed{EventBase: evAt(), Holding: f.rice, From: f.pantry, To: f.garage}
 	case domain.Consumed:
-		return domain.Consumed{Holding: f.rice, Delta: domain.FromMilli(-100), Reason: "dinner"}
+		return domain.Consumed{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-100), Reason: "dinner"}
 	case domain.Discarded:
-		return domain.Discarded{Holding: f.rice, Delta: domain.FromMilli(-100), Reason: "spoiled"}
+		return domain.Discarded{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-100), Reason: "spoiled"}
 	case domain.Opened:
-		return domain.Opened{Holding: f.rice, Delta: domain.FromMilli(2_000_000)}
+		return domain.Opened{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(2_000_000)}
 	case domain.Split:
-		return domain.Split{Holding: f.rice, Delta: domain.FromMilli(-100)}
+		return domain.Split{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-100)}
 	case domain.Merged:
-		return domain.Merged{Holding: f.rice, Delta: domain.FromMilli(100)}
+		return domain.Merged{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(100)}
 	case domain.Adjusted:
-		return domain.Adjusted{Holding: f.rice, Delta: domain.FromMilli(-5), Reason: "recount"}
+		return domain.Adjusted{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-5), Reason: "recount"}
 	case domain.Counted:
-		return domain.Counted{Holding: f.rice, Observed: domain.FromMilli(999_000)}
+		return domain.Counted{EventBase: evAt(), Holding: f.rice, Observed: domain.FromMilli(999_000)}
 	case domain.Gone:
-		return domain.Gone{Holding: f.rice, Reason: "donated"}
+		return domain.Gone{EventBase: evAt(), Holding: f.rice, Reason: "donated"}
 	case domain.CheckedOut:
-		return domain.CheckedOut{Holding: f.cable, DisplacedTo: &f.garage}
+		return domain.CheckedOut{EventBase: evAt(), Holding: f.cable, DisplacedTo: &f.garage}
 	case domain.Returned:
-		f.apply(t, domain.CheckedOut{Holding: f.cable})
-		return domain.Returned{Holding: f.cable}
+		f.apply(t, domain.CheckedOut{EventBase: evAt(), Holding: f.cable})
+		return domain.Returned{EventBase: evAt(), Holding: f.cable}
 	case domain.MarkedLost:
-		return domain.MarkedLost{Holding: f.cable}
+		return domain.MarkedLost{EventBase: evAt(), Holding: f.cable}
 	case domain.Found:
-		f.apply(t, domain.MarkedLost{Holding: f.cable})
-		return domain.Found{Holding: f.cable}
+		f.apply(t, domain.MarkedLost{EventBase: evAt(), Holding: f.cable})
+		return domain.Found{EventBase: evAt(), Holding: f.cable}
 	case domain.Verified:
-		return domain.Verified{Holding: f.cable, Present: true}
+		return domain.Verified{EventBase: evAt(), Holding: f.cable, Present: true}
 	case domain.NodeCreated:
 		return nil // creation happens once, in CreateLocation
 	case domain.NodeReparented:
-		return domain.NodeReparented{Location: f.garage, ToParent: &f.pantry}
+		return domain.NodeReparented{EventBase: evAt(), Location: f.garage, ToParent: &f.pantry}
 	case domain.NodeArchived:
-		return domain.NodeArchived{Location: f.garage, Resolution: domain.ResolutionLift}
+		return domain.NodeArchived{EventBase: evAt(), Location: f.garage, Resolution: domain.ResolutionLift}
 	case domain.NodeRestored:
-		return domain.NodeRestored{Location: f.garage}
+		return domain.NodeRestored{EventBase: evAt(), Location: f.garage}
 	case domain.ItemKindChanged:
 		// Applied to the spare Item, which has no Holdings. Against an Item that
 		// does, the composite foreign key refuses — that is the schema enforcing
 		// that Promote replaces Holdings rather than mutating them, and it has
 		// its own test.
-		return domain.ItemKindChanged{Item: f.spare, FromKind: domain.KindBulk, ToKind: domain.KindUnique}
+		return domain.ItemKindChanged{EventBase: evAt(), Item: f.spare, FromKind: domain.KindBulk, ToKind: domain.KindUnique}
 	case domain.ItemUnitChanged:
 		g, kg := domain.UnitCode("g"), domain.UnitCode("kg")
-		return domain.ItemUnitChanged{Item: f.riceItem, FromUnit: &g, ToUnit: &kg}
+		return domain.ItemUnitChanged{EventBase: evAt(), Item: f.riceItem, FromUnit: &g, ToUnit: &kg}
 	case domain.ItemPackageSizeChanged:
 		from, to := domain.FromMilli(2_000_000), domain.FromMilli(1_000_000)
-		return domain.ItemPackageSizeChanged{Item: f.riceItem, FromSize: &from, ToSize: &to}
+		return domain.ItemPackageSizeChanged{EventBase: evAt(), Item: f.riceItem, FromSize: &from, ToSize: &to}
 	default:
 		return nil
 	}
@@ -320,12 +325,12 @@ func TestEventRoundTrip(t *testing.T) {
 	twoKg := domain.FromMilli(2_000_000)
 
 	written := []domain.Event{
-		domain.Acquired{Holding: f.rice, Delta: twoKg, Source: "corner shop", Price: &price},
-		domain.Consumed{Holding: f.rice, Delta: domain.FromMilli(-100_000), Reason: "dinner"},
-		domain.Moved{Holding: f.rice, From: f.pantry, To: f.garage},
-		domain.Counted{Holding: f.rice, Observed: domain.FromMilli(1_899_000)},
-		domain.Adjusted{Holding: f.rice, Delta: domain.FromMilli(-1_000), Reason: "recount"},
-		domain.Gone{Holding: f.rice, Reason: "donated"},
+		domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: twoKg, Source: "corner shop", Price: &price},
+		domain.Consumed{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-100_000), Reason: "dinner"},
+		domain.Moved{EventBase: evAt(), Holding: f.rice, From: f.pantry, To: f.garage},
+		domain.Counted{EventBase: evAt(), Holding: f.rice, Observed: domain.FromMilli(1_899_000)},
+		domain.Adjusted{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-1_000), Reason: "recount"},
+		domain.Gone{EventBase: evAt(), Holding: f.rice, Reason: "donated"},
 	}
 	for _, e := range written {
 		f.apply(t, e)
@@ -392,9 +397,9 @@ func TestEventRoundTrip(t *testing.T) {
 func TestEventIDsAreMonotonicAcrossSubjects(t *testing.T) {
 	f := newFixture(t)
 
-	a := f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(100)})
-	b := f.apply(t, domain.CheckedOut{Holding: f.cable})
-	c := f.apply(t, domain.Consumed{Holding: f.rice, Delta: domain.FromMilli(-50)})
+	a := f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(100)})
+	b := f.apply(t, domain.CheckedOut{EventBase: evAt(), Holding: f.cable})
+	c := f.apply(t, domain.Consumed{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-50)})
 
 	if !(a < b && b < c) {
 		t.Errorf("event ids %d, %d, %d are not strictly increasing", a, b, c)
@@ -410,14 +415,14 @@ func TestEventIDsAreMonotonicAcrossSubjects(t *testing.T) {
 // behind — neither a projection change without its event, nor the reverse.
 func TestProjectionAndEventLandTogether(t *testing.T) {
 	f := newFixture(t)
-	f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(1_000_000)})
+	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(1_000_000)})
 
 	before := f.quantityOf(t, f.rice)
 	eventsBefore := f.countEvents(t)
 
 	// A Moved to a location that does not exist: the fold succeeds, then the
 	// payload insert violates a foreign key.
-	_, err := f.p.Apply(f.ctx, domain.Moved{
+	_, err := f.p.Apply(f.ctx, domain.Moved{EventBase: evAt(),
 		Holding: f.rice, From: f.pantry, To: domain.LocationID(999999),
 	})
 	if err == nil {
@@ -450,9 +455,9 @@ func TestApplyBatchIsAtomic(t *testing.T) {
 	before := f.countEvents(t)
 
 	_, err := f.p.ApplyBatch(f.ctx, []domain.Event{
-		domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(1_000)},
+		domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(1_000)},
 		// Invalid: a negative delta on Acquired, rejected by the fold.
-		domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(-1_000)},
+		domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-1_000)},
 	})
 	if err == nil {
 		t.Fatal("expected the batch to fail")
@@ -472,9 +477,9 @@ func TestApplyBatchIsAtomic(t *testing.T) {
 func TestQuantityProjectionFollowsEvents(t *testing.T) {
 	f := newFixture(t)
 
-	f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(2_000_000)})
-	f.apply(t, domain.Consumed{Holding: f.rice, Delta: domain.FromMilli(-100_000)})
-	f.apply(t, domain.Consumed{Holding: f.rice, Delta: domain.FromMilli(-100_000)})
+	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(2_000_000)})
+	f.apply(t, domain.Consumed{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-100_000)})
+	f.apply(t, domain.Consumed{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-100_000)})
 
 	want := domain.FromMilli(1_800_000)
 	if got := f.quantityOf(t, f.rice); got.Cmp(want) != 0 {
@@ -485,7 +490,7 @@ func TestQuantityProjectionFollowsEvents(t *testing.T) {
 func TestCustodyProjectionFollowsEvents(t *testing.T) {
 	f := newFixture(t)
 
-	f.apply(t, domain.CheckedOut{Holding: f.cable, DisplacedTo: &f.garage})
+	f.apply(t, domain.CheckedOut{EventBase: evAt(), Holding: f.cable, DisplacedTo: &f.garage})
 	custody, since, displaced := f.custodyOf(t, f.cable)
 	if custody != string(domain.CustodyOut) {
 		t.Errorf("custody = %s, want Out", custody)
@@ -497,7 +502,7 @@ func TestCustodyProjectionFollowsEvents(t *testing.T) {
 		t.Errorf("displaced_to = %v, want %d", displaced, f.garage)
 	}
 
-	f.apply(t, domain.Returned{Holding: f.cable})
+	f.apply(t, domain.Returned{EventBase: evAt(), Holding: f.cable})
 	custody, since, displaced = f.custodyOf(t, f.cable)
 	if custody != string(domain.CustodyAtRest) {
 		t.Errorf("custody = %s, want AtRest", custody)
@@ -511,14 +516,14 @@ func TestCustodyProjectionFollowsEvents(t *testing.T) {
 // never silently corrects the books. The correction is a separate Adjusted.
 func TestCountedLeavesTheProjectionAlone(t *testing.T) {
 	f := newFixture(t)
-	f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(500_000)})
+	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(500_000)})
 
-	f.apply(t, domain.Counted{Holding: f.rice, Observed: domain.FromMilli(480_000)})
+	f.apply(t, domain.Counted{EventBase: evAt(), Holding: f.rice, Observed: domain.FromMilli(480_000)})
 	if got := f.quantityOf(t, f.rice); got.Cmp(domain.FromMilli(500_000)) != 0 {
 		t.Errorf("quantity = %s after a disagreeing count, want 500000 unchanged", got)
 	}
 
-	f.apply(t, domain.Adjusted{Holding: f.rice, Delta: domain.FromMilli(-20_000), Reason: "recount"})
+	f.apply(t, domain.Adjusted{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(-20_000), Reason: "recount"})
 	if got := f.quantityOf(t, f.rice); got.Cmp(domain.FromMilli(480_000)) != 0 {
 		t.Errorf("quantity = %s after the adjustment, want 480000", got)
 	}
@@ -531,10 +536,10 @@ func TestCountedLeavesTheProjectionAlone(t *testing.T) {
 func TestEventsRejectedAgainstTheWrongKind(t *testing.T) {
 	f := newFixture(t)
 
-	if _, err := f.p.Apply(f.ctx, domain.CheckedOut{Holding: f.rice}); !errors.Is(err, domain.ErrWrongKind) {
+	if _, err := f.p.Apply(f.ctx, domain.CheckedOut{EventBase: evAt(), Holding: f.rice}); !errors.Is(err, domain.ErrWrongKind) {
 		t.Errorf("CheckedOut against a Bulk holding: err = %v, want ErrWrongKind", err)
 	}
-	if _, err := f.p.Apply(f.ctx, domain.Consumed{
+	if _, err := f.p.Apply(f.ctx, domain.Consumed{EventBase: evAt(),
 		Holding: f.cable, Delta: domain.FromMilli(-1),
 	}); !errors.Is(err, domain.ErrWrongKind) {
 		t.Errorf("Consumed against a Unique holding: err = %v, want ErrWrongKind", err)
@@ -548,10 +553,10 @@ func TestEventsRejectedAgainstTheWrongKind(t *testing.T) {
 
 func TestRetiredHoldingsAcceptNothing(t *testing.T) {
 	f := newFixture(t)
-	f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(1_000)})
-	f.apply(t, domain.Gone{Holding: f.rice, Reason: "donated"})
+	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(1_000)})
+	f.apply(t, domain.Gone{EventBase: evAt(), Holding: f.rice, Reason: "donated"})
 
-	if _, err := f.p.Apply(f.ctx, domain.Consumed{
+	if _, err := f.p.Apply(f.ctx, domain.Consumed{EventBase: evAt(),
 		Holding: f.rice, Delta: domain.FromMilli(-1),
 	}); !errors.Is(err, domain.ErrRetired) {
 		t.Errorf("err = %v, want ErrRetired", err)
@@ -560,9 +565,9 @@ func TestRetiredHoldingsAcceptNothing(t *testing.T) {
 
 func TestQuantityCannotGoNegativeThroughTheLedger(t *testing.T) {
 	f := newFixture(t)
-	f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(100)})
+	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(100)})
 
-	if _, err := f.p.Apply(f.ctx, domain.Consumed{
+	if _, err := f.p.Apply(f.ctx, domain.Consumed{EventBase: evAt(),
 		Holding: f.rice, Delta: domain.FromMilli(-101),
 	}); !errors.Is(err, domain.ErrNegativeQuantity) {
 		t.Errorf("err = %v, want ErrNegativeQuantity", err)
@@ -646,7 +651,7 @@ func TestReparentLocationRejectsCycles(t *testing.T) {
 func TestKindChangeIsRefusedWhileHoldingsExist(t *testing.T) {
 	f := newFixture(t)
 
-	_, err := f.p.Apply(f.ctx, domain.ItemKindChanged{
+	_, err := f.p.Apply(f.ctx, domain.ItemKindChanged{EventBase: evAt(),
 		Item: f.riceItem, FromKind: domain.KindBulk, ToKind: domain.KindUnique,
 	})
 	if err == nil {
@@ -673,8 +678,8 @@ func TestPromotionRecordsTheDiscardedDefinition(t *testing.T) {
 	// The Item events alone, without the Holding restructuring that a real
 	// Promote would also perform.
 	if _, err := f.p.ApplyBatch(f.ctx, []domain.Event{
-		domain.ItemUnitChanged{Item: f.riceItem, FromUnit: &g, ToUnit: nil},
-		domain.ItemPackageSizeChanged{Item: f.riceItem, FromSize: &size, ToSize: nil},
+		domain.ItemUnitChanged{EventBase: evAt(), Item: f.riceItem, FromUnit: &g, ToUnit: nil},
+		domain.ItemPackageSizeChanged{EventBase: evAt(), Item: f.riceItem, FromSize: &size, ToSize: nil},
 	}); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
@@ -720,7 +725,7 @@ func TestPromotionRecordsTheDiscardedDefinition(t *testing.T) {
 // nothing else. The triggers are the backstop; this is the API-level statement.
 func TestLedgerHasNoMutationPath(t *testing.T) {
 	f := newFixture(t)
-	id := f.apply(t, domain.Acquired{Holding: f.rice, Delta: domain.FromMilli(1_000)})
+	id := f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(1_000)})
 
 	// Raw SQL is the only way to attempt it, and the trigger refuses.
 	if _, err := f.conn.Exec("UPDATE events SET note = 'revised' WHERE id = ?", int64(id)); err == nil {

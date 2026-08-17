@@ -18,8 +18,11 @@ FROM events
 WHERE subject_kind = ? AND subject_id = ?
 ORDER BY id;
 
+-- sqlc cannot type an aggregate like COALESCE(MAX(id), 0) and falls back to
+-- interface{}, so the sequence head is read as an ordinary row instead.
+
 -- name: LatestEventID :one
-SELECT COALESCE(MAX(id), 0) FROM events;
+SELECT id FROM events ORDER BY id DESC LIMIT 1;
 
 -- ---------------------------------------------------------- payload writes --
 
@@ -131,3 +134,34 @@ WHERE e.subject_kind = 'Item' AND e.subject_id = ?;
 SELECT p.event_id, p.from_size, p.to_size
 FROM ev_package_size_changed p JOIN events e ON e.id = p.event_id
 WHERE e.subject_kind = 'Item' AND e.subject_id = ?;
+
+-- ------------------------------------------------------------------ replay --
+
+-- name: EventsForSubjectAfter :many
+SELECT id, subject_kind, subject_id, type, occurred_at, recorded_at, note
+FROM events
+WHERE subject_kind = ? AND subject_id = ? AND id > ?
+ORDER BY id;
+
+-- ReplayCheckpoint. Freely deletable by design (K2): deleting every checkpoint
+-- changes performance, never results. Deliberately NOT protected by the
+-- immutability triggers that guard the ledger itself, because it is rebuildable
+-- from the ledger and a malformed one costs a rebuild rather than the truth.
+
+-- name: GetCheckpoint :one
+SELECT holding_id, through_sequence, as_of, projection
+FROM replay_checkpoints WHERE holding_id = ?;
+
+-- name: UpsertCheckpoint :exec
+INSERT INTO replay_checkpoints (holding_id, through_sequence, as_of, projection)
+VALUES (?, ?, ?, ?)
+ON CONFLICT(holding_id) DO UPDATE SET
+    through_sequence = excluded.through_sequence,
+    as_of            = excluded.as_of,
+    projection       = excluded.projection;
+
+-- name: DeleteAllCheckpoints :exec
+DELETE FROM replay_checkpoints;
+
+-- name: CountCheckpoints :one
+SELECT count(*) FROM replay_checkpoints;

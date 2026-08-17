@@ -1,4 +1,4 @@
-.PHONY: build run test lint generate verify-generate deps clean setup check fmt
+.PHONY: build run test lint generate verify-generate verify deps clean setup check fmt
 
 DB_PATH ?= ./hms.db
 
@@ -45,6 +45,10 @@ verify-generate:
 		exit 1; \
 	fi
 	@echo "generated files are up to date"
+
+## verify: run the integrity check against DB_PATH
+verify:
+	go run ./cmd/hms --db-path=$(DB_PATH) --verify
 
 ## fmt: format and vet
 fmt:

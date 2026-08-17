@@ -25,7 +25,7 @@ func (p *Processor) History(ctx context.Context, kind domain.SubjectKind, id int
 		return nil, nil
 	}
 
-	pl, err := p.loadPayloads(ctx, kind, id)
+	pl, err := loadPayloads(ctx, p.q, kind, id)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ type payloadSet struct {
 	packageSizeChanged map[int64]sqlc.PackageSizeChangedPayloadsForSubjectRow
 }
 
-func (p *Processor) loadPayloads(ctx context.Context, kind domain.SubjectKind, id int64) (*payloadSet, error) {
+func loadPayloads(ctx context.Context, q *sqlc.Queries, kind domain.SubjectKind, id int64) (*payloadSet, error) {
 	set := &payloadSet{}
 	fail := func(shape string, err error) error {
 		return fmt.Errorf("ledger: read %s payloads for %s %d: %w", shape, kind, id, err)
@@ -68,81 +68,81 @@ func (p *Processor) loadPayloads(ctx context.Context, kind domain.SubjectKind, i
 
 	switch kind {
 	case domain.SubjectHolding:
-		rows, err := p.q.QuantityPayloadsForSubject(ctx, id)
+		rows, err := q.QuantityPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("quantity", err)
 		}
 		set.quantity = index(rows, func(r sqlc.QuantityPayloadsForSubjectRow) int64 { return r.EventID })
 
-		acq, err := p.q.AcquisitionPayloadsForSubject(ctx, id)
+		acq, err := q.AcquisitionPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("acquisition", err)
 		}
 		set.acquisition = index(acq, func(r sqlc.AcquisitionPayloadsForSubjectRow) int64 { return r.EventID })
 
-		plc, err := p.q.PlacementPayloadsForSubject(ctx, id)
+		plc, err := q.PlacementPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("placement", err)
 		}
 		set.placement = index(plc, func(r sqlc.PlacementPayloadsForSubjectRow) int64 { return r.EventID })
 
-		cus, err := p.q.CustodyPayloadsForSubject(ctx, id)
+		cus, err := q.CustodyPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("custody", err)
 		}
 		set.custody = index(cus, func(r sqlc.CustodyPayloadsForSubjectRow) int64 { return r.EventID })
 
-		obs, err := p.q.ObservationPayloadsForSubject(ctx, id)
+		obs, err := q.ObservationPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("observation", err)
 		}
 		set.observation = index(obs, func(r sqlc.ObservationPayloadsForSubjectRow) int64 { return r.EventID })
 
-		pre, err := p.q.PresencePayloadsForSubject(ctx, id)
+		pre, err := q.PresencePayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("presence", err)
 		}
 		set.presence = index(pre, func(r sqlc.PresencePayloadsForSubjectRow) int64 { return r.EventID })
 
-		term, err := p.q.TerminalPayloadsForSubject(ctx, id)
+		term, err := q.TerminalPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("terminal", err)
 		}
 		set.terminal = index(term, func(r sqlc.TerminalPayloadsForSubjectRow) int64 { return r.EventID })
 
 	case domain.SubjectLocation:
-		nc, err := p.q.NodeCreatedPayloadsForSubject(ctx, id)
+		nc, err := q.NodeCreatedPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("node_created", err)
 		}
 		set.nodeCreated = index(nc, func(r sqlc.NodeCreatedPayloadsForSubjectRow) int64 { return r.EventID })
 
-		nr, err := p.q.NodeReparentedPayloadsForSubject(ctx, id)
+		nr, err := q.NodeReparentedPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("node_reparented", err)
 		}
 		set.nodeReparented = index(nr, func(r sqlc.NodeReparentedPayloadsForSubjectRow) int64 { return r.EventID })
 
-		nl, err := p.q.NodeLifecyclePayloadsForSubject(ctx, id)
+		nl, err := q.NodeLifecyclePayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("node_lifecycle", err)
 		}
 		set.nodeLifecycle = index(nl, func(r sqlc.NodeLifecyclePayloadsForSubjectRow) int64 { return r.EventID })
 
 	case domain.SubjectItem:
-		kc, err := p.q.KindChangedPayloadsForSubject(ctx, id)
+		kc, err := q.KindChangedPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("kind_changed", err)
 		}
 		set.kindChanged = index(kc, func(r sqlc.KindChangedPayloadsForSubjectRow) int64 { return r.EventID })
 
-		uc, err := p.q.UnitChangedPayloadsForSubject(ctx, id)
+		uc, err := q.UnitChangedPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("unit_changed", err)
 		}
 		set.unitChanged = index(uc, func(r sqlc.UnitChangedPayloadsForSubjectRow) int64 { return r.EventID })
 
-		pc, err := p.q.PackageSizeChangedPayloadsForSubject(ctx, id)
+		pc, err := q.PackageSizeChangedPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("package_size_changed", err)
 		}

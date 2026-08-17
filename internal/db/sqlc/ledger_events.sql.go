@@ -51,6 +51,17 @@ func (q *Queries) AcquisitionPayloadsForSubject(ctx context.Context, subjectID i
 	return items, nil
 }
 
+const countCheckpoints = `-- name: CountCheckpoints :one
+SELECT count(*) FROM replay_checkpoints
+`
+
+func (q *Queries) CountCheckpoints(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCheckpoints)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const custodyPayloadsForSubject = `-- name: CustodyPayloadsForSubject :many
 SELECT p.event_id, p.to_custody, p.displaced_to_id
 FROM ev_custody p JOIN events e ON e.id = p.event_id
@@ -84,6 +95,15 @@ func (q *Queries) CustodyPayloadsForSubject(ctx context.Context, subjectID int64
 		return nil, err
 	}
 	return items, nil
+}
+
+const deleteAllCheckpoints = `-- name: DeleteAllCheckpoints :exec
+DELETE FROM replay_checkpoints
+`
+
+func (q *Queries) DeleteAllCheckpoints(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteAllCheckpoints)
+	return err
 }
 
 const eventsForSubject = `-- name: EventsForSubject :many
@@ -127,6 +147,74 @@ func (q *Queries) EventsForSubject(ctx context.Context, arg EventsForSubjectPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const eventsForSubjectAfter = `-- name: EventsForSubjectAfter :many
+
+SELECT id, subject_kind, subject_id, type, occurred_at, recorded_at, note
+FROM events
+WHERE subject_kind = ? AND subject_id = ? AND id > ?
+ORDER BY id
+`
+
+type EventsForSubjectAfterParams struct {
+	SubjectKind string
+	SubjectID   int64
+	ID          int64
+}
+
+// ------------------------------------------------------------------ replay --
+func (q *Queries) EventsForSubjectAfter(ctx context.Context, arg EventsForSubjectAfterParams) ([]Event, error) {
+	rows, err := q.db.QueryContext(ctx, eventsForSubjectAfter, arg.SubjectKind, arg.SubjectID, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Event{}
+	for rows.Next() {
+		var i Event
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubjectKind,
+			&i.SubjectID,
+			&i.Type,
+			&i.OccurredAt,
+			&i.RecordedAt,
+			&i.Note,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCheckpoint = `-- name: GetCheckpoint :one
+
+SELECT holding_id, through_sequence, as_of, projection
+FROM replay_checkpoints WHERE holding_id = ?
+`
+
+// ReplayCheckpoint. Freely deletable by design (K2): deleting every checkpoint
+// changes performance, never results. Deliberately NOT protected by the
+// immutability triggers that guard the ledger itself, because it is rebuildable
+// from the ledger and a malformed one costs a rebuild rather than the truth.
+func (q *Queries) GetCheckpoint(ctx context.Context, holdingID int64) (ReplayCheckpoint, error) {
+	row := q.db.QueryRowContext(ctx, getCheckpoint, holdingID)
+	var i ReplayCheckpoint
+	err := row.Scan(
+		&i.HoldingID,
+		&i.ThroughSequence,
+		&i.AsOf,
+		&i.Projection,
+	)
+	return i, err
 }
 
 const insertAcquisitionPayload = `-- name: InsertAcquisitionPayload :exec
@@ -451,14 +539,17 @@ func (q *Queries) KindChangedPayloadsForSubject(ctx context.Context, subjectID i
 }
 
 const latestEventID = `-- name: LatestEventID :one
-SELECT COALESCE(MAX(id), 0) FROM events
+
+SELECT id FROM events ORDER BY id DESC LIMIT 1
 `
 
-func (q *Queries) LatestEventID(ctx context.Context) (interface{}, error) {
+// sqlc cannot type an aggregate like COALESCE(MAX(id), 0) and falls back to
+// interface{}, so the sequence head is read as an ordinary row instead.
+func (q *Queries) LatestEventID(ctx context.Context) (int64, error) {
 	row := q.db.QueryRowContext(ctx, latestEventID)
-	var coalesce interface{}
-	err := row.Scan(&coalesce)
-	return coalesce, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const nodeCreatedPayloadsForSubject = `-- name: NodeCreatedPayloadsForSubject :many
@@ -809,4 +900,30 @@ func (q *Queries) UnitChangedPayloadsForSubject(ctx context.Context, subjectID i
 		return nil, err
 	}
 	return items, nil
+}
+
+const upsertCheckpoint = `-- name: UpsertCheckpoint :exec
+INSERT INTO replay_checkpoints (holding_id, through_sequence, as_of, projection)
+VALUES (?, ?, ?, ?)
+ON CONFLICT(holding_id) DO UPDATE SET
+    through_sequence = excluded.through_sequence,
+    as_of            = excluded.as_of,
+    projection       = excluded.projection
+`
+
+type UpsertCheckpointParams struct {
+	HoldingID       int64
+	ThroughSequence int64
+	AsOf            string
+	Projection      string
+}
+
+func (q *Queries) UpsertCheckpoint(ctx context.Context, arg UpsertCheckpointParams) error {
+	_, err := q.db.ExecContext(ctx, upsertCheckpoint,
+		arg.HoldingID,
+		arg.ThroughSequence,
+		arg.AsOf,
+		arg.Projection,
+	)
+	return err
 }
