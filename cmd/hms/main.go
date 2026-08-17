@@ -1,7 +1,8 @@
 // Command hms is the home management system.
 //
-// Stage 1: opens the database, applies migrations, and reports what it found.
-// The TUI arrives in Stage 7.
+// With no flags it opens the read-only browser. --verify runs the integrity job
+// and --checkpoint records replay checkpoints; both are also what a scheduled
+// job would call.
 package main
 
 import (
@@ -10,8 +11,13 @@ import (
 	"fmt"
 	"os"
 
+	"home-management-system/internal/annotate"
+	"home-management-system/internal/app"
 	"home-management-system/internal/db"
 	"home-management-system/internal/ledger"
+	"home-management-system/internal/origin"
+	"home-management-system/internal/query"
+	"home-management-system/internal/tui"
 )
 
 func main() {
@@ -25,6 +31,7 @@ func run() error {
 	dbPath := flag.String("db-path", "", "path to the SQLite database (overrides HMS_DB_PATH)")
 	verify := flag.Bool("verify", false, "run the integrity check and report discrepancies")
 	checkpoint := flag.Bool("checkpoint", false, "record a replay checkpoint for every holding")
+	info := flag.Bool("info", false, "print database details and exit")
 	flag.Parse()
 
 	cfg := db.DefaultConfig()
@@ -52,13 +59,16 @@ func run() error {
 		return fmt.Errorf("reading schema generation: %w", err)
 	}
 
-	fmt.Printf("home-management-system\n")
-	fmt.Printf("  database:          %s\n", cfg.DSN)
-	fmt.Printf("  migration version: %d\n", version)
-	fmt.Printf("  schema generation: %d\n", generation)
-
 	ctx := context.Background()
 	proc := ledger.New(conn)
+
+	if *info {
+		fmt.Printf("home-management-system\n")
+		fmt.Printf("  database:          %s\n", cfg.DSN)
+		fmt.Printf("  migration version: %d\n", version)
+		fmt.Printf("  schema generation: %d\n", generation)
+		return nil
+	}
 
 	if *checkpoint {
 		n, err := proc.CheckpointAll(ctx)
@@ -71,7 +81,10 @@ func run() error {
 	if *verify {
 		return runVerify(ctx, proc)
 	}
-	return nil
+
+	// No flags: browse.
+	ctrl := app.New(query.New(conn), proc, origin.New(conn), annotate.New(conn))
+	return tui.Run(ctx, ctrl)
 }
 
 // runVerify reports and never repairs. Silently correcting stored state would

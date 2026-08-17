@@ -155,22 +155,40 @@ fi
 
 # Methods generated from <path>_*.sql may only be called from internal/<path>.
 # This is the rule that makes "the ledger is the only writer of ledger-derived
-# columns" mechanically true rather than aspirational — and the same argument
+# columns" mechanically true rather than aspirational, and the same argument
 # applies to every path, so it is applied uniformly.
+#
+# Only files that IMPORT internal/db/sqlc are searched. A generated query cannot
+# be called without importing the package, and the owning packages legitimately
+# expose wrapper methods of the same name -- query.Reader.CountItemsInCategoryTree
+# wraps the query of that name -- so a bare grep for the identifier flags callers
+# of the wrapper, which is exactly the correct usage.
+sqlc_files="$(grep -rl 'home-management-system/internal/db/sqlc' --include='*.go' internal/ cmd/ 2>/dev/null || true)"
+
 for path in origin ledger annotate query; do
   if ! ls internal/db/queries/${path}_*.sql >/dev/null 2>&1; then
     skip "${path}-owned queries are called only from internal/${path}" "internal/db/queries/${path}_*.sql"
     continue
   fi
+  if [ -z "$sqlc_files" ]; then
+    skip "${path}-owned queries are called only from internal/${path}" "no sqlc importers"
+    continue
+  fi
+
+  # Files that import sqlc but live outside the owning package.
+  foreign="$(printf '%s\n' "$sqlc_files" \
+             | grep -v "^internal/${path}/" \
+             | grep -v '^internal/db/sqlc/' \
+             | grep -v '_test\.go$' || true)"
+
   leaked=""
-  while IFS= read -r name; do
-    [ -n "$name" ] || continue
-    hits="$(grep -rn --include='*.go' "\.${name}(" internal/ cmd/ 2>/dev/null \
-            | grep -v "^internal/${path}/" \
-            | grep -v '^internal/db/sqlc/' \
-            | grep -v '_test\.go:' || true)"
-    [ -n "$hits" ] && leaked="${leaked}${hits}"$'\n'
-  done < <(grep -ho -- '-- name: [A-Za-z0-9_]*' internal/db/queries/${path}_*.sql | sed 's/-- name: //')
+  if [ -n "$foreign" ]; then
+    while IFS= read -r name; do
+      [ -n "$name" ] || continue
+      hits="$(printf '%s\n' "$foreign" | xargs grep -n "\.${name}(" 2>/dev/null || true)"
+      [ -n "$hits" ] && leaked="${leaked}${hits}"$'\n'
+    done < <(grep -ho -- '-- name: [A-Za-z0-9_]*' internal/db/queries/${path}_*.sql | sed 's/-- name: //')
+  fi
 
   if [ -n "$leaked" ]; then
     report "${path}-owned queries are called only from internal/${path}"

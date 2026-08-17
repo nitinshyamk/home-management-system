@@ -429,3 +429,321 @@ func hydrateItem(row itemRow) (domain.Item, error) {
 		return nil, fmt.Errorf("query: item %d has unknown kind %q", row.ID, row.Kind)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Locations
+// ---------------------------------------------------------------------------
+
+// LocationNode is a Location with its derived depth.
+type LocationNode struct {
+	Location domain.Location
+	Depth    int
+}
+
+func (r *Reader) Location(ctx context.Context, id domain.LocationID) (domain.Location, error) {
+	row, err := r.q.GetLocation(ctx, int64(id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Location{}, fmt.Errorf("%w: location %d", ErrNotFound, id)
+		}
+		return domain.Location{}, fmt.Errorf("query: get location %d: %w", id, err)
+	}
+	return locationFrom(row.ID, row.ParentID, row.Name, row.Description, row.CreatedAt, row.ArchivedAt)
+}
+
+func (r *Reader) RootLocations(ctx context.Context) ([]domain.Location, error) {
+	rows, err := r.q.ListRootLocations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query: list root locations: %w", err)
+	}
+	out := make([]domain.Location, 0, len(rows))
+	for _, row := range rows {
+		l, err := locationFrom(row.ID, row.ParentID, row.Name, row.Description, row.CreatedAt, row.ArchivedAt)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, l)
+	}
+	return out, nil
+}
+
+// LocationPath renders with PRESENT-DAY names. History reading "Moved to Spice
+// Shelf" tells you where to look today; "Moved to Shelf 2" is archaeologically
+// faithful and practically useless.
+func (r *Reader) LocationPath(ctx context.Context, id domain.LocationID) ([]domain.Location, error) {
+	rows, err := r.q.LocationPath(ctx, int64(id))
+	if err != nil {
+		return nil, fmt.Errorf("query: path of location %d: %w", id, err)
+	}
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("%w: location %d", ErrNotFound, id)
+	}
+	if len(rows) >= pathLimit {
+		return nil, fmt.Errorf("%w: ancestors of location %d", ErrTreeTooLarge, id)
+	}
+
+	byID := make(map[domain.LocationID]domain.Location, len(rows))
+	for _, row := range rows {
+		l, err := locationFrom(row.ID, row.ParentID, row.Name, row.Description, row.CreatedAt, row.ArchivedAt)
+		if err != nil {
+			return nil, err
+		}
+		byID[l.ID] = l
+	}
+
+	var reversed []domain.Location
+	for cur, ok := byID[id], true; ok; {
+		reversed = append(reversed, cur)
+		if cur.Parent == nil {
+			break
+		}
+		cur, ok = byID[*cur.Parent]
+	}
+	path := make([]domain.Location, 0, len(reversed))
+	for i := len(reversed) - 1; i >= 0; i-- {
+		path = append(path, reversed[i])
+	}
+	return path, nil
+}
+
+func (r *Reader) LocationSubtree(ctx context.Context, root domain.LocationID) ([]LocationNode, error) {
+	rows, err := r.q.LocationDescendants(ctx, int64(root))
+	if err != nil {
+		return nil, fmt.Errorf("query: descendants of location %d: %w", root, err)
+	}
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("%w: location %d", ErrNotFound, root)
+	}
+	if len(rows) >= descendantLimit {
+		return nil, fmt.Errorf("%w: descendants of location %d", ErrTreeTooLarge, root)
+	}
+
+	children := map[domain.LocationID][]domain.Location{}
+	var start *domain.Location
+	for _, row := range rows {
+		l, err := locationFrom(row.ID, row.ParentID, row.Name, row.Description, row.CreatedAt, row.ArchivedAt)
+		if err != nil {
+			return nil, err
+		}
+		if l.ID == root {
+			copied := l
+			start = &copied
+			continue
+		}
+		if l.Parent != nil {
+			children[*l.Parent] = append(children[*l.Parent], l)
+		}
+	}
+	if start == nil {
+		return nil, fmt.Errorf("%w: location %d", ErrNotFound, root)
+	}
+
+	var out []LocationNode
+	var walk func(l domain.Location, depth int)
+	walk = func(l domain.Location, depth int) {
+		out = append(out, LocationNode{Location: l, Depth: depth})
+		for _, child := range children[l.ID] {
+			walk(child, depth+1)
+		}
+	}
+	walk(*start, 0)
+	return out, nil
+}
+
+func (r *Reader) LocationForest(ctx context.Context) ([]LocationNode, error) {
+	roots, err := r.RootLocations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []LocationNode
+	for _, root := range roots {
+		nodes, err := r.LocationSubtree(ctx, root.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, nodes...)
+	}
+	return out, nil
+}
+
+func (r *Reader) CountHoldingsInLocationTree(ctx context.Context, root domain.LocationID) (int64, error) {
+	n, err := r.q.CountHoldingsInLocationTree(ctx, int64(root))
+	if err != nil {
+		return 0, fmt.Errorf("query: count holdings under location %d: %w", root, err)
+	}
+	return n, nil
+}
+
+func locationFrom(id int64, parent sql.NullInt64, name string, description sql.NullString, createdAt string, archivedAt sql.NullString) (domain.Location, error) {
+	created, err := db.ParseTime(createdAt)
+	if err != nil {
+		return domain.Location{}, fmt.Errorf("query: location %d created_at: %w", id, err)
+	}
+	archived, err := db.ParseNullTime(archivedAt)
+	if err != nil {
+		return domain.Location{}, fmt.Errorf("query: location %d archived_at: %w", id, err)
+	}
+	var parentID *domain.LocationID
+	if parent.Valid {
+		p := domain.LocationID(parent.Int64)
+		parentID = &p
+	}
+	return domain.Location{
+		ID: domain.LocationID(id), Parent: parentID, Name: name,
+		Description: db.StringOrEmpty(description), CreatedAt: created, ArchivedAt: archived,
+	}, nil
+}
+
+// ---------------------------------------------------------------------------
+// Holdings
+// ---------------------------------------------------------------------------
+
+// HoldingDetail is a Holding with everything a display needs, already joined.
+type HoldingDetail struct {
+	Holding      domain.Holding
+	ItemName     string
+	LocationName string
+	ContentUnit  domain.UnitCode
+	PackageSize  *domain.Quantity
+}
+
+func (r *Reader) Holdings(ctx context.Context) ([]HoldingDetail, error) {
+	rows, err := r.q.ListHoldingsWithDetail(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query: list holdings: %w", err)
+	}
+	out := make([]HoldingDetail, 0, len(rows))
+	for _, row := range rows {
+		d, err := hydrateHolding(holdingRow(row))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
+func (r *Reader) Holding(ctx context.Context, id domain.HoldingID) (HoldingDetail, error) {
+	row, err := r.q.GetHoldingWithDetail(ctx, int64(id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return HoldingDetail{}, fmt.Errorf("%w: holding %d", ErrNotFound, id)
+		}
+		return HoldingDetail{}, fmt.Errorf("query: get holding %d: %w", id, err)
+	}
+	return hydrateHolding(holdingRow(sqlc.ListHoldingsWithDetailRow(row)))
+}
+
+// OnHand is D7, and it DISPATCHES ON KIND. For Bulk it is a sum of content
+// quantities; for Unique it is a count of live holdings. The domain model
+// assumed one formula, which is the clearest example of the variant split
+// reaching the derivations.
+func (r *Reader) OnHand(ctx context.Context, item domain.Item) (string, error) {
+	switch typed := item.(type) {
+	case domain.BulkItem:
+		milli, err := r.q.BulkOnHand(ctx, int64(typed.ID))
+		if err != nil {
+			return "", fmt.Errorf("query: on hand for item %d: %w", typed.ID, err)
+		}
+		return fmt.Sprintf("%s %s", domain.FromMilli(toInt64(milli)), typed.ContentUnit), nil
+	case domain.UniqueItem:
+		n, err := r.q.UniqueOnHand(ctx, int64(typed.ID))
+		if err != nil {
+			return "", fmt.Errorf("query: on hand for item %d: %w", typed.ID, err)
+		}
+		if n == 1 {
+			return "1 held", nil
+		}
+		return fmt.Sprintf("%d held", n), nil
+	default:
+		return "", fmt.Errorf("query: unknown item type %T", item)
+	}
+}
+
+// toInt64 unwraps sqlc's interface{} result for an aggregate it cannot type.
+func toInt64(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case float64:
+		return int64(n)
+	default:
+		return 0
+	}
+}
+
+type holdingRow sqlc.ListHoldingsWithDetailRow
+
+func hydrateHolding(row holdingRow) (HoldingDetail, error) {
+	created, err := db.ParseTime(row.CreatedAt)
+	if err != nil {
+		return HoldingDetail{}, fmt.Errorf("query: holding %d created_at: %w", row.ID, err)
+	}
+	expires, err := db.ParseNullTime(row.ExpiresOn)
+	if err != nil {
+		return HoldingDetail{}, fmt.Errorf("query: holding %d expires_on: %w", row.ID, err)
+	}
+	snoozed, err := db.ParseNullTime(row.SnoozedUntil)
+	if err != nil {
+		return HoldingDetail{}, fmt.Errorf("query: holding %d snoozed_until: %w", row.ID, err)
+	}
+	retired, err := db.ParseNullTime(row.RetiredAt)
+	if err != nil {
+		return HoldingDetail{}, fmt.Errorf("query: holding %d retired_at: %w", row.ID, err)
+	}
+
+	base := domain.HoldingBase{
+		ID:             domain.HoldingID(row.ID),
+		Item:           domain.ItemID(row.ItemID),
+		StowedLocation: domain.LocationID(row.StowedLocationID),
+		ExpiresOn:      expires,
+		SnoozedUntil:   snoozed,
+		RetiredAt:      retired,
+		CreatedAt:      created,
+	}
+	detail := HoldingDetail{
+		ItemName:     row.ItemName,
+		LocationName: row.LocationName,
+		ContentUnit:  domain.UnitCode(db.StringOrEmpty(row.ContentUnit)),
+	}
+	if row.PackageSize.Valid {
+		size := domain.FromMilli(row.PackageSize.Int64)
+		detail.PackageSize = &size
+	}
+
+	switch domain.Kind(row.Kind) {
+	case domain.KindBulk:
+		if !row.Quantity.Valid {
+			return HoldingDetail{}, fmt.Errorf("%w: holding %d is Bulk with no bulk_holdings row",
+				ErrMissingVariant, row.ID)
+		}
+		detail.Holding = domain.BulkHolding{
+			HoldingBase: base,
+			Quantity:    domain.FromMilli(row.Quantity.Int64),
+			UnitBasis:   domain.UnitBasis(db.StringOrEmpty(row.UnitBasis)),
+		}
+	case domain.KindUnique:
+		if !row.Custody.Valid {
+			return HoldingDetail{}, fmt.Errorf("%w: holding %d is Unique with no unique_holdings row",
+				ErrMissingVariant, row.ID)
+		}
+		since, err := db.ParseNullTime(row.CustodySince)
+		if err != nil {
+			return HoldingDetail{}, fmt.Errorf("query: holding %d custody_since: %w", row.ID, err)
+		}
+		h := domain.UniqueHolding{
+			HoldingBase:  base,
+			Label:        db.StringOrEmpty(row.Label),
+			Custody:      domain.Custody(row.Custody.String),
+			CustodySince: since,
+		}
+		if row.DisplacedToID.Valid {
+			to := domain.LocationID(row.DisplacedToID.Int64)
+			h.DisplacedTo = &to
+		}
+		detail.Holding = h
+	default:
+		return HoldingDetail{}, fmt.Errorf("query: holding %d has unknown kind %q", row.ID, row.Kind)
+	}
+	return detail, nil
+}

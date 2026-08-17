@@ -1,10 +1,11 @@
-.PHONY: build run test lint generate verify-generate verify deps clean setup check fmt
+.PHONY: build run test lint generate verify-generate verify seed deps clean setup check fmt
 
 DB_PATH ?= ./hms.db
 
 ## build: compile to bin/hms
 build:
 	go build -o bin/hms ./cmd/hms
+	go build -o bin/seed ./cmd/seed
 
 ## run: run the application directly
 run:
@@ -45,6 +46,10 @@ verify-generate:
 		exit 1; \
 	fi
 	@echo "generated files are up to date"
+
+## seed: build a sample house, entirely through the real write paths
+seed:
+	go run ./cmd/seed --db-path=$(DB_PATH)
 
 ## verify: run the integrity check against DB_PATH
 verify:
