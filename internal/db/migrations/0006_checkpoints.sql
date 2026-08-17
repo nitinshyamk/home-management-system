@@ -1,8 +1,8 @@
--- ReplayCheckpoint (schema §1.7).
+-- ReplayCheckpoint (schema section 1.7).
 --
 -- projection is a serialized value, not a set of columns, and that is a
 -- deliberate inversion of how the ledger is treated. Integrity investment
--- tracks authoritativeness (§3.4): the ledger gets 13 explicit payload tables
+-- tracks authoritativeness (section 3.4): the ledger gets 13 explicit payload tables
 -- because a malformed event is permanent; a checkpoint is rebuildable from the
 -- ledger, so a malformed one costs a rebuild. The question is never "how
 -- complex is the payload" but "what is lost if it is wrong".

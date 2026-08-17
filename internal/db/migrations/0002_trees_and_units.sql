@@ -1,12 +1,12 @@
 -- Trees and reference data.
 --
 -- Category and Location have near-identical shape and deliberately remain
--- distinct entities (schema §3.1): Location models physical reality that
+-- distinct entities (schema section 3.1): Location models physical reality that
 -- Holdings reference and the ledger tracks, Category is a descriptive overlay
 -- with no ledger at all. The ledger boundary falls between them.
 --
--- Sibling name uniqueness is deliberately ABSENT (schema §3.10). It was never an
--- integrity rule — identity is by id, and every join, rollup, and merge is
+-- Sibling name uniqueness is deliberately ABSENT (schema section 3.10). It was never an
+-- integrity rule -- identity is by id, and every join, rollup, and merge is
 -- id-based. Real homes have two drawers called "junk drawer".
 
 -- +goose Up

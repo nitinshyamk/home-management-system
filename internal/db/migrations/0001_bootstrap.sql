@@ -1,7 +1,7 @@
 -- Bootstrap: infrastructure only.
 --
 -- This migration deliberately contains no domain concepts. Its purpose is to
--- prove the migration wiring works — embedded FS, goose dialect, up and down —
+-- prove the migration wiring works -- embedded FS, goose dialect, up and down --
 -- independently of the data model, which arrives in 0002 onward.
 --
 -- schema_info records which generation of the domain schema this database

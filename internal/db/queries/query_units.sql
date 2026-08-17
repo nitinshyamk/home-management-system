@@ -1,4 +1,4 @@
--- Reference-data reads. Owned by the query path (plan §1.1): no writes.
+-- Reference-data reads. Owned by the query path (plan section 1.1): no writes.
 
 -- name: ListUnits :many
 SELECT code, dimension, to_base_factor

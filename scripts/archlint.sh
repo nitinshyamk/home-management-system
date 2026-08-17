@@ -75,20 +75,59 @@ if [ -d internal/db/migrations ]; then
   fi
 fi
 
+# sqlc v1.30.0 truncates a generated statement by 2 bytes for every multi-byte
+# character in the comment preceding it -- a rune/byte offset bug. The result is
+# syntactically invalid SQL that compiles fine and fails at runtime with
+# "incomplete input". Keeping .sql files ASCII-only sidesteps it entirely.
+#
+# Reproduced minimally: one em dash in a leading comment drops the last two
+# characters of the statement; three drop six.
+if ls internal/db/queries/*.sql internal/db/probe/*.sql internal/db/migrations/*.sql >/dev/null 2>&1; then
+  nonascii="$(LC_ALL=C grep -rln '[^ -~	]' internal/db/queries internal/db/probe internal/db/migrations --include='*.sql' 2>/dev/null || true)"
+  if [ -n "$nonascii" ]; then
+    report "SQL files are ASCII-only (sqlc truncates statements after multi-byte comment characters)"
+    printf '      %s\n' "$nonascii" >&2
+  else
+    ok "SQL files are ASCII-only"
+  fi
+fi
+
 echo "archlint: write-path boundaries (plan §1.1)"
 
+# Queries live centrally in internal/db/queries and are named for the path that
+# owns them, so the boundary is checked by FILE PREFIX, not by directory. An
+# earlier version of this script checked internal/origin/*.sql — a directory that
+# holds Go, not SQL — so the rules could never fire.
+#
+# rule_prefix <description> <prefix> <pattern>
+rule_prefix() {
+  local desc="$1" prefix="$2" pattern="$3"
+  if ! ls internal/db/queries/${prefix}_*.sql >/dev/null 2>&1; then
+    skip "$desc" "internal/db/queries/${prefix}_*.sql"
+    return
+  fi
+  local hits
+  hits="$(grep -niE "$pattern" internal/db/queries/${prefix}_*.sql 2>/dev/null)"
+  if [ -n "$hits" ]; then
+    report "$desc"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "$desc"
+  fi
+}
+
 # Origination writes immutable birth facts and nothing else. It creates rows; it
-# never revises them. An origination error is permanent, so the package must have
-# no revision path at all.
-rule "internal/origin contains no UPDATE" internal/origin '*.sql' '^\s*update\s'
-rule "internal/origin contains no DELETE" internal/origin '*.sql' '^\s*delete\s+from'
+# never revises them. An origination error is permanent — the only remedy is
+# retiring the entity — so the path must have no revision statement at all.
+rule_prefix "origin_*.sql contains no UPDATE" origin '^\s*update\s'
+rule_prefix "origin_*.sql contains no DELETE" origin '^\s*delete\s+from'
 
 # Annotation revises directly-mutable attributes on rows that already exist.
 # It never brings anything into being.
-rule "internal/annotate contains no INSERT" internal/annotate '*.sql' '^\s*insert\s+into'
+rule_prefix "annotate_*.sql contains no INSERT" annotate '^\s*insert\s+into'
 
 # Query reads. That is all.
-rule "internal/query contains no writes" internal/query '*.sql' '^\s*(insert|update|delete)\s'
+rule_prefix "query_*.sql contains no writes" query '^\s*(insert|update|delete)\s'
 
 echo "archlint: ledger ownership"
 
@@ -114,36 +153,45 @@ else
   skip "every query file is prefixed with its owning path" "internal/db/queries/*.sql"
 fi
 
-# Methods generated from ledger_*.sql may only be called from internal/ledger.
+# Methods generated from <path>_*.sql may only be called from internal/<path>.
 # This is the rule that makes "the ledger is the only writer of ledger-derived
-# columns" mechanically true rather than aspirational.
-if [ -d internal/db/queries ] && ls internal/db/queries/ledger_*.sql >/dev/null 2>&1; then
+# columns" mechanically true rather than aspirational — and the same argument
+# applies to every path, so it is applied uniformly.
+for path in origin ledger annotate query; do
+  if ! ls internal/db/queries/${path}_*.sql >/dev/null 2>&1; then
+    skip "${path}-owned queries are called only from internal/${path}" "internal/db/queries/${path}_*.sql"
+    continue
+  fi
   leaked=""
   while IFS= read -r name; do
     [ -n "$name" ] || continue
     hits="$(grep -rn --include='*.go' "\.${name}(" internal/ cmd/ 2>/dev/null \
-            | grep -v '^internal/ledger/' \
-            | grep -v '^internal/db/sqlc/' || true)"
+            | grep -v "^internal/${path}/" \
+            | grep -v '^internal/db/sqlc/' \
+            | grep -v '_test\.go:' || true)"
     [ -n "$hits" ] && leaked="${leaked}${hits}"$'\n'
-  done < <(grep -ho -- '-- name: [A-Za-z0-9_]*' internal/db/queries/ledger_*.sql | sed 's/-- name: //')
+  done < <(grep -ho -- '-- name: [A-Za-z0-9_]*' internal/db/queries/${path}_*.sql | sed 's/-- name: //')
 
   if [ -n "$leaked" ]; then
-    report "ledger-owned queries are called only from internal/ledger"
+    report "${path}-owned queries are called only from internal/${path}"
     printf '      %s' "$leaked" >&2
   else
-    ok "ledger-owned queries are called only from internal/ledger"
+    ok "${path}-owned queries are called only from internal/${path}"
   fi
-else
-  skip "ledger-owned queries are called only from internal/ledger" "internal/db/queries/ledger_*.sql"
-fi
+done
 
 echo "archlint: package purity"
 
 # The probe package exists only to attempt writes the schema must reject.
 # Production code importing it would mean production code attempting them.
-if [ -d internal/db/probe ] && ls internal/db/probe/*.go >/dev/null 2>&1; then
-  hits="$(grep -rln 'internal/db/probe' --include='*.go' internal/ cmd/ 2>/dev/null \
-          | grep -v '_test\.go$' | grep -v '^internal/db/probe/' || true)"
+#
+# Uses `go list` rather than grep: sqlc copies SQL comments into the generated
+# Go, so a prose mention of the import path is not an import. .Imports excludes
+# test-only imports, which is exactly the distinction the rule needs.
+if [ -d internal/db/probe ] && command -v go >/dev/null 2>&1; then
+  hits="$(go list -f '{{.ImportPath}}{{range .Imports}} {{.}}{{end}}' ./... 2>/dev/null \
+          | grep 'home-management-system/internal/db/probe' \
+          | grep -v '^home-management-system/internal/db/probe ' || true)"
   if [ -n "$hits" ]; then
     report "internal/db/probe is imported only from tests"
     printf '      %s\n' "$hits" >&2

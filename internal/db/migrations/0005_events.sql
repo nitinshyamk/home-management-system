@@ -1,4 +1,4 @@
--- The ledger (schema §1.6): base plus 13 payload shapes.
+-- The ledger (schema section 1.6): base plus 13 payload shapes.
 --
 -- 24 event types reduce to 13 payload shapes. The grouping is semantic --
 -- events share a shape because they do the same kind of thing, never because
@@ -119,7 +119,7 @@ CREATE TABLE ev_terminal (
 );
 
 -- NULL parent means a root node. No name: names are labels and carry
--- current state only (schema §3.5).
+-- current state only (schema section 3.5).
 CREATE TABLE ev_node_created (
     event_id   INTEGER PRIMARY KEY,
     type       TEXT NOT NULL CHECK (type IN ('NodeCreated')),

@@ -1,8 +1,8 @@
--- Item: base plus two variants (schema §1.4, §3.2).
+-- Item: base plus two variants (schema section 1.4, section 3.2).
 --
 -- The discriminator participates in the foreign key. `items` carries
 -- UNIQUE (id, kind) not because id alone is not unique, but so each variant
--- table can key against the pair — which makes it structurally impossible for a
+-- table can key against the pair -- which makes it structurally impossible for a
 -- bulk_items row to attach to a Unique item. That is invariant I2, enforced by
 -- referential integrity rather than by convention.
 --

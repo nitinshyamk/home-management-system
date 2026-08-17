@@ -10,9 +10,7 @@ import (
 )
 
 const getSchemaGeneration = `-- name: GetSchemaGeneration :one
-;
-
-SELECT generation FROM schema_info WHERE id =
+SELECT generation FROM schema_info WHERE id = 1
 `
 
 func (q *Queries) GetSchemaGeneration(ctx context.Context) (int64, error) {
@@ -23,11 +21,9 @@ func (q *Queries) GetSchemaGeneration(ctx context.Context) (int64, error) {
 }
 
 const getUnit = `-- name: GetUnit :one
-;
-
 SELECT code, dimension, to_base_factor
 FROM units
-WHERE code =
+WHERE code = ?
 `
 
 func (q *Queries) GetUnit(ctx context.Context, code string) (Unit, error) {
@@ -41,10 +37,10 @@ const listUnits = `-- name: ListUnits :many
 
 SELECT code, dimension, to_base_factor
 FROM units
-ORDER BY dimension, to_base_facto
+ORDER BY dimension, to_base_factor
 `
 
-// Reference-data reads. Owned by the query path (plan §1.1): no writes.
+// Reference-data reads. Owned by the query path (plan section 1.1): no writes.
 func (q *Queries) ListUnits(ctx context.Context) ([]Unit, error) {
 	rows, err := q.db.QueryContext(ctx, listUnits)
 	if err != nil {

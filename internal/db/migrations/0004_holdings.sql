@@ -1,4 +1,4 @@
--- Holding: base plus two variants (schema §1.5).
+-- Holding: base plus two variants (schema section 1.5).
 --
 -- holdings carries FOREIGN KEY (item_id, kind) -> items(id, kind), which makes
 -- H3 (holding.kind = item.kind) structural rather than a maintained rule, and
@@ -6,10 +6,10 @@
 --
 -- stowed_location, not location: for Unique it is where the thing belongs, for
 -- Bulk where the stuff is. "Where it is kept" is one concept true of both, and
--- it makes displaced_to legible as the deviation from stowed — representable
+-- it makes displaced_to legible as the deviation from stowed -- representable
 -- only on the variant that can deviate.
 --
--- unit_basis lives here as an IMMUTABLE attribute (schema §3.3). No event
+-- unit_basis lives here as an IMMUTABLE attribute (schema section 3.3). No event
 -- changes it: Opened creates a new Holding with a different basis rather than
 -- converting one. Replay never reconstructs it; it is read off the row.
 
@@ -53,7 +53,7 @@ CREATE TABLE unique_holdings (
 CREATE TABLE bulk_holdings (
     holding_id INTEGER PRIMARY KEY,
     kind       TEXT    NOT NULL CHECK (kind = 'Bulk'),
-    -- Milli-units. H6: zero is legal — depletion is a normal end state.
+    -- Milli-units. H6: zero is legal -- depletion is a normal end state.
     quantity   INTEGER NOT NULL CHECK (quantity >= 0),
     unit_basis TEXT    NOT NULL CHECK (unit_basis IN ('Content','Package')),
 
