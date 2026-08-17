@@ -97,9 +97,28 @@ func TestMigrateAppliesBootstrap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("version: %v", err)
 	}
-	if v != 1 {
-		t.Errorf("version = %d, want 1", v)
+	// Derived rather than hardcoded, so adding a migration does not require
+	// editing this test — the assertion is "everything was applied", not "we are
+	// at version N".
+	want := countMigrations(t)
+	if v != want {
+		t.Errorf("version = %d, want %d (one per migration file)", v, want)
 	}
+}
+
+func countMigrations(t *testing.T) int64 {
+	t.Helper()
+	entries, err := migrationsFS.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("read migrations dir: %v", err)
+	}
+	var n int64
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".sql") {
+			n++
+		}
+	}
+	return n
 }
 
 func TestMigrateIsIdempotent(t *testing.T) {
