@@ -1,8 +1,12 @@
 # Home Management System — Domain Model (V1)
 
-> Status: approved 2026-08-15. This is the canonical domain reference. It is deliberately
-> pre-technical — taxonomy, ontology, state machines, and flows. No schema, no packages, no UI.
-> Changes to the concepts here should be made in this document first.
+> Status: approved 2026-08-15; amended 2026-08-16. This is the canonical domain reference.
+> It is deliberately pre-technical — taxonomy, ontology, state machines, and flows.
+> No schema, no packages, no UI. Changes to the concepts here should be made in this document first.
+>
+> **Amendments 2026-08-16** — §3.4 and §3.5, from findings in [`conceptual-schema.md`](./conceptual-schema.md) §0.4:
+> `Created` added to the ledger (a Holding's placement is part of its state and needs a recorded origin);
+> `Promote`/`Demote` must record the definition they discard; `Reclassified` removed as a label.
 
 ## Context
 
@@ -228,12 +232,15 @@ Categories and Locations have no lifecycle — they are created, renamed, re-par
 
 Promote is the common case and worth making easy: you pool "USB-C cables ×6," then discover one is the good 100 W one.
 
+**Both directions discard part of the Item's definition, and must record what they discard.** Promotion removes the Item's bulk definition — its unit and its package size go with it. A `Bulk` rice tracked in grams with 2 kg bags, promoted, is afterwards an Item with no unit and no package size, and nothing anywhere says it ever had them. Recording only *"kind changed"* leaves the history unreconstructible, which quietly breaks the claim that history is retained. The ledger must therefore record the unit and package-size changes alongside the kind change (see conceptual schema §5.1).
+
 ### 3.5 The event ledger
 
 Current quantity is derived: a periodic checkpoint plus subsequent events.
 
 | Event | Records |
 |---|---|
+| `Created` | a Holding comes into existence, and **where** |
 | `Acquired` | +qty, source, price, date, expiry |
 | `Moved` | Holding, from → to Location |
 | `Consumed` | −qty, normal use |
@@ -241,14 +248,19 @@ Current quantity is derived: a periodic checkpoint plus subsequent events.
 | `Opened` | system-generated split of a package |
 | `CheckedOut` / `Returned` / `Rehomed` | custody |
 | `MarkedLost` / `Found` | custody |
-| `Counted` | an observed quantity |
+| `Counted` | an observed quantity (`Bulk`) |
+| `Verified` | an observed presence (`Unique`) |
 | `Adjusted` | the delta a Count implied, discrepancy explicit |
 | `Split` / `Merged` | system-generated topology changes |
-| `Reclassified` | Item's Category changed |
-| `Promoted` / `Demoted` | tracking mode changed |
 | `Gone` | terminal disposition |
+| *place events* | a Location is created, re-parented, archived, restored |
+| *definition events* | an Item's kind, unit, or package size changed |
+
+**`Created` is not bookkeeping.** Reconstructing a Holding's state means replaying its events from nothing, and *where it was put* is part of that state. Without a creation event, a thing put on a shelf and never moved has no record of being anywhere — the ledger would silently fail to account for the most common case in the house.
 
 **`Counted` and `Adjusted` are deliberately separate.** A physical count that disagrees with the ledger never silently overwrites it — it emits both the observation and an explicit adjustment carrying the discrepancy. That is what makes the ledger trustworthy enough to derive consumption rates from later.
+
+**Renaming and reclassifying are absent by design.** They are labels, and labels carry current state only — see conceptual schema §3.5 for where that boundary falls and why.
 
 ---
 

@@ -1,11 +1,12 @@
 # Home Management System — Conceptual Schema (V1)
 
-> Status: draft 2, complete, 2026-08-16. Derived from [`domain-model.md`](./domain-model.md), which
+> Status: draft 2.3, complete, 2026-08-16. Derived from [`domain-model.md`](./domain-model.md), which
 > remains authoritative on *concepts*. This document is authoritative on *structure*.
 > Still technology-free — SQL appears only as notation for constraints that are genuinely
 > declarative; no table layouts, no types, no queries.
 >
-> Next phase is technical design; §8 is its inbox.
+> Next phase is implementation; §8 is its inbox. Draft 2.3 folds in findings from the v01
+> implementation plan — see §0.4.
 
 ## 0. Reading rules
 
@@ -47,7 +48,26 @@ The goal is to move rules up that list. A `checked` invariant is a bug you can s
 | `ReplayCheckpoint.projection` explicitly serializable | it is rebuildable from the ledger, so it earns a lower integrity investment (§3.4) |
 | §3.4 promoted to *the ledger is authoritative*, with consequences enumerated | the principle was implicit across three sections and is what makes their apparently-opposite choices consistent |
 
+### 0.4 Changed in draft 2.3
+
+Found by the v01 implementation plan, which forced the question *what establishes each ledger-derived attribute's initial value?* — a question every earlier draft skipped by reasoning only about transitions.
+
+| Change | Reason |
+|---|---|
+| **`HoldingCreated` added** — 24 types, still 13 shapes | **correctness bug.** Replay could not establish `stowed_location`; every never-moved Holding would have been flagged by `H10` (§3.11) |
+| **`unit_basis` reclassified immutable** | no event changes it — `Opened` creates a new Holding rather than converting one (§3.3) |
+| **`Promote`/`Demote` emit up to three events** | **history loss.** Promotion destroyed `content_unit` and `package_size` with no record, breaking backward closure (§3.11, §5.1) |
+| **Creation ownership stated** — `H11`, `L4`, new §3.11 | replayed entities are created by the ledger; audited entities directly. Also resolves an identity ordering problem |
+| **`H8` demoted to `transactional`** | the variant split moved `unit_basis` off the base table, so no single-table constraint spans its key (§3.8) |
+| **Identity clarified as an input, not an output** — new §3.12 | "replay" named two operations. Only projection replay is needed; the ledger is explicitly **not a backup** |
+| **Creation-event rule restated as *verified*, not *replayed*** | backward closure can supply an origin but cannot verify — it starts from the value under test (§3.11) |
+| **`Promote`/`Demote` replace Holdings rather than mutating them** | mutating would change `kind` and destroy `unit_basis`, both immutable (§3.12) |
+
+**§3.5's boundary is unchanged and survives all of it.** `HoldingCreated` is *existence*; the extra `Promote` events are *typing*. Both were always inside the boundary — the event *enumeration* was wrong, not the principle.
+
 ### 0.3 Changed in draft 2.2
+
+*Draft 2.4 refinement:* §3.11's justification for `HoldingCreated` was rewritten. The original argument — `stowed_location` has no natural zero — is true but weak, since backward closure would supply an origin. The real reason is that **verification requires a reconstruction independent of the state being verified**, and backward closure begins from the value under test. The rule now reads *verified* rather than *replayed*, which re-derives the Item exemption instead of asserting it.
 
 §4 onward reworked against §1–§3. Beyond mechanical updates, four new gaps surfaced — `on_hand` is not one formula (§7.4), verifying a Unique Holding had no operation (§7.5), reorganization was silently unaccountable (§7.6), and Item archival was unmodelled (§7.7). §5.4 states what the Location ledger is actually for, which turns out not to be what §3.7 implied.
 
@@ -82,6 +102,7 @@ Same attributes as Category. Invariants **L1**, **L2** mirror **C1**, **C2**.
 | # | Invariant | Upheld by |
 |---|---|---|
 | **L3** | An archived Location remains resolvable forever; it is never hard-deleted. | `declarative` — no delete path exists |
+| **L4** | Every Location has a `NodeCreated` event. | `transactional` — the ledger owns creation (§3.11) |
 
 `archived_at` non-null removes a node from pickers and from `rollup`, and nothing else. Its parent pointer is retained: it is part of the historical record.
 
@@ -207,7 +228,7 @@ Custody = AtRest
 | `holding_id` | `Ref<Holding>` | | primary key |
 | `kind` | Enum | | fixed to `Bulk` |
 | `quantity` | Decimal | ledger-derived | |
-| `unit_basis` | Enum{Content, Package} | ledger-derived | which unit `quantity` counts in (§3.8) |
+| `unit_basis` | Enum{Content, Package} | **immutable** | which unit `quantity` counts in (§3.8) |
 
 No custody. No label. Taking twenty zip ties to the garage is a `Move`, not a checkout.
 
@@ -220,9 +241,12 @@ No custody. No label. Taking twenty zip ties to the garage is a `Move`, not a ch
 | **H5** | Every Holding has at least one variant row. | `checked` |
 | **H6** | `quantity ≥ 0`. | `declarative` |
 | **H7** | `unit_basis = Package` ⟹ the Item's `package_size` is non-null. | `checked` — cross-entity (§3.9) |
-| **H8** | No two **active** Holdings share `(item, stowed_location, unit_basis, expires_on)`; two null expiries compare equal. | `declarative`, with a caveat — see §3.8 |
+| **H8** | No two **active** Holdings share `(item, stowed_location, unit_basis, expires_on)`; two null expiries compare equal. | `transactional` — **not** declarative; see §3.8 |
 | **H9** | `retired_at` non-null ⟹ excluded from every rollup; no further ledger events accepted. | `checked` |
 | **H10** | Ledger-derived attributes equal what replay produces. | `checked` — this is the nightly job (§3.6) |
+| **H11** | Every Holding has a `HoldingCreated` event. | `transactional` — the ledger owns creation (§3.11) |
+
+`unit_basis` is **immutable**, not ledger-derived: no event changes it, because `Opened` creates a *new* Holding with a different basis rather than converting one. It is read off the row and never replayed.
 
 Draft 1's `H1`, `H2`, `H3` were all shape rules and are now structural. `H3`/`H4` above are new and also structural. Only `H5`, `H7`, `H9`, `H10` require checking, and each is checking something genuinely cross-cutting rather than a shape.
 
@@ -238,7 +262,7 @@ The ledger. Append-only: no updates, no deletes. Corrections are compensating ev
 | `sequence` | Integer | total order, monotonic |
 | `subject_kind` | Enum{Holding, Location, Item} | |
 | `subject_id` | Identity | |
-| `type` | Enum — 23 types below | |
+| `type` | Enum — 24 types below | |
 | `occurred_at` | Timestamp | when it happened in the world |
 | `recorded_at` | Timestamp | when it was entered |
 | `note` | Text? | |
@@ -256,7 +280,9 @@ The ledger. Append-only: no updates, no deletes. Corrections are compensating ev
 
 #### Types by subject
 
-**Holding — 16.** `Acquired`, `Moved`, `Rehomed`, `Consumed`, `Discarded`, `Opened`, `Split`, `Merged`, `Adjusted`, `CheckedOut`, `Returned`, `MarkedLost`, `Found`, `Counted`, `Verified`, `Gone`.
+**Holding — 17.** `HoldingCreated`, `Acquired`, `Moved`, `Rehomed`, `Consumed`, `Discarded`, `Opened`, `Split`, `Merged`, `Adjusted`, `CheckedOut`, `Returned`, `MarkedLost`, `Found`, `Counted`, `Verified`, `Gone`.
+
+> **`HoldingCreated` is a correctness requirement, not narrative.** Replay folds from an *empty* projection, and `stowed_location` is part of that projection. A Holding created on a shelf and never moved has no event establishing where it is, so replay yields a zero value and `H10` flags it — every never-moved Holding in the house. `Acquired` does not cover the case: its payload has no location, and `Unique` Holdings have no `Acquired` at all. See §3.11.
 
 **Location — 4.** `NodeCreated`, `NodeReparented`, `NodeArchived`, `NodeRestored`.
 
@@ -272,13 +298,13 @@ The ledger. Append-only: no updates, no deletes. Corrections are compensating ev
 
 #### Decomposition: base plus 13 payload shapes
 
-23 types reduce to 13 payload shapes. The grouping is semantic — events share a shape because they do the same kind of thing, never because their columns happened to line up.
+24 types reduce to 13 payload shapes. The grouping is semantic — events share a shape because they do the same kind of thing, never because their columns happened to line up.
 
 | # | Shape | Types | Payload |
 |---|---|---|---|
 | 1 | Quantity | Consumed, Discarded, Opened, Split, Merged, Adjusted | `delta`, `reason?` |
 | 2 | Acquisition | Acquired | `delta`, `source?`, `price?` |
-| 3 | Placement | Moved, Rehomed | `from_location`, `to_location` |
+| 3 | Placement | **HoldingCreated**, Moved, Rehomed | `from_location`, `to_location` — creation is a placement from nowhere, so `from_location` is null |
 | 4 | Custody | CheckedOut, Returned, MarkedLost, Found | `to_custody`, `displaced_to?` |
 | 5 | Observation | Counted | `observed_quantity` |
 | 6 | Presence | Verified | `present` |
@@ -350,7 +376,7 @@ UniqueItem   BulkItem                UniqueHolding     BulkHolding
                   ▼                        ▼
                 Unit                 ReplayCheckpoint
 
-   Event ──subject──► Holding   (16 types)
+   Event ──subject──► Holding   (17 types)
          ├─subject──► Location  ( 5 types)
          └─subject──► Item      ( 3 types, structural properties only)
 ```
@@ -415,9 +441,11 @@ The missing piece from draft 1, and what makes both `ReplayCheckpoint` and the l
 
 | Class | Meaning | Examples |
 |---|---|---|
-| **Immutable** | Set at creation, never changes. | `id`, `item`, `kind`, `created_at` |
+| **Immutable** | Set at creation, never changes. | `id`, `item`, `kind`, `created_at`, **`unit_basis`** |
 | **Ledger-derived** | Every change goes through an event; replay reconstructs it. | `quantity`, `custody`, `custody_since`, `displaced_to`, `stowed_location`, `retired_at` |
 | **Directly mutable** | Edited in place. Not in the ledger; replay cannot reconstruct it. | `expires_on`, `label`, `snoozed_until`, `name`, `notes`, `category`, `placement_confirmed_at` |
+
+**`unit_basis` sits in the first class, not the second** — a correction found by asking what establishes each ledger-derived attribute's *initial* value (§3.11). Nothing changes it, so nothing needs to replay it.
 
 The third class is not a gap. `snoozed_until` is UI state. `expires_on` is a correction to *what you know* about a bag of rice, not a thing that happened to it. `label` is a name. None belong in a ledger and none are reconstructible from one — which is fine, provided nothing claims otherwise. `K3` is that claim being correctly bounded.
 
@@ -526,7 +554,9 @@ A `BulkHolding`'s `quantity` counts either the Item's `content_unit` or whole pa
 
 This is the structural form of "sealed vs. opened" — what makes that state derivable rather than stored. Constraining the basis to two values, rather than letting a Holding name any Unit, removes an entire class of validation: the only legal units are the Item's own content unit and its package.
 
-**Caveat on `H8`.** Two null `expires_on` values must compare *equal* for the canonical-form rule, and most storage engines do not treat nulls that way in a uniqueness constraint. It is `declarative` only given a strategy — sentinel date, generated column, or partial index. Flagged for the technical phase rather than papered over.
+**`H8` cannot be declarative, and the variant split is why.** It keys on `(item, stowed_location, unit_basis, expires_on)` — but §3.2 moved `unit_basis` onto `BulkHolding` while the other three live on the base. No single-table uniqueness constraint spans two tables, so the rule drops to `transactional`, upheld by the merge logic that `O1` already required. The null-equality problem — two null expiries must compare *equal*, which most engines refuse in a uniqueness constraint — becomes moot along with it.
+
+This is the one place two good decisions genuinely traded against each other: eliminating nullable-variant muddle cost `H8` a declarative enforcement it would otherwise have had. Worth recording as a cost paid rather than a problem solved.
 
 ### 3.9 Where structural purity stops
 
@@ -555,6 +585,63 @@ Soft delete forces the issue anyway — archiving `Shelf 1` and later creating a
 
 **Demoted to product guidance:** a non-blocking warning — *"there's already a 'Shelf 1' here — add another?"* — which belongs in the UI, not the domain model.
 
+### 3.11 Creation, and what establishes an initial value
+
+Every section above reasons about *transitions* and assumes a starting state exists. Asking the complementary question — **what establishes each ledger-derived attribute's initial value?** — found two defects and one misclassification, so it belongs in the document as a standing check.
+
+**Mechanically, `HoldingCreated` exists for exactly one attribute.** Walk the projection and ask what each attribute starts from: `quantity` starts at zero, `custody` at `AtRest`, and `custody_since`, `displaced_to`, and `retired_at` at null — all real zero values needing no payload. `unit_basis` needs nothing because it is immutable (§3.3). Only **`stowed_location`** has no meaningful empty value. So `HoldingCreated{stowed_location}` is the whole requirement, and it fits the existing **Placement** shape with `from_location` null — creation is a placement from nowhere. Seventeen Holding types, still thirteen shapes.
+
+**But the load-bearing reason is independence, not missing zeros.** `stowed_location` *does* close backwards, exactly as Item's `content_unit` does: created at 7 and moved to 9 leaves `Moved{from: 7, to: 9}`, and a Holding never moved has its origin sitting in the current column with zero events. Backward closure is available. It simply cannot **verify** anything:
+
+```
+forward    ∅ → HoldingCreated{7} → Moved{7→9} → 9    vs stored 9   ✓ independent
+backward   stored 9 → walk back → 7 → forward → 9    vs stored 9   ✗ circular
+```
+
+Backward closure begins from the value under test, so corruption in the stored column propagates into the derived origin and back out unchanged — `H10` would pass on corrupt data. Hence:
+
+> **A creation event is required exactly when an entity's state is *verified*, because verification demands a reconstruction independent of the state being verified.** Entities that are only *audited* need none: audit reads backwards from current state and makes no independence claim.
+
+That re-derives the Item answer rather than asserting it — nothing verifies Items, so backward closure is adequate there.
+
+*Alternative considered and rejected:* an immutable `birth_location` column would also give an independent seed, with no event and no `H11`. Rejected because Location already records creation as an event (asymmetry for no reason), because §3.5 puts **existence** in the ledger, because a second location column beside `stowed_location` meaning something subtly different is exactly the muddle §3.2 exists to remove, and because the event carries `occurred_at` for free while the column would need a companion timestamp.
+
+**Which decides who owns creation:**
+
+> Entities whose ledger-derived state is **verified** — Holding, Location — are created **by the ledger**, through a creation event.
+> Entities whose ledger-derived state is only **audited** — Item — are created **directly**.
+
+The line is drawn by what *verification* needs, and it also resolves an identity problem: with allocated-on-insert identifiers the row must exist before an event can reference it, so a direct insert plus a separate ledger append would split one creation across two owners inside a single transaction. Putting creation in the ledger removes the split. `H11` and `L4` are the resulting invariants.
+
+**Backward closure — and its precondition.** Items need no creation event because structural history reconstructs *backwards*: current value, plus each change event's `from_value`, and the earliest `from_value` is the birth value. That argument is only valid **while nothing is destroyed**, and `Promote` destroys the `BulkItem` row — taking `content_unit` and `package_size` with it, unrecoverably.
+
+So `Promote` and `Demote` emit **up to three events**, not one: `ItemKindChanged`, plus `ItemUnitChanged{g → null}` and `ItemPackageSizeChanged{2000 → null}` for the discarded definition, reversed on `Demote`. That is `O1`'s "one event per fact changed" applied honestly. It needs no new type and no new shape, and it makes both sides of those shapes nullable — genuine optionality, since a `Unique` Item has no unit.
+
+Forward replay from a creation event is *total*. Backward closure is *conditional*. Where both are available, prefer the former; where only the latter is, state the precondition rather than assuming it.
+
+### 3.12 Identity is an input to the ledger, not an output
+
+"Replay" names two different operations, and conflating them is what makes creation look paradoxical — creation allocates a new identifier, so how can it be replayed?
+
+| | What it does | Do we need it? |
+|---|---|---|
+| **Projection replay** | For a *known* entity, fold its events to reconstruct its ledger-derived attributes. The identifier is the **filter key** — an input, never a folded value. Nothing is allocated. | **Yes.** This is all `H10`, `Verify`, and the nightly job do. |
+| **World reconstruction** | Rebuild the database from empty by replaying everything. Requires identity to come *out of* the ledger. | **No.** |
+
+So identity is allocated once, by the storage layer, and the ledger references it. Ordering inside the creating transaction is unproblematic: insert the row, obtain the identifier, append the creation event referencing it, commit. No observer sees an identifier without its creation event — which is `H11` and `L4`.
+
+**The consequence, stated plainly because "event ledger" implies otherwise:**
+
+> **The ledger is not a backup.** It cannot rebuild the database. It reconstructs the ledger-derived attributes of entities that already exist, and nothing more.
+
+That is not a compromise; it is §3.6's projection model showing up again. This is *state with an authoritative ledger*, not event sourcing, and full reconstruction was never part of the bargain.
+
+**Which makes `E4` load-bearing beyond referential tidiness.** Identity and every *immutable* attribute — `item`, `kind`, `unit_basis` — live on the row, not in the ledger. An orphaned event is therefore **uninterpretable**. `E4` is what makes the ledger mean anything at all.
+
+The tempting fix — putting birth facts into `HoldingCreated`'s payload so events are self-describing — is **forbidden by `E7`**: those facts are derivable from the row. Relying on the row is safe precisely because `E4` guarantees it survives. The two rules cover each other, and neither works alone.
+
+**Corollary: `Promote` replaces Holdings, it does not mutate them.** Mutating in place would change `kind` and destroy `unit_basis`, both immutable. So `Promote` retires the `Bulk` Holding and creates N `Unique` ones, each with its own identity and its own `HoldingCreated`. §5.1's `Split × N` implies this; the mutate reading would silently break `unit_basis` immutability and leave `H11` with a hole.
+
 ---
 
 ## 4. Derived values — never stored
@@ -569,7 +656,7 @@ The variant split (§3.2) changes the shape of this section in one important way
 |---|---|---|
 | **D1** | `ledger_state(holding)` | the last `ReplayCheckpoint.projection` for that Holding, plus every Event with a greater `sequence`, applied in `sequence` order |
 
-`D1` is authoritative for every attribute in the *ledger-derived* class (§3.3) — `stowed_location`, `retired_at`, and per variant either `quantity`/`unit_basis` or `custody`/`custody_since`/`displaced_to`. It is **not** a read path (§3.6); it is what `H10` and the nightly integrity job compare against.
+`D1` is authoritative for every attribute in the *ledger-derived* class (§3.3) — `stowed_location`, `retired_at`, and per variant either `quantity` or `custody`/`custody_since`/`displaced_to`. Not `unit_basis`, which is immutable and read off the row. It is **not** a read path (§3.6); it is what `H10` and the nightly integrity job compare against.
 
 Everything below is computed from current state, not from replay.
 
@@ -648,18 +735,21 @@ Four cross-cutting rules govern all of them:
 | `ArchiveItem` | `Item.archived_at` | — |
 | `ChangeItemUnit` | `BulkItem.content_unit` | `ItemUnitChanged` |
 | `SetPackageSize` | `BulkItem.package_size` | `ItemPackageSizeChanged` |
-| `Promote` | `Item.kind`, variant swap, 1→N Holdings | `ItemKindChanged`, `Split` × N |
-| `Demote` | `Item.kind`, variant swap, N→1 Holdings | `ItemKindChanged`, `Merged` |
+| `Promote` | `Item.kind`, variant swap, **retires 1 Holding and creates N** | `ItemKindChanged`, **`ItemUnitChanged`**, **`ItemPackageSizeChanged`**, `Split` × N, **`HoldingCreated` × N**, `Gone` |
+| `Demote` | `Item.kind`, variant swap, **retires N Holdings and creates 1** | `ItemKindChanged`, **`ItemUnitChanged`**, **`ItemPackageSizeChanged`**, `Merged`, **`HoldingCreated`**, `Gone` × N |
 
-**`AddItem` appends no event, and there is no `ItemCreated`.** The change events carry `from_value`, so the chain closes backwards: an Item's structural history is its *current* value plus every change event read in reverse, and the earliest event's `from_value` is the creation value. An Item with no change events was created as it stands. Adding a creation event would record something already implied — forbidden by `E7`.
+**`AddItem` appends no event, and there is no `ItemCreated`.** The change events carry `from_value`, so the chain closes backwards: an Item's structural history is its *current* value plus every change event read in reverse, and the earliest event's `from_value` is the creation value. Adding a creation event would record something already implied — forbidden by `E7`.
 
-**`Promote` is the common direction** and should be cheap: one Holding of quantity N becomes N Holdings of quantity 1, each inheriting `expires_on` and auto-labelled. `Demote` requires matching `stowed_location` and `expires_on` across all N, and is lossy going forward — history is retained, but no future event can address a single unit. Warn explicitly.
+**This holds only because `Promote`/`Demote` now record the definition they discard** (§3.11). Backward closure is valid while nothing is destroyed; promotion destroys the `BulkItem` row, so without the unit and package-size events the chain breaks and the Item's history becomes unreconstructible.
+
+**Neither direction mutates a Holding in place** (§3.12): `kind` and `unit_basis` are immutable, so the old Holdings are retired and new ones created. **`Promote` is the common direction** and should be cheap: one Holding of quantity N becomes N Holdings of quantity 1, each inheriting `expires_on` and auto-labelled. `Demote` requires matching `stowed_location` and `expires_on` across all N, and is lossy going forward — history is retained, but no future event can address a single unit. Warn explicitly.
 
 ### 5.2 Holding operations
 
 | Operation | Writes | Events |
 |---|---|---|
-| `Receive(item, location, qty, basis, expiry?)` | `Holding` + `BulkHolding`, or merges | `Acquired`, `Merged`? |
+| `CreateHolding(item, location, basis)` | `Holding` + one variant row | `HoldingCreated` |
+| `Receive(item, location, qty, basis, expiry?)` | `Holding` + `BulkHolding`, or merges | `HoldingCreated`?, `Acquired`, `Merged`? |
 | `Move(holding, to)` | `stowed_location` | `Moved`, `Merged`? |
 | `Consume(item, qty)` | 1–2 `BulkHolding`s | `Split`?, `Opened`?, `Consumed` |
 | `Open(holding)` | 2 `BulkHolding`s | `Split`, `Opened` |
@@ -740,6 +830,14 @@ Archiving a node with children or contents asks for a `resolution` — **Lift**,
 
 `K2`. The exact inverse of §6.4, and the contrast is the point: delete every checkpoint and you lose performance, never information. It is the clearest illustration of §3.4's proportionality rule.
 
+### 6.6 Creation is owned by whoever must verify it
+
+The mirror of §6.1's deletion rules. Holdings and Locations are created **by the ledger**, through `HoldingCreated` and `NodeCreated`; Items are created directly. §3.11 gives the reasoning — verification needs an origin independent of the state under test — and `H11`/`L4` the invariants.
+
+The practical consequence for any implementation: there is no code path that inserts a Holding or Location row outside the ledger, which makes `H11` and `L4` hold by construction rather than by discipline.
+
+`HoldingCreated` is kept as a **distinct event type** rather than encoded as a null-from `Moved`, even though the two share the Placement payload byte for byte. The cost of the distinction is one enum value — no table, no shape, no struct. What it buys: creation is *existence* and a move is *containment*, two different categories under §3.5, and keeping them distinct puts the "creation occurs exactly once, first" rule at a dispatch point the exhaustiveness machinery can see, rather than inside a null check within `case Moved`.
+
 ---
 
 ## 7. Gaps found in the domain model
@@ -784,13 +882,37 @@ The domain model has `Gone` for Holdings and says Items are "archived," but neve
 
 ---
 
+### 7.8 Nothing established initial values — new, found in *this* document
+
+Unlike §7.1–§7.7, this one is a defect in the conceptual schema rather than the domain model, surfaced by planning the implementation.
+
+Every section reasoned about *transitions* and assumed a starting state existed. Nothing asked **what establishes each ledger-derived attribute's initial value.** Asking it produced one correctness bug (`stowed_location` unrecoverable without `HoldingCreated`), one history loss (`Promote` destroying the Item definition), and one misclassification (`unit_basis` was never ledger-derived at all).
+
+Resolved in §3.11, which is written as a standing check rather than a fix, because the question generalizes: *transition rules are only half a specification.*
+
+### 7.9 "Replay" meant two things — new, found in *this* document
+
+The docs used one word for *projection replay* (fold a known entity's events) and *world reconstruction* (rebuild the database from nothing). Only the first is needed, but nothing said so, which made creation look paradoxical: if replay reconstructs state, how can it reconstruct an allocated identifier?
+
+Resolved in §3.12: identity is an input to the ledger, not an output. The ledger is explicitly **not a backup**. That also promotes `E4` from referential tidiness to a load-bearing rule — immutable attributes live on the row, so an orphaned event is uninterpretable — and surfaces that `Promote` must replace Holdings rather than mutate them.
+
+### 7.10 Backward closure was asserted, not conditioned — new, found in *this* document
+
+Draft 2.2's §5.1 justified having no `ItemCreated` by claiming structural history "closes backwards" from current state plus each change event's `from_value`. True — but only while nothing is destroyed, and `Promote` destroys the `BulkItem` row.
+
+The argument was stated unconditionally when it had a precondition. It is now stated with one, and the precondition is enforced by the three-event `Promote` (§3.11).
+
+The general form is worth keeping: **forward replay from a creation event is total; backward closure is conditional.** Where both are available, prefer the former. Where only the latter is, state the precondition rather than assuming it.
+
+---
+
 ## 8. Open questions for the technical phase
 
 Deliberately unsettled. Each is an implementation decision the conceptual model constrains but does not determine.
 
 | # | Question | Constrained by |
 |---|---|---|
-| 1 | **Null-equality in `H8`.** Two null `expires_on` values must compare *equal* for the canonical-form rule; most engines do not do that in a uniqueness constraint. Needs a sentinel, generated column, or partial index. | `H8` is `declarative` **only** given a strategy — §3.8 |
+| 1 | ~~**Null-equality in `H8`**~~ — **closed.** `H8` cannot be declarative at all: `unit_basis` lives on the variant table while its other keys live on the base, so no single-table constraint spans it. It is `transactional`, upheld by merge logic. | §3.8 |
 | 2 | **Enforcing "at least one variant row."** Not declaratively expressible. Deferred constraint, trigger, or consistency test. | `I3`, `H5` are the only `checked` shape rules left — §3.2 |
 | 3 | **Event assembly.** Reading an event with its payload is a 13-way dispatch. One left-join per shape, a union view, or per-shape repositories. | 13 shape tables — §1.6 |
 | 4 | **Decimal representation.** Float storage accumulates error across replay, and `H10` compares for equality. Fixed-point or integer minor units. | `H10`, `D1` |
@@ -809,6 +931,8 @@ Note the shape of this list: **every item is a mechanism question, not a semanti
 The schema is correct when every acceptance walkthrough in domain model §6 traces through §5's operations **without introducing an entity, attribute, or event type not listed here**. Two that exercise the most structure:
 
 **Walkthrough 02 — rice, first use.** `Consume(rice, 100 g)` finds no `Content`-basis Holding, so it emits `Split{−1 package}` on the sealed `BulkHolding`, `Opened{+2000 g}` on a newly created one, then `Consumed{−100 g}`. Three events, one user action. `H4`, `H7`, and `H8` hold throughout, and every delta is resolved (§3.7) so a later `SetPackageSize` cannot rewrite them.
+
+**Walkthrough 00 — the Holding that never moves.** Create a Holding on a shelf and do nothing else. Replay it from zero and assert it equals stored state. The cheapest possible test, and the one that catches a missing `HoldingCreated` immediately — which is precisely how that defect was found. Every acceptance list should open with the do-nothing case.
 
 **Walkthrough 08 — promote one of six cables.** `Promote` writes `ItemKindChanged`, swaps `BulkItem` for `UniqueItem`, and replaces one Holding of quantity 6 with six of quantity 1 — each a base row plus a `UniqueHolding` row, each labelled, each inheriting `expires_on`. `H1` holds for all six *only* if the whole thing is atomic. That is `O2`'s reason for existing.
 
@@ -845,3 +969,5 @@ Each invariant should be verifiable by its tag:
 The `checked` set is the real maintenance surface, and it is deliberately small: `C1`/`L1` (acyclicity), `U1` (dimension consistency), `I3`/`H5` (variant row presence), `H7` (package basis), `H9` (retired exclusion), `H10` (ledger consistency), `K1` (checkpoint accuracy), `E6`/`E7` (resolved, non-derivable payloads).
 
 Nine rules, none of them shape rules. Draft 1 had shape rules in this list; §3.2 removed them.
+
+Draft 2.3 left this set **unchanged**: `H8` moved from `declarative` to `transactional`, and the new `H11`/`L4` are `transactional` by construction (§6.6). Findings that add rules without adding checked rules are the good kind.
