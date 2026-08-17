@@ -1,4 +1,4 @@
-.PHONY: build run test lint generate deps clean setup verify fmt
+.PHONY: build run test lint generate verify-generate deps clean setup check fmt
 
 DB_PATH ?= ./hms.db
 
@@ -27,6 +27,25 @@ generate:
 	fi
 	go generate ./...
 
+## verify-generate: fail if generated files are stale
+##
+## The generated registry only closes the exhaustiveness hole if generation
+## actually runs. Without this, adding an event type and forgetting to
+## regenerate leaves a stale registry that hides it — the very gap the
+## generator exists to prevent.
+##
+## Uses git status rather than git diff: diff does not report UNTRACKED files,
+## so a newly generated file that was never committed would slip through.
+verify-generate:
+	@$(MAKE) --no-print-directory generate >/dev/null
+	@dirty="$$(git status --porcelain -- '*_gen.go' internal/db/sqlc internal/db/probe)"; \
+	if [ -n "$$dirty" ]; then \
+		echo "generated files are stale or uncommitted — run 'make generate' and commit:" >&2; \
+		echo "$$dirty" >&2; \
+		exit 1; \
+	fi
+	@echo "generated files are up to date"
+
 ## fmt: format and vet
 fmt:
 	go fmt ./...
@@ -40,7 +59,7 @@ deps:
 setup: deps generate build
 
 ## check: everything CI runs
-check: fmt lint test
+check: fmt lint verify-generate test
 
 ## clean: remove build artifacts
 clean:
