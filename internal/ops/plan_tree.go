@@ -8,6 +8,7 @@ import (
 
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ledger"
+	"home-management-system/internal/query"
 )
 
 // Planner turns an intent into a Batch without applying any of it.
@@ -18,15 +19,20 @@ import (
 // rather than by inspecting a database afterwards.
 type Planner struct {
 	led *ledger.Processor
+	r   *query.Reader
+	now func() time.Time
 }
 
 func NewPlanner(conn *sql.DB) *Planner {
-	return &Planner{led: ledger.New(conn)}
+	return &Planner{led: ledger.New(conn), r: query.New(conn), now: time.Now}
 }
 
 // WithClock replaces the time source so tests can assert on exact timestamps.
 func (p *Planner) WithClock(now func() time.Time) *Planner {
-	return &Planner{led: p.led.WithClock(now)}
+	clone := *p
+	clone.led = p.led.WithClock(now)
+	clone.now = now
+	return &clone
 }
 
 // ArchiveLocationRequest removes a place, disposing of its children and
