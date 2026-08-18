@@ -388,6 +388,15 @@ func PlanMove(s Snapshot, req MoveRequest) (Plan, error) {
 		return p, nil
 	}
 
+	// Merging nothing into something is not a move, it is a no-op with two
+	// events the fold will reject. Relocating an EMPTY holding to a free slot
+	// is still meaningful and handled above -- an empty jar is still the jar,
+	// and it can be put on a different shelf.
+	if amount.IsZero() {
+		return Plan{}, fmt.Errorf("%w: holding %d is empty, so there is nothing to move into location %d",
+			ErrInvalidRequest, req.Holding, req.To)
+	}
+
 	target := p.holdingFor(s, destinationSlot, func() Origination {
 		return NewBulkHolding{
 			Item: &b.Item, Location: req.To, UnitBasis: b.UnitBasis, ExpiresOn: b.ExpiresOn,
