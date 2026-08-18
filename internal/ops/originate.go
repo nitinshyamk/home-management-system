@@ -20,7 +20,8 @@ type NewCategory struct {
 	Description string
 }
 
-func (NewCategory) isOrigination() {}
+func (NewCategory) isOrigination()          {}
+func (NewCategory) NeedsConfirmation() bool { return true }
 
 // Describe is short because a Category has no permanent fields worth warning
 // about: name, description, and parent are all revisable. It is originated
@@ -45,7 +46,8 @@ type NewUniqueItem struct {
 	Notes    string
 }
 
-func (NewUniqueItem) isOrigination() {}
+func (NewUniqueItem) isOrigination()          {}
+func (NewUniqueItem) NeedsConfirmation() bool { return true }
 
 func (n NewUniqueItem) Describe() string {
 	return fmt.Sprintf("item %q as one of a kind (permanent: kind = Unique)", n.Name)
@@ -71,7 +73,8 @@ type NewBulkItem struct {
 	Notes       string
 }
 
-func (NewBulkItem) isOrigination() {}
+func (NewBulkItem) isOrigination()          {}
+func (NewBulkItem) NeedsConfirmation() bool { return true }
 
 // Describe carries all three permanent fields. This is the confirmation that
 // matters most in the system: changing kind later means Promote, which replaces
@@ -106,7 +109,8 @@ type NewLocation struct {
 	Description string
 }
 
-func (NewLocation) isOrigination() {}
+func (NewLocation) isOrigination()          {}
+func (NewLocation) NeedsConfirmation() bool { return true }
 
 func (n NewLocation) Describe() string { return fmt.Sprintf("location %q", n.Name) }
 
@@ -131,7 +135,8 @@ type NewBulkHolding struct {
 	ExpiresOn *time.Time
 }
 
-func (NewBulkHolding) isOrigination() {}
+func (NewBulkHolding) isOrigination()          {}
+func (NewBulkHolding) NeedsConfirmation() bool { return false }
 
 func (n NewBulkHolding) Describe() string {
 	return fmt.Sprintf("holding counted by %s (permanent: unit basis = %s)", n.UnitBasis, n.UnitBasis)
@@ -159,7 +164,8 @@ type NewUniqueHolding struct {
 	Label    string
 }
 
-func (NewUniqueHolding) isOrigination() {}
+func (NewUniqueHolding) isOrigination()          {}
+func (NewUniqueHolding) NeedsConfirmation() bool { return false }
 
 func (n NewUniqueHolding) Describe() string { return "holding, individually tracked" }
 

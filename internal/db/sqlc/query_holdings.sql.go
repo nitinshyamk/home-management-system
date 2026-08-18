@@ -102,6 +102,93 @@ func (q *Queries) GetHoldingWithDetail(ctx context.Context, id int64) (GetHoldin
 	return i, err
 }
 
+const holdingsOfItemWithDetail = `-- name: HoldingsOfItemWithDetail :many
+
+SELECT
+    h.id, h.item_id, h.kind, h.stowed_location_id,
+    h.expires_on, h.snoozed_until, h.retired_at, h.created_at,
+    i.name AS item_name,
+    l.name AS location_name,
+    b.quantity, b.unit_basis,
+    bi.content_unit, bi.package_size,
+    u.label, u.custody, u.custody_since, u.displaced_to_id
+FROM holdings h
+JOIN items i ON i.id = h.item_id
+JOIN locations l ON l.id = h.stowed_location_id
+LEFT JOIN bulk_holdings b   ON b.holding_id = h.id
+LEFT JOIN bulk_items bi     ON bi.item_id = h.item_id
+LEFT JOIN unique_holdings u ON u.holding_id = h.id
+WHERE h.item_id = ? AND h.retired_at IS NULL
+ORDER BY h.id
+`
+
+type HoldingsOfItemWithDetailRow struct {
+	ID               int64
+	ItemID           int64
+	Kind             string
+	StowedLocationID int64
+	ExpiresOn        sql.NullString
+	SnoozedUntil     sql.NullString
+	RetiredAt        sql.NullString
+	CreatedAt        string
+	ItemName         string
+	LocationName     string
+	Quantity         sql.NullInt64
+	UnitBasis        sql.NullString
+	ContentUnit      sql.NullString
+	PackageSize      sql.NullInt64
+	Label            sql.NullString
+	Custody          sql.NullString
+	CustodySince     sql.NullString
+	DisplacedToID    sql.NullInt64
+}
+
+// Every live Holding of one Item, wherever it is kept. This is what the
+// composing operations plan against: consuming from a bag has to know which
+// holdings exist at the location, in which unit basis, before it can decide
+// whether a package must be opened.
+func (q *Queries) HoldingsOfItemWithDetail(ctx context.Context, itemID int64) ([]HoldingsOfItemWithDetailRow, error) {
+	rows, err := q.db.QueryContext(ctx, holdingsOfItemWithDetail, itemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HoldingsOfItemWithDetailRow{}
+	for rows.Next() {
+		var i HoldingsOfItemWithDetailRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ItemID,
+			&i.Kind,
+			&i.StowedLocationID,
+			&i.ExpiresOn,
+			&i.SnoozedUntil,
+			&i.RetiredAt,
+			&i.CreatedAt,
+			&i.ItemName,
+			&i.LocationName,
+			&i.Quantity,
+			&i.UnitBasis,
+			&i.ContentUnit,
+			&i.PackageSize,
+			&i.Label,
+			&i.Custody,
+			&i.CustodySince,
+			&i.DisplacedToID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHoldingsWithDetail = `-- name: ListHoldingsWithDetail :many
 
 SELECT

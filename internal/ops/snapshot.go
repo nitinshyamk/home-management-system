@@ -168,3 +168,32 @@ func (p *Planner) SnapshotHoldings(ctx context.Context, ids ...domain.HoldingID)
 	}
 	return s, nil
 }
+
+// SnapshotItem loads every live Holding of one Item, wherever it is kept.
+//
+// The composing operations need this breadth rather than a single Holding:
+// consuming from a location has to see both the sealed packages and the opened
+// contents there before it can decide whether opening is necessary, and moving
+// has to see whether the destination is already occupied.
+func (p *Planner) SnapshotItem(ctx context.Context, id domain.ItemID) (Snapshot, error) {
+	item, err := p.r.Item(ctx, id)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	details, err := p.r.HoldingsOfItem(ctx, id)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	s := Snapshot{
+		Now:      p.now(),
+		Holdings: make(map[domain.HoldingID]domain.Holding, len(details)),
+		Items:    map[domain.ItemID]domain.Item{id: item},
+		ByItem:   map[domain.ItemID][]domain.HoldingID{},
+	}
+	for _, d := range details {
+		hid := d.Holding.Base().ID
+		s.Holdings[hid] = d.Holding
+		s.ByItem[id] = append(s.ByItem[id], hid)
+	}
+	return s, nil
+}

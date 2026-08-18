@@ -17,6 +17,7 @@ import (
 
 // tree builds  Kitchen > Pantry > Shelf1, with Garage as a sibling root.
 type tree struct {
+	t       *testing.T
 	ctx     context.Context
 	pl      *ops.Planner
 	ex      *ops.Executor
@@ -40,7 +41,7 @@ func newTree(t *testing.T) *tree {
 	ctx := context.Background()
 	led := ledger.New(conn).WithClock(func() time.Time { return clock })
 
-	tr := &tree{ctx: ctx, pl: ops.NewPlanner(conn), ex: ops.New(conn),
+	tr := &tree{t: t, ctx: ctx, pl: ops.NewPlanner(conn), ex: ops.New(conn),
 		led: led, ann: annotate.New(conn), r: query.New(conn)}
 
 	mk := func(name string, parent *domain.LocationID) domain.LocationID {

@@ -63,3 +63,26 @@ WHERE h.item_id = ? AND h.retired_at IS NULL;
 
 -- name: UniqueOnHand :one
 SELECT count(*) FROM holdings WHERE item_id = ? AND retired_at IS NULL;
+
+-- Every live Holding of one Item, wherever it is kept. This is what the
+-- composing operations plan against: consuming from a bag has to know which
+-- holdings exist at the location, in which unit basis, before it can decide
+-- whether a package must be opened.
+
+-- name: HoldingsOfItemWithDetail :many
+SELECT
+    h.id, h.item_id, h.kind, h.stowed_location_id,
+    h.expires_on, h.snoozed_until, h.retired_at, h.created_at,
+    i.name AS item_name,
+    l.name AS location_name,
+    b.quantity, b.unit_basis,
+    bi.content_unit, bi.package_size,
+    u.label, u.custody, u.custody_since, u.displaced_to_id
+FROM holdings h
+JOIN items i ON i.id = h.item_id
+JOIN locations l ON l.id = h.stowed_location_id
+LEFT JOIN bulk_holdings b   ON b.holding_id = h.id
+LEFT JOIN bulk_items bi     ON bi.item_id = h.item_id
+LEFT JOIN unique_holdings u ON u.holding_id = h.id
+WHERE h.item_id = ? AND h.retired_at IS NULL
+ORDER BY h.id;
