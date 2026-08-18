@@ -2,6 +2,7 @@ package ops_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -19,6 +20,8 @@ import (
 type tree struct {
 	t       *testing.T
 	ctx     context.Context
+	conn    *sql.DB
+	cat     domain.CategoryID
 	pl      *ops.Planner
 	ex      *ops.Executor
 	led     *ledger.Processor
@@ -60,6 +63,7 @@ func newTree(t *testing.T) *tree {
 	if err != nil {
 		t.Fatalf("create category: %v", err)
 	}
+	tr.conn, tr.cat = conn, cat
 	size := domain.FromMilli(2_000_000)
 	if tr.item, err = origin.New(conn).CreateBulkItem(ctx, origin.CreateBulkItemInput{
 		Name: "Basmati Rice", Category: cat, ContentUnit: "g", PackageSize: &size,
