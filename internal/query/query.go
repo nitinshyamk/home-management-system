@@ -623,6 +623,27 @@ func (r *Reader) Holdings(ctx context.Context) ([]HoldingDetail, error) {
 	return out, nil
 }
 
+// HoldingsOfItem returns every live Holding of one Item, wherever it is kept.
+//
+// This is what the composing operations plan against: consuming from a bag has
+// to know which holdings exist and in which unit basis before it can decide
+// whether a package must be opened.
+func (r *Reader) HoldingsOfItem(ctx context.Context, item domain.ItemID) ([]HoldingDetail, error) {
+	rows, err := r.q.HoldingsOfItemWithDetail(ctx, int64(item))
+	if err != nil {
+		return nil, fmt.Errorf("query: holdings of item %d: %w", item, err)
+	}
+	out := make([]HoldingDetail, 0, len(rows))
+	for _, row := range rows {
+		d, err := hydrateHolding(holdingRow(sqlc.ListHoldingsWithDetailRow(row)))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
 func (r *Reader) Holding(ctx context.Context, id domain.HoldingID) (HoldingDetail, error) {
 	row, err := r.q.GetHoldingWithDetail(ctx, int64(id))
 	if err != nil {

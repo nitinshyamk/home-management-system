@@ -52,9 +52,16 @@ type Step struct {
 	Annotates func(Created) ([]Annotation, error)
 }
 
-// Originates reports whether this Step creates something permanent, and
-// therefore whether it needs confirmation before it may be applied.
-func (s Step) NeedsConfirmation() bool { return len(s.Originates) > 0 }
+// NeedsConfirmation reports whether this Step brings a named entity into
+// existence, and so must be approved before it may be applied.
+func (s Step) NeedsConfirmation() bool {
+	for _, o := range s.Originates {
+		if o.NeedsConfirmation() {
+			return true
+		}
+	}
+	return false
+}
 
 // Created carries the identifiers a Step has produced so far, in origination
 // order, so a later part of the SAME Step can refer to something that did not
@@ -120,6 +127,21 @@ type Origination interface {
 
 	// Describe renders the permanent fields for confirmation.
 	Describe() string
+
+	// NeedsConfirmation reports whether a person must approve this before it
+	// is applied.
+	//
+	// True for NAMED entities -- Item, Category, Location -- and the reason is
+	// not permanence but duplication: a receipt that quietly creates a second
+	// "Turmeric" is worse than one that stops and asks, and only a person can
+	// tell whether the Turmeric on the receipt is the Turmeric in the cupboard.
+	//
+	// False for Holdings. A Holding is a placement rather than a name: it comes
+	// into existence because something was put somewhere, and there is no
+	// second one to be confused with. Consuming 100 g from a sealed bag creates
+	// the content-basis Holding to open it into, and asking about that would
+	// make the commonest action in the system a dialogue.
+	NeedsConfirmation() bool
 
 	// originate performs the creation inside the Step's transaction. Both write
 	// paths are passed because origination is split across them by design:
