@@ -255,6 +255,56 @@ func (a *Annotator) RestoreCategory(ctx context.Context, id domain.CategoryID) e
 }
 
 // ---------------------------------------------------------------------------
+// Location
+// ---------------------------------------------------------------------------
+//
+// Only name and description. Everything else about a Location -- its parent,
+// its existence, its archival -- is recorded, because Location models physical
+// reality and Holdings reference it. The split is not arbitrary: a rename must
+// be invisible to replay, and replay reconstructs containment, so a label may
+// be annotated while a parent may not.
+
+// RenameLocation changes a Location's label.
+func (a *Annotator) RenameLocation(ctx context.Context, id domain.LocationID, name string) error {
+	if name == "" {
+		return fmt.Errorf("%w: location name is required", ErrInvalidInput)
+	}
+	if err := a.requireLocation(ctx, id); err != nil {
+		return err
+	}
+	if err := a.q.UpdateLocationName(ctx, sqlc.UpdateLocationNameParams{Name: name, ID: int64(id)}); err != nil {
+		return fmt.Errorf("annotate: rename location %d: %w", id, err)
+	}
+	return nil
+}
+
+// SetLocationDescription revises the free text on a Location.
+func (a *Annotator) SetLocationDescription(ctx context.Context, id domain.LocationID, description string) error {
+	if err := a.requireLocation(ctx, id); err != nil {
+		return err
+	}
+	if err := a.q.UpdateLocationDescription(ctx, sqlc.UpdateLocationDescriptionParams{
+		Description: db.NullString(description), ID: int64(id),
+	}); err != nil {
+		return fmt.Errorf("annotate: describe location %d: %w", id, err)
+	}
+	return nil
+}
+
+// requireLocation reports a missing Location as ErrNotFound rather than letting
+// an UPDATE silently affect no rows.
+func (a *Annotator) requireLocation(ctx context.Context, id domain.LocationID) error {
+	ok, err := a.q.LocationIsLive(ctx, int64(id))
+	if err != nil {
+		return fmt.Errorf("annotate: read location %d: %w", id, err)
+	}
+	if ok == 0 {
+		return fmt.Errorf("%w: location %d", ErrNotFound, id)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 // Item
 // ---------------------------------------------------------------------------
 

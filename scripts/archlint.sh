@@ -163,7 +163,22 @@ fi
 # expose wrapper methods of the same name -- query.Reader.CountItemsInCategoryTree
 # wraps the query of that name -- so a bare grep for the identifier flags callers
 # of the wrapper, which is exactly the correct usage.
-sqlc_files="$(grep -rl 'home-management-system/internal/db/sqlc' --include='*.go' internal/ cmd/ 2>/dev/null || true)"
+# Only packages that IMPORT internal/db/sqlc are searched. A generated query
+# cannot be reached without the package importing it, and the owning packages
+# legitimately expose wrapper methods of the same name --
+# query.Reader.CountItemsInCategoryTree wraps the query of that name -- so a
+# bare grep for the identifier flags callers of the wrapper, which is exactly
+# the correct usage.
+#
+# PACKAGE, not file. A file reaches sqlc through a *sqlc.Queries field declared
+# in a sibling file and needs no import of its own; keying on the importing file
+# let internal/ledger/locations.go call a query-owned query undetected.
+sqlc_pkgs="$(grep -rl 'home-management-system/internal/db/sqlc' --include='*.go' internal/ cmd/ 2>/dev/null \
+             | xargs -r -n1 dirname | sort -u || true)"
+sqlc_files=""
+if [ -n "$sqlc_pkgs" ]; then
+  sqlc_files="$(printf '%s\n' "$sqlc_pkgs" | xargs -r -I{} find {} -maxdepth 1 -name '*.go' 2>/dev/null | sort -u)"
+fi
 
 for path in origin ledger annotate query; do
   if ! ls internal/db/queries/${path}_*.sql >/dev/null 2>&1; then
@@ -175,7 +190,7 @@ for path in origin ledger annotate query; do
     continue
   fi
 
-  # Files that import sqlc but live outside the owning package.
+  # Files in packages that reach sqlc, but outside the owning package.
   foreign="$(printf '%s\n' "$sqlc_files" \
              | grep -v "^internal/${path}/" \
              | grep -v '^internal/db/sqlc/' \

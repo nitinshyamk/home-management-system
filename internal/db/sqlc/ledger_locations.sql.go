@@ -109,6 +109,40 @@ func (q *Queries) LiftLocationChildren(ctx context.Context, arg LiftLocationChil
 	return err
 }
 
+const liveChildLocationIDs = `-- name: LiveChildLocationIDs :many
+
+SELECT id FROM locations
+WHERE parent_id = ? AND archived_at IS NULL
+ORDER BY id
+`
+
+// Live children only. Archiving disposes of what is still there; an already
+// archived child was disposed of once and does not move again. The equivalent
+// query in query_locations.sql lists all children including archived ones,
+// which is right for browsing and wrong for this.
+func (q *Queries) LiveChildLocationIDs(ctx context.Context, parentID sql.NullInt64) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, liveChildLocationIDs, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const locationAncestorIDs = `-- name: LocationAncestorIDs :many
 WITH RECURSIVE chain(id, parent_id) AS (
     SELECT locations.id, locations.parent_id FROM locations WHERE locations.id = ?
