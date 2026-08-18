@@ -50,3 +50,13 @@ SELECT id FROM chain LIMIT 256;
 
 -- name: LocationExists :one
 SELECT EXISTS(SELECT 1 FROM locations WHERE id = ?);
+
+-- Live children only. Archiving disposes of what is still there; an already
+-- archived child was disposed of once and does not move again. The equivalent
+-- query in query_locations.sql lists all children including archived ones,
+-- which is right for browsing and wrong for this.
+
+-- name: LiveChildLocationIDs :many
+SELECT id FROM locations
+WHERE parent_id = ? AND archived_at IS NULL
+ORDER BY id;
