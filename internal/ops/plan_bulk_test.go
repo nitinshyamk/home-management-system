@@ -445,3 +445,32 @@ func TestMoveToWhereItAlreadyIsIsRefused(t *testing.T) {
 		t.Errorf("error = %v, want ErrInvalidRequest", err)
 	}
 }
+
+// TestMovingAnEmptyHoldingOntoAnOccupiedSlotIsRefused was found by the
+// operations property test: the plan emitted Merged with a zero delta, which
+// the fold rejects. Merging nothing into something is a no-op with two invalid
+// events, not a move.
+func TestMovingAnEmptyHoldingOntoAnOccupiedSlotIsRefused(t *testing.T) {
+	s := riceSnap(riceItem(),
+		holdingAt(opened, pantry, domain.BasisContent, 0),
+		holdingAt(sealed, shelf, domain.BasisContent, 200*domain.Scale))
+
+	_, err := ops.PlanMove(s, ops.MoveRequest{Holding: opened, To: shelf})
+	if !errors.Is(err, ops.ErrInvalidRequest) {
+		t.Errorf("error = %v, want ErrInvalidRequest", err)
+	}
+}
+
+// TestMovingAnEmptyHoldingToAFreeSlotIsAllowed: the empty jar can still be put
+// on a different shelf.
+func TestMovingAnEmptyHoldingToAFreeSlotIsAllowed(t *testing.T) {
+	s := riceSnap(riceItem(), holdingAt(opened, pantry, domain.BasisContent, 0))
+
+	p, err := ops.PlanMove(s, ops.MoveRequest{Holding: opened, To: shelf})
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if got := shape(t, p.Batch("move")); !equal(got, []string{"Moved"}) {
+		t.Errorf("plan = %v, want [Moved]", got)
+	}
+}
