@@ -10,6 +10,25 @@ import (
 	"database/sql"
 )
 
+const addBulkItemVariant = `-- name: AddBulkItemVariant :exec
+
+INSERT INTO bulk_items (item_id, kind, content_unit, package_size) VALUES (?, 'Bulk', ?, ?)
+`
+
+type AddBulkItemVariantParams struct {
+	ItemID      int64
+	ContentUnit string
+	PackageSize sql.NullInt64
+}
+
+// Demotion re-creates the bulk variant, so the ledger needs its own insert.
+// The one in origin_items.sql belongs to origination and stays there: a
+// demotion is a recorded change to an Item that already exists, not a birth.
+func (q *Queries) AddBulkItemVariant(ctx context.Context, arg AddBulkItemVariantParams) error {
+	_, err := q.db.ExecContext(ctx, addBulkItemVariant, arg.ItemID, arg.ContentUnit, arg.PackageSize)
+	return err
+}
+
 const addUniqueItemVariant = `-- name: AddUniqueItemVariant :exec
 INSERT INTO unique_items (item_id, kind) VALUES (?, 'Unique')
 `
@@ -17,6 +36,23 @@ INSERT INTO unique_items (item_id, kind) VALUES (?, 'Unique')
 func (q *Queries) AddUniqueItemVariant(ctx context.Context, itemID int64) error {
 	_, err := q.db.ExecContext(ctx, addUniqueItemVariant, itemID)
 	return err
+}
+
+const countAnyHoldingsOfItem = `-- name: CountAnyHoldingsOfItem :one
+
+SELECT count(*) FROM holdings WHERE item_id = ?
+`
+
+// Promote and Demote replace an Item's variant row, and holdings references
+// items(id, kind). Any holding row of the old kind -- RETIRED OR NOT -- still
+// carries that kind, so the composite foreign key refuses the parent update
+// while one exists. Counting live holdings is not enough to know whether a
+// kind change can succeed.
+func (q *Queries) CountAnyHoldingsOfItem(ctx context.Context, itemID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAnyHoldingsOfItem, itemID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countLiveHoldingsOfItemForLedger = `-- name: CountLiveHoldingsOfItemForLedger :one

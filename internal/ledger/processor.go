@@ -106,7 +106,7 @@ func (p *Processor) ApplyBatch(ctx context.Context, events []domain.Event) ([]do
 		q := p.q.WithTx(tx)
 		ids = ids[:0]
 		for i, e := range events {
-			id, err := p.applyOne(ctx, q, e)
+			id, err := p.applyOne(ctx, q, e, events)
 			if err != nil {
 				return fmt.Errorf("event %d of %d (%s): %w", i+1, len(events), e.Type(), err)
 			}
@@ -125,7 +125,7 @@ func (p *Processor) ApplyBatch(ctx context.Context, events []domain.Event) ([]do
 // The order matters only in that both must happen inside the same transaction.
 // Neither is permitted without the other — that is the completeness half of O3,
 // and it is the only failure mode H10 can report.
-func (p *Processor) applyOne(ctx context.Context, q *sqlc.Queries, e domain.Event) (domain.EventID, error) {
+func (p *Processor) applyOne(ctx context.Context, q *sqlc.Queries, e domain.Event, batch []domain.Event) (domain.EventID, error) {
 	// The ledger records WHEN something happened; it does not invent it.
 	//
 	// An earlier version substituted now() for a zero OccurredAt while storing
@@ -154,7 +154,7 @@ func (p *Processor) applyOne(ctx context.Context, q *sqlc.Queries, e domain.Even
 			return 0, err
 		}
 	case domain.SubjectItem:
-		if err := p.applyToItem(ctx, q, domain.ItemID(subject), e); err != nil {
+		if err := p.applyToItem(ctx, q, domain.ItemID(subject), e, batch); err != nil {
 			return 0, err
 		}
 	default:
@@ -489,7 +489,7 @@ func (p *Processor) applyToLocation(ctx context.Context, q *sqlc.Queries, id dom
 // holdings(item_id, kind) additionally refuses the change while any Holding of
 // the old kind exists -- which is the schema enforcing that Promote REPLACES
 // Holdings rather than mutating them (schema section 3.12).
-func applyKindChange(ctx context.Context, q *sqlc.Queries, id domain.ItemID, ev domain.ItemKindChanged) error {
+func applyKindChange(ctx context.Context, q *sqlc.Queries, id domain.ItemID, ev domain.ItemKindChanged, batch []domain.Event) error {
 	if ev.FromKind == ev.ToKind {
 		return fmt.Errorf("%w: ItemKindChanged from %s to itself", ErrInvalidInput, ev.FromKind)
 	}
@@ -513,14 +513,60 @@ func applyKindChange(ctx context.Context, q *sqlc.Queries, id domain.ItemID, ev 
 		// Demotion needs a content unit for the new bulk_items row, and
 		// ItemKindChanged does not carry one -- duplicating ItemUnitChanged's
 		// payload here would be derivable data inside the ledger, which E7
-		// forbids. Supplying it is the job of the Promote/Demote operation,
-		// which composes the two events and is out of scope for v01.
-		return fmt.Errorf("%w: demotion requires the operation layer to supply the "+
-			"content unit; apply ItemUnitChanged as part of the same operation", ErrInvalidInput)
+		// forbids.
+		//
+		// It is derivable from the ItemUnitChanged travelling in the SAME
+		// batch, so that is where it is read from. This makes the coupling
+		// enforced rather than merely documented: a demotion with no
+		// accompanying unit change cannot be applied at all.
+		unit := accompanyingUnit(id, batch)
+		if unit == nil {
+			return fmt.Errorf("%w: demoting item %d needs a content unit, which "+
+				"ItemKindChanged cannot carry (E7); append an ItemUnitChanged for the "+
+				"same item in the same batch", ErrInvalidInput, id)
+		}
+		if err := q.DeleteUniqueItemVariant(ctx, int64(id)); err != nil {
+			return fmt.Errorf("drop unique variant of item %d: %w", id, err)
+		}
+		if err := q.UpdateItemKind(ctx, sqlc.UpdateItemKindParams{
+			Kind: string(ev.ToKind), ID: int64(id),
+		}); err != nil {
+			return fmt.Errorf("set kind of item %d: %w", id, err)
+		}
+		if err := q.AddBulkItemVariant(ctx, sqlc.AddBulkItemVariantParams{
+			ItemID: int64(id), ContentUnit: string(*unit),
+			PackageSize: nullQuantity(accompanyingPackageSize(id, batch)),
+		}); err != nil {
+			return fmt.Errorf("add bulk variant to item %d: %w", id, err)
+		}
+		return nil
 
 	default:
 		return fmt.Errorf("%w: unknown kind %q", ErrInvalidInput, ev.ToKind)
 	}
+}
+
+// accompanyingUnit finds the content unit a demotion is adopting, from the
+// ItemUnitChanged that must travel with it.
+func accompanyingUnit(id domain.ItemID, batch []domain.Event) *domain.UnitCode {
+	for _, e := range batch {
+		if ev, ok := e.(domain.ItemUnitChanged); ok && ev.Item == id && ev.ToUnit != nil {
+			return ev.ToUnit
+		}
+	}
+	return nil
+}
+
+// accompanyingPackageSize finds the package size a demotion is adopting, if
+// one was specified. Unlike the unit it is genuinely optional: an item can be
+// measured without being packaged.
+func accompanyingPackageSize(id domain.ItemID, batch []domain.Event) *domain.Quantity {
+	for _, e := range batch {
+		if ev, ok := e.(domain.ItemPackageSizeChanged); ok && ev.Item == id {
+			return ev.ToSize
+		}
+	}
+	return nil
 }
 
 func (p *Processor) locationHasAncestor(ctx context.Context, node, ancestor domain.LocationID) (bool, error) {
@@ -544,10 +590,10 @@ func (p *Processor) locationHasAncestor(ctx context.Context, node, ancestor doma
 // Items - the three attributes that type a Holding
 // ---------------------------------------------------------------------------
 
-func (p *Processor) applyToItem(ctx context.Context, q *sqlc.Queries, id domain.ItemID, e domain.Event) error {
+func (p *Processor) applyToItem(ctx context.Context, q *sqlc.Queries, id domain.ItemID, e domain.Event, batch []domain.Event) error {
 	switch ev := e.(type) {
 	case domain.ItemKindChanged:
-		return applyKindChange(ctx, q, id, ev)
+		return applyKindChange(ctx, q, id, ev, batch)
 
 	case domain.ItemUnitChanged:
 		if ev.ToUnit == nil {

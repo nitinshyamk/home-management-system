@@ -34,3 +34,19 @@ INSERT INTO unique_items (item_id, kind) VALUES (?, 'Unique');
 
 -- name: CountLiveHoldingsOfItemForLedger :one
 SELECT count(*) FROM holdings WHERE item_id = ? AND retired_at IS NULL;
+
+-- Demotion re-creates the bulk variant, so the ledger needs its own insert.
+-- The one in origin_items.sql belongs to origination and stays there: a
+-- demotion is a recorded change to an Item that already exists, not a birth.
+
+-- name: AddBulkItemVariant :exec
+INSERT INTO bulk_items (item_id, kind, content_unit, package_size) VALUES (?, 'Bulk', ?, ?);
+
+-- Promote and Demote replace an Item's variant row, and holdings references
+-- items(id, kind). Any holding row of the old kind -- RETIRED OR NOT -- still
+-- carries that kind, so the composite foreign key refuses the parent update
+-- while one exists. Counting live holdings is not enough to know whether a
+-- kind change can succeed.
+
+-- name: CountAnyHoldingsOfItem :one
+SELECT count(*) FROM holdings WHERE item_id = ?;

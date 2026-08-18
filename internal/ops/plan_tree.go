@@ -57,10 +57,7 @@ func (p *Planner) ArchiveLocation(ctx context.Context, req ArchiveLocationReques
 	if err != nil {
 		return Batch{}, err
 	}
-	return Batch{Steps: []Step{{
-		Summary: summariseArchive(req, events),
-		Records: fixed(events),
-	}}}, nil
+	return oneStep(summariseArchive(req, events), events), nil
 }
 
 // RestoreLocation plans the reversal of an archival. What was moved out stays
@@ -70,10 +67,7 @@ func (p *Planner) RestoreLocation(ctx context.Context, id domain.LocationID) (Ba
 	if err != nil {
 		return Batch{}, err
 	}
-	return Batch{Steps: []Step{{
-		Summary: fmt.Sprintf("restore location %d", id),
-		Records: fixed(events),
-	}}}, nil
+	return oneStep(fmt.Sprintf("restore location %d", id), events), nil
 }
 
 // RenameLocation plans a rename. No reads are needed, so no context.
