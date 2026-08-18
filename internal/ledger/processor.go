@@ -55,13 +55,20 @@ const ancestorScanLimit = 256
 
 // Processor appends events and updates the projections they imply.
 type Processor struct {
-	conn *sql.DB
-	q    *sqlc.Queries
-	now  func() time.Time
+	scope db.Scope
+	q     *sqlc.Queries
+	now   func() time.Time
 }
 
-func New(conn *sql.DB) *Processor {
-	return &Processor{conn: conn, q: sqlc.New(conn), now: time.Now}
+// New records against the pool, beginning a transaction per call.
+func New(conn *sql.DB) *Processor { return newIn(db.Pool(conn)) }
+
+// NewTx records inside a transaction already in flight, so events can be
+// appended alongside writes from the other two paths as one unit of work.
+func NewTx(tx *sql.Tx) *Processor { return newIn(db.Enlist(tx)) }
+
+func newIn(s db.Scope) *Processor {
+	return &Processor{scope: s, q: sqlc.New(s.Handle()), now: time.Now}
 }
 
 // WithClock replaces the time source so tests can assert on exact timestamps.
@@ -95,7 +102,7 @@ func (p *Processor) ApplyBatch(ctx context.Context, events []domain.Event) ([]do
 	}
 	ids := make([]domain.EventID, 0, len(events))
 
-	err := db.InTx(ctx, p.conn, func(tx *sql.Tx) error {
+	err := p.scope.Run(ctx, func(tx *sql.Tx) error {
 		q := p.q.WithTx(tx)
 		ids = ids[:0]
 		for i, e := range events {
@@ -337,7 +344,7 @@ func (p *Processor) createHolding(
 ) (domain.HoldingID, error) {
 	var id domain.HoldingID
 
-	err := db.InTx(ctx, p.conn, func(tx *sql.Tx) error {
+	err := p.scope.Run(ctx, func(tx *sql.Tx) error {
 		q := p.q.WithTx(tx)
 
 		// The row must exist before an event can reference it: identity is
@@ -382,7 +389,7 @@ func (p *Processor) CreateLocation(ctx context.Context, name string, parent *dom
 	}
 
 	var id domain.LocationID
-	err := db.InTx(ctx, p.conn, func(tx *sql.Tx) error {
+	err := p.scope.Run(ctx, func(tx *sql.Tx) error {
 		q := p.q.WithTx(tx)
 		raw, err := q.InsertLocation(ctx, sqlc.InsertLocationParams{
 			ParentID:    nullLocation(parent),

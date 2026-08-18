@@ -6,6 +6,7 @@ package testsupport
 import (
 	"database/sql"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -55,4 +56,27 @@ func sanitize(name string) string {
 			return '_'
 		}
 	}, name)
+}
+
+// NewPooledDB returns a migrated, file-backed database with a REAL connection
+// pool, for the few tests that must behave like production rather than like a
+// single-connection harness.
+//
+// NewDB pins the pool to one connection because a shared-cache in-memory
+// database lives only as long as a connection to it does. That is correct, but
+// it hides every defect whose symptom is "a second connection saw something it
+// should not have" -- the whole class of bug that made PRAGMA foreign_keys
+// unusable in v01, and the class ops.Executor exists to prevent.
+func NewPooledDB(t *testing.T) *sql.DB {
+	t.Helper()
+
+	conn, err := db.Open(db.Config{DSN: filepath.Join(t.TempDir(), "test.db")})
+	if err != nil {
+		t.Fatalf("testsupport: open pooled: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("testsupport: migrate pooled: %v", err)
+	}
+	return conn
 }

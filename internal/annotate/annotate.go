@@ -49,13 +49,19 @@ const ancestorScanLimit = 256
 
 // Annotator revises labels and knowledge.
 type Annotator struct {
-	conn *sql.DB
-	q    *sqlc.Queries
-	now  func() time.Time
+	scope db.Scope
+	q     *sqlc.Queries
+	now   func() time.Time
 }
 
-func New(conn *sql.DB) *Annotator {
-	return &Annotator{conn: conn, q: sqlc.New(conn), now: time.Now}
+// New annotates against the pool, beginning a transaction per call.
+func New(conn *sql.DB) *Annotator { return newIn(db.Pool(conn)) }
+
+// NewTx annotates inside a transaction already in flight.
+func NewTx(tx *sql.Tx) *Annotator { return newIn(db.Enlist(tx)) }
+
+func newIn(s db.Scope) *Annotator {
+	return &Annotator{scope: s, q: sqlc.New(s.Handle()), now: time.Now}
 }
 
 // WithClock replaces the time source, so tests can assert on exact timestamps.
@@ -198,7 +204,7 @@ func (a *Annotator) ArchiveCategory(
 	}
 
 	at := db.FormatTime(a.now())
-	return db.InTx(ctx, a.conn, func(tx *sql.Tx) error {
+	return a.scope.Run(ctx, func(tx *sql.Tx) error {
 		q := a.q.WithTx(tx)
 		if resolution != domain.ResolutionBlock {
 			if err := q.LiftCategoryChildren(ctx, sqlc.LiftCategoryChildrenParams{

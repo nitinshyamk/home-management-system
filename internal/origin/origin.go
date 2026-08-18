@@ -30,12 +30,21 @@ var ErrInvalidInput = errors.New("origin: invalid input")
 
 // Originator creates entities.
 type Originator struct {
-	conn *sql.DB
-	q    *sqlc.Queries
+	scope db.Scope
+	q     *sqlc.Queries
 }
 
-func New(conn *sql.DB) *Originator {
-	return &Originator{conn: conn, q: sqlc.New(conn)}
+// New originates against the pool, beginning a transaction per call.
+func New(conn *sql.DB) *Originator { return newIn(db.Pool(conn)) }
+
+// NewTx originates inside a transaction already in flight, so an origination
+// can be part of a larger unit of work -- "I bought rice for the first time"
+// creates the Item, creates the Holding, and records what arrived, and either
+// all of it happens or none of it does.
+func NewTx(tx *sql.Tx) *Originator { return newIn(db.Enlist(tx)) }
+
+func newIn(s db.Scope) *Originator {
+	return &Originator{scope: s, q: sqlc.New(s.Handle())}
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +113,7 @@ func (o *Originator) CreateUniqueItem(ctx context.Context, in CreateUniqueItemIn
 	}
 
 	var id domain.ItemID
-	err := db.InTx(ctx, o.conn, func(tx *sql.Tx) error {
+	err := o.scope.Run(ctx, func(tx *sql.Tx) error {
 		q := o.q.WithTx(tx)
 		raw, err := q.InsertItem(ctx, sqlc.InsertItemParams{
 			Kind:       string(domain.KindUnique),
@@ -148,7 +157,7 @@ func (o *Originator) CreateBulkItem(ctx context.Context, in CreateBulkItemInput)
 	}
 
 	var id domain.ItemID
-	err := db.InTx(ctx, o.conn, func(tx *sql.Tx) error {
+	err := o.scope.Run(ctx, func(tx *sql.Tx) error {
 		q := o.q.WithTx(tx)
 		raw, err := q.InsertItem(ctx, sqlc.InsertItemParams{
 			Kind:       string(domain.KindBulk),
