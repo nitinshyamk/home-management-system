@@ -235,6 +235,67 @@ else
   skip "internal/domain imports stdlib only" "internal/domain"
 fi
 
+echo "archlint: transaction ownership"
+
+# grep_go <description> <pattern> <allowed-dir>...
+# Fails if the pattern appears in any non-test Go file outside the allowed dirs.
+# Tests are exempt: several of them exist precisely to exercise the arrangement
+# these rules forbid, so that the rules are known to be forbidding something.
+grep_go() {
+  local desc="$1" pattern="$2"; shift 2
+  local hits
+  hits="$(grep -rnE --include='*.go' -- "$pattern" internal cmd tools 2>/dev/null | grep -v '_test\.go:')"
+  local dir
+  for dir in "$@"; do
+    hits="$(printf '%s\n' "$hits" | grep -v "^${dir}/" || true)"
+  done
+  hits="$(printf '%s' "$hits" | grep -v '^$' || true)"
+  if [ -n "$hits" ]; then
+    report "$desc"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "$desc"
+  fi
+}
+
+# The single most important boundary in the write layer. Every other package
+# reaches a transaction through db.Scope.Run, which is the ONE place that
+# decides whether a unit of work begins a transaction or joins one already in
+# flight. A second such decision anywhere else means two units of work that
+# each believe they are atomic, which is the defect v01 shipped with.
+grep_go "database/sql transactions begin only in internal/db" \
+        '\.BeginTx\(' internal/db
+
+grep_go "db.InTx is called only from internal/db" \
+        'db\.InTx\(' internal/db
+
+# db.Enlist turns a raw transaction into a write-path scope. Only the three
+# write paths may do it, in their NewTx constructors. Anywhere else would mean
+# something outside the write layer deciding what a unit of work contains.
+grep_go "db.Enlist appears only in the write paths" \
+        'db\.Enlist\(' internal/origin internal/ledger internal/annotate
+
+# ops is the only package that assembles writes across paths. If the UI could
+# call a write path directly it would bypass the transaction that makes an
+# intent atomic -- and bypass the review that makes origination deliberate.
+if command -v go >/dev/null 2>&1; then
+  for pkg in tui command; do
+    if [ ! -d "internal/$pkg" ]; then
+      skip "internal/$pkg does not import a write path" "internal/$pkg"
+      continue
+    fi
+    hits="$(go list -f '{{range .Imports}}{{.}}
+{{end}}' ./internal/$pkg/... 2>/dev/null \
+            | grep -E 'internal/(origin|ledger|annotate)$' | sort -u || true)"
+    if [ -n "$hits" ]; then
+      report "internal/$pkg does not import a write path"
+      printf '      %s\n' "$hits" >&2
+    else
+      ok "internal/$pkg does not import a write path"
+    fi
+  done
+fi
+
 echo
 if [ "$fail" -ne 0 ]; then
   printf '\033[31marchlint: %d violation(s)\033[0m\n' "$violations" >&2
