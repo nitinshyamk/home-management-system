@@ -28,6 +28,10 @@ type tree struct {
 	shelf1  domain.LocationID
 	garage  domain.LocationID
 	item    domain.ItemID
+
+	// cableItem is Unique, for the custody operations. The tree fixture carries
+	// one Item of each kind so a test can pick whichever it needs.
+	cableItem domain.ItemID
 }
 
 func newTree(t *testing.T) *tree {
@@ -60,6 +64,11 @@ func newTree(t *testing.T) *tree {
 		Name: "Basmati Rice", Category: cat, ContentUnit: "g", PackageSize: &size,
 	}); err != nil {
 		t.Fatalf("create item: %v", err)
+	}
+	if tr.cableItem, err = origin.New(conn).CreateUniqueItem(ctx, origin.CreateUniqueItemInput{
+		Name: "USB-C Cable", Category: cat,
+	}); err != nil {
+		t.Fatalf("create unique item: %v", err)
 	}
 	return tr
 }
