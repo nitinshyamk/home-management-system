@@ -300,27 +300,6 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) (int64
 	return result.LastInsertId()
 }
 
-const insertKindChangedPayload = `-- name: InsertKindChangedPayload :exec
-INSERT INTO ev_kind_changed (event_id, type, from_kind, to_kind) VALUES (?, ?, ?, ?)
-`
-
-type InsertKindChangedPayloadParams struct {
-	EventID  int64
-	Type     string
-	FromKind string
-	ToKind   string
-}
-
-func (q *Queries) InsertKindChangedPayload(ctx context.Context, arg InsertKindChangedPayloadParams) error {
-	_, err := q.db.ExecContext(ctx, insertKindChangedPayload,
-		arg.EventID,
-		arg.Type,
-		arg.FromKind,
-		arg.ToKind,
-	)
-	return err
-}
-
 const insertNodeCreatedPayload = `-- name: InsertNodeCreatedPayload :exec
 INSERT INTO ev_node_created (event_id, type, parent_id) VALUES (?, ?, ?)
 `
@@ -501,41 +480,6 @@ func (q *Queries) InsertUnitChangedPayload(ctx context.Context, arg InsertUnitCh
 		arg.ToUnit,
 	)
 	return err
-}
-
-const kindChangedPayloadsForSubject = `-- name: KindChangedPayloadsForSubject :many
-SELECT p.event_id, p.from_kind, p.to_kind
-FROM ev_kind_changed p JOIN events e ON e.id = p.event_id
-WHERE e.subject_kind = 'Item' AND e.subject_id = ?
-`
-
-type KindChangedPayloadsForSubjectRow struct {
-	EventID  int64
-	FromKind string
-	ToKind   string
-}
-
-func (q *Queries) KindChangedPayloadsForSubject(ctx context.Context, subjectID int64) ([]KindChangedPayloadsForSubjectRow, error) {
-	rows, err := q.db.QueryContext(ctx, kindChangedPayloadsForSubject, subjectID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []KindChangedPayloadsForSubjectRow{}
-	for rows.Next() {
-		var i KindChangedPayloadsForSubjectRow
-		if err := rows.Scan(&i.EventID, &i.FromKind, &i.ToKind); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const latestEventID = `-- name: LatestEventID :one

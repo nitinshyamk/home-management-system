@@ -48,3 +48,20 @@ func (d DescribeLocation) Describe() string {
 func (d DescribeLocation) annotate(ctx context.Context, a *annotate.Annotator) error {
 	return a.SetLocationDescription(ctx, d.Location, d.Description)
 }
+
+// ArchiveItem retires a kind of thing from the active vocabulary.
+//
+// Annotation, not recording: archiving changes what the UI offers, not what
+// exists or where it is. Nothing is deleted, so the row, its variant, its
+// retired Holdings and all their events remain queryable by identifier.
+type ArchiveItem struct {
+	Item domain.ItemID
+}
+
+func (ArchiveItem) isAnnotation() {}
+
+func (a ArchiveItem) Describe() string { return fmt.Sprintf("archive item %d", a.Item) }
+
+func (a ArchiveItem) annotate(ctx context.Context, an *annotate.Annotator) error {
+	return an.ArchiveItem(ctx, a.Item)
+}

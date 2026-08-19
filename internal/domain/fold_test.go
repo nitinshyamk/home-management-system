@@ -53,8 +53,8 @@ func createdUnique(t *testing.T) UniqueProjection {
 // Location and Item events legitimately do not apply to a Holding projection,
 // so ErrWrongKind counts as handled. ErrUnhandledEvent does not.
 func TestFoldHandlesEveryEventType(t *testing.T) {
-	if len(AllEventTypes) != 24 {
-		t.Fatalf("registry has %d types, want 24 — regenerate with `go generate ./...`", len(AllEventTypes))
+	if len(AllEventTypes) != 23 {
+		t.Fatalf("registry has %d types, want 23 — regenerate with `go generate ./...`", len(AllEventTypes))
 	}
 
 	for _, e := range AllEventTypes {
@@ -105,7 +105,7 @@ func TestSubjectKindMatchesTypeFamily(t *testing.T) {
 		TypeNodeCreated: SubjectLocation, TypeNodeReparented: SubjectLocation,
 		TypeNodeArchived: SubjectLocation, TypeNodeRestored: SubjectLocation,
 
-		TypeItemKindChanged: SubjectItem, TypeItemUnitChanged: SubjectItem,
+		TypeItemUnitChanged:        SubjectItem,
 		TypeItemPackageSizeChanged: SubjectItem,
 	}
 	if len(want) != len(AllEventTypes) {
@@ -217,7 +217,6 @@ func TestNonHoldingEventsAreRejected(t *testing.T) {
 		NodeReparented{EventBase: base(2), Location: pantry},
 		NodeArchived{EventBase: base(2), Location: pantry, Resolution: ResolutionLift},
 		NodeRestored{EventBase: base(2), Location: pantry},
-		ItemKindChanged{EventBase: base(2), FromKind: KindBulk, ToKind: KindUnique},
 		ItemUnitChanged{EventBase: base(2)},
 		ItemPackageSizeChanged{EventBase: base(2)},
 	} {

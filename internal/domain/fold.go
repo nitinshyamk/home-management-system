@@ -143,7 +143,7 @@ func Fold(p Projection, e Event) (Projection, error) {
 
 	// --- not Holding events: no effect on a Holding projection ------------
 	case NodeCreated, NodeReparented, NodeArchived, NodeRestored,
-		ItemKindChanged, ItemUnitChanged, ItemPackageSizeChanged:
+		ItemUnitChanged, ItemPackageSizeChanged:
 		// Location and Item events are recorded in the same ledger but fold into
 		// their own subjects. Reaching a Holding projection with one is a routing
 		// error, so it is named rather than ignored.

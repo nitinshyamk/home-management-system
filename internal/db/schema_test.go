@@ -409,8 +409,8 @@ func TestEveryLedgerTableIsProtected(t *testing.T) {
 		}
 		ledgerTables = append(ledgerTables, name)
 	}
-	if len(ledgerTables) != 14 {
-		t.Fatalf("found %d ledger tables, want 14 (events + 13 payload shapes)", len(ledgerTables))
+	if len(ledgerTables) != 13 {
+		t.Fatalf("found %d ledger tables, want 13 (events + 12 payload shapes)", len(ledgerTables))
 	}
 
 	for _, table := range ledgerTables {

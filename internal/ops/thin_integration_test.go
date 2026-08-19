@@ -20,8 +20,13 @@ import (
 
 func (tr *tree) unique(t *testing.T, at domain.LocationID) domain.HoldingID {
 	t.Helper()
+	return tr.uniqueOf(t, tr.cableItem, at)
+}
+
+func (tr *tree) uniqueOf(t *testing.T, item domain.ItemID, at domain.LocationID) domain.HoldingID {
+	t.Helper()
 	id, err := tr.led.CreateUniqueHolding(tr.ctx, ledger.CreateUniqueHoldingInput{
-		Item: tr.cableItem, Location: at, Label: "black, 2m",
+		Item: item, Location: at, Label: "black, 2m",
 	})
 	if err != nil {
 		t.Fatalf("create unique holding: %v", err)

@@ -57,9 +57,6 @@ INSERT INTO ev_placement (event_id, type, from_location_id, to_location_id) VALU
 -- name: AttachPresencePayload :exec
 INSERT INTO ev_presence (event_id, type, present) VALUES (?, ?, ?);
 
--- name: AttachKindChangedPayload :exec
-INSERT INTO ev_kind_changed (event_id, type, from_kind, to_kind) VALUES (?, ?, ?, ?);
-
 -- ------------------------------------------------------ ledger mutability --
 
 -- name: MutateEvent :exec

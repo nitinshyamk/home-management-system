@@ -79,38 +79,6 @@ func (p *Planner) NewStockedItem(ctx context.Context, req NewStockedItemRequest)
 		req.Name, req.Amount, req.Location)), nil
 }
 
-// ---------------------------------------------------------------------------
-// Promote and Demote
-// ---------------------------------------------------------------------------
-
-// PromoteRequest turns a measured Item into an individually-tracked one.
-type PromoteRequest struct{ Item domain.ItemID }
-
-// DemoteRequest turns an individually-tracked Item into a measured one. The
-// content unit is required: a Unique Item has no measurement, so there is
-// nothing to recover it from and ItemKindChanged cannot carry it (E7).
-type DemoteRequest struct {
-	Item        domain.ItemID
-	ContentUnit domain.UnitCode
-	PackageSize *domain.Quantity
-}
-
-func (p *Planner) Promote(ctx context.Context, req PromoteRequest) (Batch, error) {
-	events, err := p.led.PlanPromote(ctx, req.Item)
-	if err != nil {
-		return Batch{}, err
-	}
-	return oneStep(fmt.Sprintf("track item %d individually", req.Item), events), nil
-}
-
-func (p *Planner) Demote(ctx context.Context, req DemoteRequest) (Batch, error) {
-	events, err := p.led.PlanDemote(ctx, req.Item, req.ContentUnit, req.PackageSize)
-	if err != nil {
-		return Batch{}, err
-	}
-	return oneStep(fmt.Sprintf("measure item %d in %s", req.Item, req.ContentUnit), events), nil
-}
-
 // oneStep wraps a fixed event list as a Batch.
 func oneStep(summary string, events []domain.Event) Batch {
 	return Batch{Steps: []Step{{Summary: summary, Records: fixed(events)}}}

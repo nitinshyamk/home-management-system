@@ -28,6 +28,7 @@ func existing(id domain.HoldingID) ref { return ref{id: id, slot: -1} }
 type Plan struct {
 	originates []Origination
 	builders   []func(Created) (domain.Event, error)
+	annotates  []Annotation
 
 	// holdings counts Holdings originated so far, so each ref knows its slot.
 	holdings int
@@ -112,10 +113,13 @@ func (p *Plan) shifted(r ref) int64 { return p.shifts[r] }
 
 // AsStep converts the accumulated Plan into a Step.
 func (p Plan) AsStep(summary string) Step {
-	builders := p.builders
+	builders, annotations := p.builders, p.annotates
 	return Step{
 		Summary:    summary,
 		Originates: p.originates,
+		Annotates: func(Created) ([]Annotation, error) {
+			return annotations, nil
+		},
 		Records: func(c Created) ([]domain.Event, error) {
 			events := make([]domain.Event, 0, len(builders))
 			for _, build := range builders {

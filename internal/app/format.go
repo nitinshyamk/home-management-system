@@ -88,8 +88,6 @@ func Summarise(e domain.Event) string {
 	case domain.NodeRestored:
 		return "place restored"
 
-	case domain.ItemKindChanged:
-		return fmt.Sprintf("kind %s -> %s", ev.FromKind, ev.ToKind)
 	case domain.ItemUnitChanged:
 		return fmt.Sprintf("unit %s -> %s", showUnit(ev.FromUnit), showUnit(ev.ToUnit))
 	case domain.ItemPackageSizeChanged:
