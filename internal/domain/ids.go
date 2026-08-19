@@ -23,6 +23,33 @@ type (
 	EventID int64
 )
 
+// EntityKind names WHICH of the four kinds of thing an identifier refers to.
+//
+// Distinct from SubjectKind, which is narrower on purpose: SubjectKind names
+// what an EVENT can be about, and Category is absent from it because a Category
+// has no ledger. EntityKind names what a PERSON can refer to, and all four
+// qualify -- a name typed into the omnibox may mean any of them.
+//
+// It lives here rather than in resolve because two layers above need it and
+// neither should depend on the other: resolve labels candidates with it, and
+// ops dispatches the polymorphic annotations (rename, describe) on it.
+type EntityKind string
+
+const (
+	EntityCategory EntityKind = "Category"
+	EntityLocation EntityKind = "Location"
+	EntityItem     EntityKind = "Item"
+	EntityHolding  EntityKind = "Holding"
+)
+
+func (k EntityKind) Valid() bool {
+	switch k {
+	case EntityCategory, EntityLocation, EntityItem, EntityHolding:
+		return true
+	}
+	return false
+}
+
 // Kind discriminates the two item and holding variants.
 //
 // Note that Kind is NOT stored on ItemBase or HoldingBase. The Go type is the

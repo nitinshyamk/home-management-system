@@ -10,14 +10,73 @@ import (
 	"database/sql"
 )
 
-const holdingIsLive = `-- name: HoldingIsLive :one
+const bulkHoldingSlotOf = `-- name: BulkHoldingSlotOf :one
 
-SELECT EXISTS(SELECT 1 FROM holdings WHERE id = ?)
+
+SELECT h.item_id, h.stowed_location_id, b.unit_basis
+FROM holdings h
+JOIN bulk_holdings b ON b.holding_id = h.id
+WHERE h.id = ?
 `
+
+type BulkHoldingSlotOfRow struct {
+	ItemID           int64
+	StowedLocationID int64
+	UnitBasis        string
+}
 
 // Annotation must not invent rows, so every update checks its subject first.
 // A retired Holding is still annotatable: correcting the label on something
 // put away is exactly the kind of revision annotation is for.
+// expires_on is part of H8's key, so revising it can walk a Holding into a slot
+// another Holding already occupies. Annotation must not do that: merging two
+// Holdings into one is a RECORDING decision (O1) with events to show for it, so
+// the annotation refuses and leaves the merge to an operation.
+//
+// No rows for a Unique Holding, which has no slot and so no such hazard.
+func (q *Queries) BulkHoldingSlotOf(ctx context.Context, id int64) (BulkHoldingSlotOfRow, error) {
+	row := q.db.QueryRowContext(ctx, bulkHoldingSlotOf, id)
+	var i BulkHoldingSlotOfRow
+	err := row.Scan(&i.ItemID, &i.StowedLocationID, &i.UnitBasis)
+	return i, err
+}
+
+const countHoldingsInSlot = `-- name: CountHoldingsInSlot :one
+SELECT count(*) FROM holdings h
+JOIN bulk_holdings b ON b.holding_id = h.id
+WHERE h.retired_at IS NULL
+  AND h.id != ?
+  AND h.item_id = ?
+  AND h.stowed_location_id = ?
+  AND b.unit_basis = ?
+  AND coalesce(h.expires_on, '') = ?
+`
+
+type CountHoldingsInSlotParams struct {
+	ID               int64
+	ItemID           int64
+	StowedLocationID int64
+	UnitBasis        string
+	ExpiresOn        sql.NullString
+}
+
+func (q *Queries) CountHoldingsInSlot(ctx context.Context, arg CountHoldingsInSlotParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countHoldingsInSlot,
+		arg.ID,
+		arg.ItemID,
+		arg.StowedLocationID,
+		arg.UnitBasis,
+		arg.ExpiresOn,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const holdingIsLive = `-- name: HoldingIsLive :one
+SELECT EXISTS(SELECT 1 FROM holdings WHERE id = ?)
+`
+
 func (q *Queries) HoldingIsLive(ctx context.Context, id int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, holdingIsLive, id)
 	var column_1 int64

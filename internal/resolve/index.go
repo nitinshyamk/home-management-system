@@ -18,13 +18,17 @@ import (
 )
 
 // Kind is what a candidate refers to.
-type Kind string
+//
+// An alias rather than a distinct type: an outcome's Kind is handed straight to
+// an operation as the thing to act on, and converting between two identical
+// enums at that boundary would be ceremony that could also be got wrong.
+type Kind = domain.EntityKind
 
 const (
-	KindCategory Kind = "Category"
-	KindLocation Kind = "Location"
-	KindItem     Kind = "Item"
-	KindHolding  Kind = "Holding"
+	KindCategory = domain.EntityCategory
+	KindLocation = domain.EntityLocation
+	KindItem     = domain.EntityItem
+	KindHolding  = domain.EntityHolding
 )
 
 // PathSeparator joins the segments of a hierarchical label. Spaces around it

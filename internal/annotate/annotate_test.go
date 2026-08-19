@@ -5,22 +5,26 @@ package annotate_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
 
 	"home-management-system/internal/annotate"
 	"home-management-system/internal/domain"
+	"home-management-system/internal/ledger"
 	"home-management-system/internal/origin"
 	"home-management-system/internal/query"
 	"home-management-system/internal/testsupport"
 )
 
 type harness struct {
-	ctx context.Context
-	o   *origin.Originator
-	a   *annotate.Annotator
-	r   *query.Reader
+	ctx  context.Context
+	conn *sql.DB
+	o    *origin.Originator
+	a    *annotate.Annotator
+	l    *ledger.Processor
+	r    *query.Reader
 }
 
 var clock = time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
@@ -29,10 +33,12 @@ func newHarness(t *testing.T) *harness {
 	t.Helper()
 	conn := testsupport.NewDB(t)
 	return &harness{
-		ctx: context.Background(),
-		o:   origin.New(conn),
-		a:   annotate.New(conn).WithClock(func() time.Time { return clock }),
-		r:   query.New(conn),
+		ctx:  context.Background(),
+		conn: conn,
+		o:    origin.New(conn),
+		a:    annotate.New(conn).WithClock(func() time.Time { return clock }),
+		l:    ledger.New(conn).WithClock(func() time.Time { return clock }),
+		r:    query.New(conn),
 	}
 }
 
@@ -590,4 +596,146 @@ func toNodes(cs []domain.Category) []query.Node {
 		out = append(out, query.Node{Category: c, Depth: i})
 	}
 	return out
+}
+
+// ---------------------------------------------------------------------------
+// Holding annotations
+// ---------------------------------------------------------------------------
+
+// stocked builds an Item, a place, and one Holding of each kind, which is the
+// least a Holding annotation needs.
+func (h *harness) stocked(t *testing.T) (bulk, unique domain.HoldingID, item domain.ItemID, at domain.LocationID) {
+	t.Helper()
+	cat := h.category(t, "Pantry Goods", nil)
+	at, err := h.l.CreateLocation(h.ctx, "Pantry", nil, "")
+	if err != nil {
+		t.Fatalf("create location: %v", err)
+	}
+	size := domain.FromMilli(2_000_000)
+	item, err = h.o.CreateBulkItem(h.ctx, origin.CreateBulkItemInput{
+		Name: "Basmati Rice", Category: cat, ContentUnit: "g", PackageSize: &size,
+	})
+	if err != nil {
+		t.Fatalf("create bulk item: %v", err)
+	}
+	cable, err := h.o.CreateUniqueItem(h.ctx, origin.CreateUniqueItemInput{Name: "USB-C Cable", Category: cat})
+	if err != nil {
+		t.Fatalf("create unique item: %v", err)
+	}
+	if bulk, err = h.l.CreateBulkHolding(h.ctx, ledger.CreateBulkHoldingInput{
+		Item: item, Location: at, UnitBasis: domain.BasisContent,
+	}); err != nil {
+		t.Fatalf("create bulk holding: %v", err)
+	}
+	if unique, err = h.l.CreateUniqueHolding(h.ctx, ledger.CreateUniqueHoldingInput{
+		Item: cable, Location: at,
+	}); err != nil {
+		t.Fatalf("create unique holding: %v", err)
+	}
+	return bulk, unique, item, at
+}
+
+// TestHoldingAnnotations covers the three fields v01 had no write path for at
+// all -- a Holding could not be labelled, its printed date corrected, or its
+// nudge silenced.
+func TestHoldingAnnotations(t *testing.T) {
+	h := newHarness(t)
+	bulk, unique, _, _ := h.stocked(t)
+
+	expiry := time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC)
+	if err := h.a.SetHoldingExpiry(h.ctx, bulk, &expiry); err != nil {
+		t.Fatalf("set expiry: %v", err)
+	}
+	until := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := h.a.SnoozeHolding(h.ctx, bulk, &until); err != nil {
+		t.Fatalf("snooze: %v", err)
+	}
+	if err := h.a.LabelHolding(h.ctx, unique, "the braided one"); err != nil {
+		t.Fatalf("label: %v", err)
+	}
+
+	got, err := h.r.Holding(h.ctx, bulk)
+	if err != nil {
+		t.Fatalf("read holding: %v", err)
+	}
+	if on := got.Holding.Base().ExpiresOn; on == nil || !on.Equal(expiry) {
+		t.Errorf("expires = %v, want %v", on, expiry)
+	}
+	if on := got.Holding.Base().SnoozedUntil; on == nil || !on.Equal(until) {
+		t.Errorf("snoozed = %v, want %v", on, until)
+	}
+	u, err := h.r.Holding(h.ctx, unique)
+	if err != nil {
+		t.Fatalf("read holding: %v", err)
+	}
+	if label := u.Holding.(domain.UniqueHolding).Label; label != "the braided one" {
+		t.Errorf("label = %q, want %q", label, "the braided one")
+	}
+
+	// Clearing is annotation too: a mistaken date is revised to no date.
+	if err := h.a.SetHoldingExpiry(h.ctx, bulk, nil); err != nil {
+		t.Fatalf("clear expiry: %v", err)
+	}
+	got, _ = h.r.Holding(h.ctx, bulk)
+	if on := got.Holding.Base().ExpiresOn; on != nil {
+		t.Errorf("expires = %v after clearing, want none", on)
+	}
+}
+
+// A measured amount has nothing to distinguish, so label lives on
+// unique_holdings and asking to label a Bulk Holding is a category error.
+func TestLabellingABulkHoldingIsRefused(t *testing.T) {
+	h := newHarness(t)
+	bulk, _, _, _ := h.stocked(t)
+
+	err := h.a.LabelHolding(h.ctx, bulk, "the big bag")
+	if !errors.Is(err, annotate.ErrInvalidInput) {
+		t.Errorf("labelled a Bulk holding: %v", err)
+	}
+	if err := h.a.LabelHolding(h.ctx, domain.HoldingID(9999), "ghost"); !errors.Is(err, annotate.ErrNotFound) {
+		t.Errorf("labelled a missing holding: %v", err)
+	}
+}
+
+// TestExpiryRevisionRefusesToMergeSlots is the hazard peculiar to this one
+// annotation: expires_on is part of H8's key, so revising it can walk a Holding
+// into a slot another already occupies. Combining two Holdings into one is a
+// RECORDING decision with events to show for it (O1), so annotation refuses.
+func TestExpiryRevisionRefusesToMergeSlots(t *testing.T) {
+	h := newHarness(t)
+	bulk, _, item, at := h.stocked(t)
+
+	march := time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC)
+	if err := h.a.SetHoldingExpiry(h.ctx, bulk, &march); err != nil {
+		t.Fatalf("set expiry: %v", err)
+	}
+	// A second Holding of the same item, in the same place, on the same basis,
+	// distinguished only by having no expiry.
+	twin, err := h.l.CreateBulkHolding(h.ctx, ledger.CreateBulkHoldingInput{
+		Item: item, Location: at, UnitBasis: domain.BasisContent,
+	})
+	if err != nil {
+		t.Fatalf("create twin: %v", err)
+	}
+
+	if err := h.a.SetHoldingExpiry(h.ctx, twin, &march); !errors.Is(err, annotate.ErrSlotTaken) {
+		t.Errorf("revised into an occupied slot: %v", err)
+	}
+	// A date nobody else holds is fine, and so is the Holding's own date.
+	april := time.Date(2027, 4, 1, 0, 0, 0, 0, time.UTC)
+	if err := h.a.SetHoldingExpiry(h.ctx, twin, &april); err != nil {
+		t.Errorf("refused an unoccupied slot: %v", err)
+	}
+	if err := h.a.SetHoldingExpiry(h.ctx, twin, &april); err != nil {
+		t.Errorf("refused a Holding its own date: %v", err)
+	}
+
+	// And the invariant the guard exists for actually holds.
+	dupes, err := h.l.FindDuplicateSlots(h.ctx)
+	if err != nil {
+		t.Fatalf("find duplicate slots: %v", err)
+	}
+	if len(dupes) != 0 {
+		t.Errorf("H8 violations after annotation: %v", dupes)
+	}
 }
