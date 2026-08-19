@@ -10,6 +10,55 @@ import (
 	"database/sql"
 )
 
+const bulkHoldingSlotsAt = `-- name: BulkHoldingSlotsAt :many
+
+SELECT h.id, h.item_id, b.unit_basis, coalesce(h.expires_on, '') AS expires_on, b.quantity
+FROM holdings h
+JOIN bulk_holdings b ON b.holding_id = h.id
+WHERE h.stowed_location_id = ? AND h.retired_at IS NULL
+ORDER BY h.id
+`
+
+type BulkHoldingSlotsAtRow struct {
+	ID        int64
+	ItemID    int64
+	UnitBasis string
+	ExpiresOn string
+	Quantity  int64
+}
+
+// Archiving a Location lifts its contents, and a lift can land on a slot the
+// destination already occupies. H8 says those two ARE one Holding, so the lift
+// has to merge rather than move -- which means knowing both sets of slots.
+func (q *Queries) BulkHoldingSlotsAt(ctx context.Context, stowedLocationID int64) ([]BulkHoldingSlotsAtRow, error) {
+	rows, err := q.db.QueryContext(ctx, bulkHoldingSlotsAt, stowedLocationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BulkHoldingSlotsAtRow{}
+	for rows.Next() {
+		var i BulkHoldingSlotsAtRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ItemID,
+			&i.UnitBasis,
+			&i.ExpiresOn,
+			&i.Quantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countLiveLocationChildren = `-- name: CountLiveLocationChildren :one
 SELECT count(*) FROM locations WHERE parent_id = ? AND archived_at IS NULL
 `

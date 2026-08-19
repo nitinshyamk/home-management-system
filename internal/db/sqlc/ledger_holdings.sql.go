@@ -10,6 +10,68 @@ import (
 	"database/sql"
 )
 
+const duplicateHoldingSlots = `-- name: DuplicateHoldingSlots :many
+
+SELECT h.item_id, h.stowed_location_id, b.unit_basis,
+       coalesce(h.expires_on, '') AS expires_on, count(*) AS holdings
+FROM holdings h
+JOIN bulk_holdings b ON b.holding_id = h.id
+WHERE h.retired_at IS NULL
+GROUP BY h.item_id, h.stowed_location_id, b.unit_basis, coalesce(h.expires_on, '')
+HAVING count(*) > 1
+ORDER BY h.item_id, h.stowed_location_id
+`
+
+type DuplicateHoldingSlotsRow struct {
+	ItemID           int64
+	StowedLocationID int64
+	UnitBasis        string
+	ExpiresOn        string
+	Holdings         int64
+}
+
+// H8: no two ACTIVE Holdings share (item, stowed location, unit basis, expiry).
+//
+// Transactional rather than declarative: a partial unique index cannot express
+// it, because two null expiries must compare EQUAL here and SQL says they do
+// not. So the operations uphold it and this query checks it -- and the check
+// earns its place, since the layer that broke H8 in practice was not the
+// operations at all but an INSERT below them that silently dropped expires_on.
+//
+// coalesce is what makes two unknown expiries one slot rather than two.
+//
+// Bulk only, and not as a shortcut: unit_basis lives on BulkHolding, so H8's
+// key does not exist for a Unique Holding. Two identical cables on one shelf
+// are two Holdings by design -- it is what Promote produces, N at a time.
+func (q *Queries) DuplicateHoldingSlots(ctx context.Context) ([]DuplicateHoldingSlotsRow, error) {
+	rows, err := q.db.QueryContext(ctx, duplicateHoldingSlots)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DuplicateHoldingSlotsRow{}
+	for rows.Next() {
+		var i DuplicateHoldingSlotsRow
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.StowedLocationID,
+			&i.UnitBasis,
+			&i.ExpiresOn,
+			&i.Holdings,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getHoldingProjection = `-- name: GetHoldingProjection :one
 
 SELECT h.id, h.kind, h.stowed_location_id, h.retired_at,
@@ -113,13 +175,15 @@ func (q *Queries) InsertBulkHoldingVariant(ctx context.Context, arg InsertBulkHo
 
 const insertHolding = `-- name: InsertHolding :execlastid
 
-INSERT INTO holdings (item_id, kind, stowed_location_id) VALUES (?, ?, ?)
+
+INSERT INTO holdings (item_id, kind, stowed_location_id, expires_on) VALUES (?, ?, ?, ?)
 `
 
 type InsertHoldingParams struct {
 	ItemID           int64
 	Kind             string
 	StowedLocationID int64
+	ExpiresOn        sql.NullString
 }
 
 // RECORDING for Holding: creation, and the projection writes.
@@ -129,8 +193,18 @@ type InsertHoldingParams struct {
 // independent of the state being verified, so creation must be recorded as an
 // event -- and stowed_location_id is NOT NULL, so the creating INSERT
 // necessarily writes a ledger-derived column (schema section 3.11).
+// expires_on is written here rather than annotated afterwards because H8 keys
+// on it: two Holdings of one Item in one place on one basis are the same
+// Holding unless their expiry differs. A creation that dropped it would let an
+// operation ask for a slot that cannot exist, be told it does not, and create a
+// duplicate -- which is exactly what happened while this column was missing.
 func (q *Queries) InsertHolding(ctx context.Context, arg InsertHoldingParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, insertHolding, arg.ItemID, arg.Kind, arg.StowedLocationID)
+	result, err := q.db.ExecContext(ctx, insertHolding,
+		arg.ItemID,
+		arg.Kind,
+		arg.StowedLocationID,
+		arg.ExpiresOn,
+	)
 	if err != nil {
 		return 0, err
 	}

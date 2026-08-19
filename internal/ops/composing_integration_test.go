@@ -2,6 +2,7 @@ package ops_test
 
 import (
 	"testing"
+	"time"
 
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ops"
@@ -302,4 +303,85 @@ func TestComposingOperationsAreAtomic(t *testing.T) {
 		t.Errorf("packages = %d milli, want %d -- the Split escaped", got, 2*domain.Scale)
 	}
 	tr.verifyClean(t)
+}
+
+// TestExpiryIsPartOfAHoldingsIdentity is the regression for a bug that was
+// invisible from every layer above it.
+//
+// ExpiresOn was threaded from the request through the plan, through the
+// origination, into ledger.CreateBulkHoldingInput -- and then dropped, because
+// the INSERT never named the column. Every layer above believed it worked. The
+// consequence is an H8 violation rather than a missing date: receiving stock
+// with a printed expiry looks for a Holding on that expiry, is correctly told
+// there is none, and creates one -- which is then stored with a null expiry,
+// where the next receipt for the same date will fail to find it and create
+// another. Two active Holdings on one H8 key, from a plan layer that did
+// everything right.
+//
+// So the assertion is about identity, not about the date: same expiry merges,
+// different expiry does not.
+func TestExpiryIsPartOfAHoldingsIdentity(t *testing.T) {
+	tr := newTree(t)
+	december := clock.AddDate(0, 4, 0)
+	january := clock.AddDate(0, 5, 0)
+
+	receive := func(amount int64, expires *time.Time) {
+		t.Helper()
+		tr.apply(tr.pl.Receive(tr.ctx, ops.ReceiveRequest{
+			Item: tr.item, Location: tr.pantry, Basis: domain.BasisContent,
+			Amount: domain.FromMilli(amount * domain.Scale), ExpiresOn: expires,
+		}))
+	}
+
+	receive(500, &december)
+	receive(500, &december)
+	if got := len(expiries(t, tr)); got != 1 {
+		t.Fatalf("%d holdings after two receipts sharing an expiry, want 1 (O1 merges)", got)
+	}
+
+	receive(500, &january)
+	receive(500, nil)
+	got := expiries(t, tr)
+	if len(got) != 3 {
+		t.Fatalf("%d holdings for three distinct expiries, want 3: %v", len(got), got)
+	}
+	// And the dates actually survived the round trip, which is what made the
+	// duplicate possible in the first place.
+	for _, want := range []string{december.Format("2006-01-02"), january.Format("2006-01-02"), "none"} {
+		if !contains(got, want) {
+			t.Errorf("no holding expiring %s; got %v", want, got)
+		}
+	}
+}
+
+// expiries reports one label per live Holding of the tree's item, so a
+// duplicate H8 key shows up as a repeated label rather than a count.
+func expiries(t *testing.T, tr *tree) []string {
+	t.Helper()
+	details, err := tr.r.HoldingsOfItem(tr.ctx, tr.item)
+	if err != nil {
+		t.Fatalf("holdings of item: %v", err)
+	}
+	var out []string
+	for _, d := range details {
+		base := d.Holding.Base()
+		if base.RetiredAt != nil {
+			continue
+		}
+		if base.ExpiresOn == nil {
+			out = append(out, "none")
+			continue
+		}
+		out = append(out, base.ExpiresOn.Format("2006-01-02"))
+	}
+	return out
+}
+
+func contains(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if s == needle {
+			return true
+		}
+	}
+	return false
 }

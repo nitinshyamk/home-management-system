@@ -137,12 +137,24 @@ type RehomeRequest struct {
 // PlanRehome is distinct from Move for a reason worth keeping: Move says the
 // stuff went somewhere, Rehome says its home changed. Conflating them would
 // make a reorganisation look like a physical relocation in the history.
+//
+// Unique only, and the restriction was learned rather than designed. The
+// distinction Rehome draws needs somewhere for the thing to be while its home
+// changes, and only a Unique Holding has one -- custody plus displaced_to. A
+// Bulk Holding IS its stowed location, so for bulk the two operations mean the
+// same thing and Move is the honest one.
+//
+// Allowing it for bulk was also unsound: stowed_location is part of H8's key,
+// and a thin operation snapshots one Holding, so it could not see that the
+// destination slot was already taken. It quietly produced two active Holdings
+// that the schema says are one -- found by the H8 check in VerifyAll, sixteen
+// property sequences at a time, long after 8c called this operation thin.
 func PlanRehome(s Snapshot, req RehomeRequest) ([]domain.Event, error) {
-	h, err := s.LiveHolding(req.Holding)
+	h, err := s.UniqueHolding(req.Holding)
 	if err != nil {
 		return nil, err
 	}
-	from := h.Base().StowedLocation
+	from := h.StowedLocation
 	if from == req.To {
 		return nil, fmt.Errorf("%w: holding %d is already kept at %d", ErrInvalidRequest, req.Holding, req.To)
 	}

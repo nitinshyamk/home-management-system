@@ -208,6 +208,64 @@ func TestOrphanDetectionCatchesABypass(t *testing.T) {
 	}
 }
 
+// TestDuplicateSlotDetectionCatchesABypass proves the H8 check is not vacuous.
+//
+// H8 is transactional: the operations uphold it and nothing below them does.
+// That is a complete story only while every layer beneath behaves, and one did
+// not -- an INSERT silently dropped expires_on, so operations asked for slots
+// that could not exist and created duplicates instead. This check is what turns
+// that class of failure from invisible into reported.
+func TestDuplicateSlotDetectionCatchesABypass(t *testing.T) {
+	f := newFixture(t)
+
+	// A second Bulk Holding of one Item, in one place, on one basis, with one
+	// (absent) expiry. By H8 that is the SAME Holding as f.rice.
+	twin, err := f.p.CreateBulkHolding(f.ctx, ledger.CreateBulkHoldingInput{
+		Item: f.riceItem, Location: f.pantry, UnitBasis: domain.BasisContent,
+	})
+	if err != nil {
+		t.Fatalf("create twin: %v", err)
+	}
+
+	found, err := f.p.FindDuplicateSlots(f.ctx)
+	if err != nil {
+		t.Fatalf("find duplicate slots: %v", err)
+	}
+	if len(found) != 1 {
+		t.Fatalf("got %d duplicate slots, want 1: %v", len(found), found)
+	}
+	if found[0].Holdings != 2 {
+		t.Errorf("slot reports %d holdings, want 2", found[0].Holdings)
+	}
+
+	// Two identical UNIQUE Holdings in one place are two things, not one, and
+	// must not be reported: it is what Promote produces, N at a time.
+	for i := 0; i < 2; i++ {
+		if _, err := f.p.CreateUniqueHolding(f.ctx, ledger.CreateUniqueHoldingInput{
+			Item: f.cableID, Location: f.garage,
+		}); err != nil {
+			t.Fatalf("create unique holding: %v", err)
+		}
+	}
+	found, err = f.p.FindDuplicateSlots(f.ctx)
+	if err != nil {
+		t.Fatalf("find duplicate slots: %v", err)
+	}
+	if len(found) != 1 {
+		t.Errorf("got %d duplicate slots after adding two Unique holdings, want 1: %v", len(found), found)
+	}
+
+	// And retiring one resolves it, since H8 speaks only of ACTIVE Holdings.
+	f.apply(t, domain.Gone{EventBase: evAt(), Holding: twin, Reason: "duplicate"})
+	found, err = f.p.FindDuplicateSlots(f.ctx)
+	if err != nil {
+		t.Fatalf("find duplicate slots: %v", err)
+	}
+	if len(found) != 0 {
+		t.Errorf("got %d duplicate slots after retiring the twin, want none: %v", len(found), found)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Every event type persists and reads back
 // ---------------------------------------------------------------------------

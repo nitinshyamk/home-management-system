@@ -27,11 +27,13 @@ type Report struct {
 	HoldingsChecked int
 	Discrepancies   []Discrepancy
 	Orphans         Orphans
+	Duplicates      []DuplicateSlot
 }
 
 // Clean reports whether nothing was found.
 func (r Report) Clean() bool {
-	return len(r.Discrepancies) == 0 && len(r.Orphans.Holdings) == 0 && len(r.Orphans.Locations) == 0
+	return len(r.Discrepancies) == 0 && len(r.Orphans.Holdings) == 0 &&
+		len(r.Orphans.Locations) == 0 && len(r.Duplicates) == 0
 }
 
 // Verify compares one Holding's stored state against the ledger.
@@ -82,6 +84,14 @@ func (p *Processor) VerifyAll(ctx context.Context) (Report, error) {
 		return report, err
 	}
 	report.Orphans = orphans
+
+	// H8 is upheld by the operations, so a violation means something below them
+	// wrote a Holding the operations would never have created.
+	duplicates, err := p.FindDuplicateSlots(ctx)
+	if err != nil {
+		return report, err
+	}
+	report.Duplicates = duplicates
 
 	sort.Slice(report.Discrepancies, func(i, j int) bool {
 		if report.Discrepancies[i].Holding != report.Discrepancies[j].Holding {

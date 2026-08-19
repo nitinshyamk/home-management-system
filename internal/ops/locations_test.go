@@ -36,6 +36,10 @@ type tree struct {
 	// cableItem is Unique, for the custody operations. The tree fixture carries
 	// one Item of each kind so a test can pick whichever it needs.
 	cableItem domain.ItemID
+
+	// flourItem is a second Bulk Item, so a test can put two things in one
+	// place without the two being one Holding by H8.
+	flourItem domain.ItemID
 }
 
 func newTree(t *testing.T) *tree {
@@ -70,6 +74,11 @@ func newTree(t *testing.T) *tree {
 	}); err != nil {
 		t.Fatalf("create item: %v", err)
 	}
+	if tr.flourItem, err = origin.New(conn).CreateBulkItem(ctx, origin.CreateBulkItemInput{
+		Name: "All-Purpose Flour", Category: cat, ContentUnit: "g", PackageSize: &size,
+	}); err != nil {
+		t.Fatalf("create item: %v", err)
+	}
 	if tr.cableItem, err = origin.New(conn).CreateUniqueItem(ctx, origin.CreateUniqueItemInput{
 		Name: "USB-C Cable", Category: cat,
 	}); err != nil {
@@ -80,8 +89,17 @@ func newTree(t *testing.T) *tree {
 
 func (tr *tree) stow(t *testing.T, at domain.LocationID) domain.HoldingID {
 	t.Helper()
+	return tr.stowItem(t, tr.item, at)
+}
+
+// stowItem takes the Item explicitly, because two Holdings of ONE item on one
+// basis in one place with one expiry are the same Holding by H8 -- so a fixture
+// that wants two things in a location has to use two items. It did not, and the
+// H8 check in VerifyAll caught the fixture rather than the code.
+func (tr *tree) stowItem(t *testing.T, item domain.ItemID, at domain.LocationID) domain.HoldingID {
+	t.Helper()
 	id, err := tr.led.CreateBulkHolding(tr.ctx, ledger.CreateBulkHoldingInput{
-		Item: tr.item, Location: at, UnitBasis: domain.BasisContent,
+		Item: item, Location: at, UnitBasis: domain.BasisContent,
 	})
 	if err != nil {
 		t.Fatalf("create holding: %v", err)
@@ -175,7 +193,7 @@ func TestRenameLocationRejectsUnknown(t *testing.T) {
 func TestArchiveWithLiftMovesContentsToTheParent(t *testing.T) {
 	tr := newTree(t)
 	rice := tr.stow(t, tr.pantry)
-	flour := tr.stow(t, tr.pantry)
+	flour := tr.stowItem(t, tr.flourItem, tr.pantry)
 
 	batch, err := tr.pl.ArchiveLocation(tr.ctx, ops.ArchiveLocationRequest{
 		Location: tr.pantry, Resolution: domain.ResolutionLift,
@@ -433,4 +451,101 @@ func equal(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// TestArchiveMergesContentsThatCollideAtTheDestination is O1 applied to a lift.
+//
+// Rice on a shelf, rice already in the cupboard the shelf lifts into: by H8
+// those are one Holding and not two, so the archival has to merge rather than
+// deliver a duplicate. Before this, both simply arrived and the invariant was
+// quietly false -- which nothing noticed until VerifyAll learned to check H8.
+func TestArchiveMergesContentsThatCollideAtTheDestination(t *testing.T) {
+	tr := newTree(t)
+
+	// 500 g in the cupboard, 300 g on the shelf below it.
+	tr.apply(tr.pl.Receive(tr.ctx, ops.ReceiveRequest{
+		Item: tr.item, Location: tr.kitchen, Basis: domain.BasisContent,
+		Amount: domain.FromMilli(500 * domain.Scale), Source: "shop",
+	}))
+	tr.apply(tr.pl.Receive(tr.ctx, ops.ReceiveRequest{
+		Item: tr.item, Location: tr.pantry, Basis: domain.BasisContent,
+		Amount: domain.FromMilli(300 * domain.Scale), Source: "shop",
+	}))
+
+	batch, err := tr.pl.ArchiveLocation(tr.ctx, ops.ArchiveLocationRequest{
+		Location: tr.pantry, Resolution: domain.ResolutionLift,
+	})
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	events, err := batch.Steps[0].Records(ops.Created{})
+	if err != nil {
+		t.Fatalf("records: %v", err)
+	}
+	want := []string{"NodeReparented", "Merged", "Merged", "Gone", "NodeArchived"}
+	if got := types(events); !equal(got, want) {
+		t.Fatalf("plan = %v, want %v", got, want)
+	}
+
+	if _, err := tr.ex.Execute(tr.ctx, batch); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	// One Holding in the kitchen, holding both amounts. Nothing was lost and
+	// nothing was duplicated.
+	if got := tr.onHandAt(t, tr.item, tr.kitchen, domain.BasisContent); got != 800*domain.Scale {
+		t.Errorf("kitchen holds %d milli, want %d", got, 800*domain.Scale)
+	}
+	live := 0
+	details, err := tr.r.HoldingsOfItem(tr.ctx, tr.item)
+	if err != nil {
+		t.Fatalf("holdings of item: %v", err)
+	}
+	for _, d := range details {
+		if d.Holding.Base().RetiredAt == nil {
+			live++
+		}
+	}
+	if live != 1 {
+		t.Errorf("%d live holdings after the merge, want 1", live)
+	}
+	tr.verifyClean(t)
+}
+
+// An EMPTY Holding colliding at the destination has nothing to merge, and
+// Merged{0} is rejected by the fold. It still cannot stay where it is, because
+// that Location is being archived -- so it simply ends.
+func TestArchiveRetiresAnEmptyHoldingThatCollides(t *testing.T) {
+	tr := newTree(t)
+	tr.apply(tr.pl.Receive(tr.ctx, ops.ReceiveRequest{
+		Item: tr.item, Location: tr.kitchen, Basis: domain.BasisContent,
+		Amount: domain.FromMilli(500 * domain.Scale), Source: "shop",
+	}))
+	empty := tr.stow(t, tr.pantry)
+
+	batch, err := tr.pl.ArchiveLocation(tr.ctx, ops.ArchiveLocationRequest{
+		Location: tr.pantry, Resolution: domain.ResolutionLift,
+	})
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	events, err := batch.Steps[0].Records(ops.Created{})
+	if err != nil {
+		t.Fatalf("records: %v", err)
+	}
+	want := []string{"NodeReparented", "Gone", "NodeArchived"}
+	if got := types(events); !equal(got, want) {
+		t.Fatalf("plan = %v, want %v", got, want)
+	}
+	if _, err := tr.ex.Execute(tr.ctx, batch); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	d, err := tr.r.Holding(tr.ctx, empty)
+	if err != nil {
+		t.Fatalf("read holding: %v", err)
+	}
+	if d.Holding.Base().RetiredAt == nil {
+		t.Error("the empty holding survived inside an archived location")
+	}
+	tr.verifyClean(t)
 }
