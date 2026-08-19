@@ -31,6 +31,29 @@ UPDATE unique_holdings SET label = ? WHERE holding_id = ?;
 -- A retired Holding is still annotatable: correcting the label on something
 -- put away is exactly the kind of revision annotation is for.
 
+-- expires_on is part of H8's key, so revising it can walk a Holding into a slot
+-- another Holding already occupies. Annotation must not do that: merging two
+-- Holdings into one is a RECORDING decision (O1) with events to show for it, so
+-- the annotation refuses and leaves the merge to an operation.
+--
+-- No rows for a Unique Holding, which has no slot and so no such hazard.
+
+-- name: BulkHoldingSlotOf :one
+SELECT h.item_id, h.stowed_location_id, b.unit_basis
+FROM holdings h
+JOIN bulk_holdings b ON b.holding_id = h.id
+WHERE h.id = ?;
+
+-- name: CountHoldingsInSlot :one
+SELECT count(*) FROM holdings h
+JOIN bulk_holdings b ON b.holding_id = h.id
+WHERE h.retired_at IS NULL
+  AND h.id != ?
+  AND h.item_id = ?
+  AND h.stowed_location_id = ?
+  AND b.unit_basis = ?
+  AND coalesce(h.expires_on, '') = ?;
+
 -- name: HoldingIsLive :one
 SELECT EXISTS(SELECT 1 FROM holdings WHERE id = ?);
 

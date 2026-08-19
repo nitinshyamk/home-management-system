@@ -357,7 +357,7 @@ func (p *Processor) createHolding(
 			ItemID:           int64(item),
 			Kind:             string(kind),
 			StowedLocationID: int64(location),
-			ExpiresOn:        db.FormatNullTime(expiresOn),
+			ExpiresOn:        db.FormatNullDate(expiresOn),
 		})
 		if err != nil {
 			return fmt.Errorf("insert holding: %w", err)
@@ -424,23 +424,38 @@ func (p *Processor) CreateLocation(ctx context.Context, name string, parent *dom
 // stowed_location never changes, so without an event something moved and nothing
 // recorded why.
 func (p *Processor) ReparentLocation(ctx context.Context, id domain.LocationID, parent *domain.LocationID) error {
+	events, err := p.PlanReparentLocation(ctx, id, parent)
+	if err != nil {
+		return err
+	}
+	_, err = p.ApplyBatch(ctx, events)
+	return err
+}
+
+// PlanReparentLocation works out the event a move implies without applying it,
+// so an operation can fold it into a larger unit of work.
+func (p *Processor) PlanReparentLocation(
+	ctx context.Context,
+	id domain.LocationID,
+	parent *domain.LocationID,
+) ([]domain.Event, error) {
 	state, err := p.q.GetLocationState(ctx, int64(id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w: location %d", ErrNotFound, id)
+			return nil, fmt.Errorf("%w: location %d", ErrNotFound, id)
 		}
-		return fmt.Errorf("ledger: read location %d: %w", id, err)
+		return nil, fmt.Errorf("ledger: read location %d: %w", id, err)
 	}
 	if parent != nil {
 		if *parent == id {
-			return fmt.Errorf("%w: location %d cannot be its own parent", ErrCycle, id)
+			return nil, fmt.Errorf("%w: location %d cannot be its own parent", ErrCycle, id)
 		}
 		beneath, err := p.locationHasAncestor(ctx, *parent, id)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if beneath {
-			return fmt.Errorf("%w: %d is beneath %d", ErrCycle, *parent, id)
+			return nil, fmt.Errorf("%w: %d is beneath %d", ErrCycle, *parent, id)
 		}
 	}
 
@@ -449,13 +464,12 @@ func (p *Processor) ReparentLocation(ctx context.Context, id domain.LocationID, 
 		f := domain.LocationID(state.ParentID.Int64)
 		from = &f
 	}
-	_, err = p.Apply(ctx, domain.NodeReparented{
+	return []domain.Event{domain.NodeReparented{
 		EventBase:  domain.EventBase{OccurredAt: p.now()},
 		Location:   id,
 		FromParent: from,
 		ToParent:   parent,
-	})
-	return err
+	}}, nil
 }
 
 func (p *Processor) applyToLocation(ctx context.Context, q *sqlc.Queries, id domain.LocationID, e domain.Event) error {

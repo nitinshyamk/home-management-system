@@ -77,6 +77,23 @@ func FormatNullTime(t *time.Time) sql.NullString {
 	return sql.NullString{String: FormatTime(*t), Valid: true}
 }
 
+// DateLayout is how a calendar date is stored, as distinct from an instant.
+const DateLayout = "2006-01-02"
+
+// FormatNullDate renders an optional DATE for storage.
+//
+// Separate from FormatNullTime on purpose. An expiry is what is printed on the
+// packet, and a time of day on it is not merely useless -- it is harmful, since
+// expires_on is part of H8's key and two spellings of one date would read as
+// two Holdings. Storing the date makes the comparison the operations already do
+// (by date) and the comparison SQL does (by string) the same comparison.
+func FormatNullDate(t *time.Time) sql.NullString {
+	if t == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: t.UTC().Format(DateLayout), Valid: true}
+}
+
 // ParseNullTime reads an optional stored timestamp.
 func ParseNullTime(ns sql.NullString) (*time.Time, error) {
 	if !ns.Valid {

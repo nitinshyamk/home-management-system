@@ -41,6 +41,12 @@ var (
 	// ErrItemInUse reports an attempt to archive an Item that still has active
 	// Holdings, which would leave them unreachable through any active view.
 	ErrItemInUse = errors.New("annotate: item still has active holdings")
+
+	// ErrSlotTaken reports an expiry revision that would put a Holding where
+	// another already is. H8 says those two would BE one Holding, and combining
+	// them is a recording decision with events to show for it (O1) -- so the
+	// annotation refuses rather than quietly making the invariant false.
+	ErrSlotTaken = errors.New("annotate: another holding already occupies that slot")
 )
 
 // ancestorScanLimit matches the LIMIT in the cycle-guard query. Reaching it
@@ -369,6 +375,131 @@ func (a *Annotator) ArchiveItem(ctx context.Context, id domain.ItemID) error {
 		ArchivedAt: sql.NullString{String: at, Valid: true}, ID: int64(id),
 	}); err != nil {
 		return fmt.Errorf("annotate: archive item %d: %w", id, err)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Holding
+// ---------------------------------------------------------------------------
+//
+// Three fields, and the case for each being annotation rather than recording is
+// slightly different.
+//
+// SetHoldingExpiry corrects what the packet says. It moves nothing and carries
+// no quantity, so recording it would put a non-event in the ledger (E7) -- and
+// a correction to a printed date is not a claim that the world changed.
+//
+// SnoozeHolding is a note to the person about the interface's own nagging. It
+// has no physical meaning whatever.
+//
+// LabelHolding names which one of several this is, and names are annotation
+// everywhere else in this system for the same reason.
+//
+// The consequence of the first one is worth stating plainly: expires_on is part
+// of H8's key, so annotating it can MERGE two Holdings into one slot or split
+// one apart. That is a real hazard and the reason SetHoldingExpiry refuses a
+// date that would collide, rather than merging -- merging is a recording
+// decision (O1) and belongs to the operations, not here.
+
+// SetHoldingExpiry revises the date printed on a Holding.
+func (a *Annotator) SetHoldingExpiry(ctx context.Context, id domain.HoldingID, on *time.Time) error {
+	if err := a.requireHolding(ctx, id); err != nil {
+		return err
+	}
+	if err := a.expiryWouldCollide(ctx, id, on); err != nil {
+		return err
+	}
+	if err := a.q.UpdateHoldingExpiry(ctx, sqlc.UpdateHoldingExpiryParams{
+		ExpiresOn: db.FormatNullDate(on), ID: int64(id),
+	}); err != nil {
+		return fmt.Errorf("annotate: set expiry on holding %d: %w", id, err)
+	}
+	return nil
+}
+
+// expiryWouldCollide refuses a date that would put this Holding in a slot
+// another already occupies -- see ErrSlotTaken.
+func (a *Annotator) expiryWouldCollide(ctx context.Context, id domain.HoldingID, on *time.Time) error {
+	slot, err := a.q.BulkHoldingSlotOf(ctx, int64(id))
+	if errors.Is(err, sql.ErrNoRows) {
+		// Unique: no unit basis, so no H8 key, so nothing to collide with.
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("annotate: read holding %d: %w", id, err)
+	}
+	n, err := a.q.CountHoldingsInSlot(ctx, sqlc.CountHoldingsInSlotParams{
+		ID:               int64(id),
+		ItemID:           slot.ItemID,
+		StowedLocationID: slot.StowedLocationID,
+		UnitBasis:        slot.UnitBasis,
+		ExpiresOn:        expiryKey(on),
+	})
+	if err != nil {
+		return fmt.Errorf("annotate: check slot of holding %d: %w", id, err)
+	}
+	if n > 0 {
+		return fmt.Errorf("%w: %d other holdings already keep this item here on that date", ErrSlotTaken, n)
+	}
+	return nil
+}
+
+// expiryKey renders an expiry the way H8 compares it: by DATE, with an unknown
+// date as one value rather than many, so two Holdings with no date share a slot.
+func expiryKey(on *time.Time) sql.NullString {
+	if on == nil {
+		return sql.NullString{String: "", Valid: true}
+	}
+	return sql.NullString{String: on.UTC().Format(db.DateLayout), Valid: true}
+}
+
+// SnoozeHolding silences the expiry nudge until a date. A nil date clears it.
+func (a *Annotator) SnoozeHolding(ctx context.Context, id domain.HoldingID, until *time.Time) error {
+	if err := a.requireHolding(ctx, id); err != nil {
+		return err
+	}
+	if err := a.q.UpdateHoldingSnooze(ctx, sqlc.UpdateHoldingSnoozeParams{
+		SnoozedUntil: db.FormatNullTime(until), ID: int64(id),
+	}); err != nil {
+		return fmt.Errorf("annotate: snooze holding %d: %w", id, err)
+	}
+	return nil
+}
+
+// LabelHolding names one individually-tracked thing among several.
+//
+// Unique only, and not by omission: label lives on unique_holdings because a
+// measured amount has nothing to distinguish. Asking to label a Bulk Holding is
+// a category error rather than an unimplemented feature.
+func (a *Annotator) LabelHolding(ctx context.Context, id domain.HoldingID, label string) error {
+	unique, err := a.q.UniqueHoldingIsLive(ctx, int64(id))
+	if err != nil {
+		return fmt.Errorf("annotate: read holding %d: %w", id, err)
+	}
+	if unique == 0 {
+		if err := a.requireHolding(ctx, id); err != nil {
+			return err
+		}
+		return fmt.Errorf("%w: holding %d is measured, so there is nothing to label", ErrInvalidInput, id)
+	}
+	if err := a.q.UpdateUniqueHoldingLabel(ctx, sqlc.UpdateUniqueHoldingLabelParams{
+		Label: db.NullString(label), HoldingID: int64(id),
+	}); err != nil {
+		return fmt.Errorf("annotate: label holding %d: %w", id, err)
+	}
+	return nil
+}
+
+// requireHolding reports a missing Holding as ErrNotFound rather than letting an
+// UPDATE silently affect no rows.
+func (a *Annotator) requireHolding(ctx context.Context, id domain.HoldingID) error {
+	ok, err := a.q.HoldingIsLive(ctx, int64(id))
+	if err != nil {
+		return fmt.Errorf("annotate: read holding %d: %w", id, err)
+	}
+	if ok == 0 {
+		return fmt.Errorf("%w: holding %d", ErrNotFound, id)
 	}
 	return nil
 }
