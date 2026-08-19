@@ -107,8 +107,8 @@ func (h *harness) apply(t *testing.T, events ...domain.Event) {
 // the fold and payload tests do. Three switches over one sealed interface is the
 // cost of not using visitors; the registry is what makes the cost safe.
 func TestSummariseHandlesEveryEventType(t *testing.T) {
-	if len(domain.AllEventTypes) != 24 {
-		t.Fatalf("registry has %d types, want 24", len(domain.AllEventTypes))
+	if len(domain.AllEventTypes) != 23 {
+		t.Fatalf("registry has %d types, want 23", len(domain.AllEventTypes))
 	}
 	for _, e := range domain.AllEventTypes {
 		got := app.Summarise(e)

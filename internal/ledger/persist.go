@@ -134,11 +134,6 @@ func writePayload(ctx context.Context, q *sqlc.Queries, id int64, e domain.Event
 		})
 
 	// --- Item typing -------------------------------------------------------
-	case domain.ItemKindChanged:
-		return q.InsertKindChangedPayload(ctx, sqlc.InsertKindChangedPayloadParams{
-			EventID: id, Type: t,
-			FromKind: string(ev.FromKind), ToKind: string(ev.ToKind),
-		})
 	case domain.ItemUnitChanged:
 		return q.InsertUnitChangedPayload(ctx, sqlc.InsertUnitChangedPayloadParams{
 			EventID: id, Type: t,

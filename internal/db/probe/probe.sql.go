@@ -73,27 +73,6 @@ func (q *Queries) AttachCustodyPayload(ctx context.Context, arg AttachCustodyPay
 	return err
 }
 
-const attachKindChangedPayload = `-- name: AttachKindChangedPayload :exec
-INSERT INTO ev_kind_changed (event_id, type, from_kind, to_kind) VALUES (?, ?, ?, ?)
-`
-
-type AttachKindChangedPayloadParams struct {
-	EventID  int64
-	Type     string
-	FromKind string
-	ToKind   string
-}
-
-func (q *Queries) AttachKindChangedPayload(ctx context.Context, arg AttachKindChangedPayloadParams) error {
-	_, err := q.db.ExecContext(ctx, attachKindChangedPayload,
-		arg.EventID,
-		arg.Type,
-		arg.FromKind,
-		arg.ToKind,
-	)
-	return err
-}
-
 const attachPlacementPayload = `-- name: AttachPlacementPayload :exec
 INSERT INTO ev_placement (event_id, type, from_location_id, to_location_id) VALUES (?, ?, ?, ?)
 `

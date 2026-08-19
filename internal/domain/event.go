@@ -35,7 +35,6 @@ const (
 
 	// Item events — 3. Only the three attributes that *type* a Holding, never
 	// the ones that merely label an Item.
-	TypeItemKindChanged        EventType = "ItemKindChanged"
 	TypeItemUnitChanged        EventType = "ItemUnitChanged"
 	TypeItemPackageSizeChanged EventType = "ItemPackageSizeChanged"
 )
@@ -250,14 +249,6 @@ type NodeRestored struct {
 // Item events — structural attributes only
 // ---------------------------------------------------------------------------
 
-// ItemKindChanged records a Promote or Demote.
-type ItemKindChanged struct {
-	EventBase
-	Item     ItemID
-	FromKind Kind
-	ToKind   Kind
-}
-
 // ItemUnitChanged records a change of measurement.
 //
 // Both sides are nullable because a Unique item has no unit: promotion records
@@ -306,7 +297,6 @@ func (NodeReparented) isEvent() {}
 func (NodeArchived) isEvent()   {}
 func (NodeRestored) isEvent()   {}
 
-func (ItemKindChanged) isEvent()        {}
 func (ItemUnitChanged) isEvent()        {}
 func (ItemPackageSizeChanged) isEvent() {}
 
@@ -333,7 +323,6 @@ func (e NodeReparented) Base() EventBase { return e.EventBase }
 func (e NodeArchived) Base() EventBase   { return e.EventBase }
 func (e NodeRestored) Base() EventBase   { return e.EventBase }
 
-func (e ItemKindChanged) Base() EventBase        { return e.EventBase }
 func (e ItemUnitChanged) Base() EventBase        { return e.EventBase }
 func (e ItemPackageSizeChanged) Base() EventBase { return e.EventBase }
 
@@ -360,7 +349,6 @@ func (NodeReparented) Type() EventType { return TypeNodeReparented }
 func (NodeArchived) Type() EventType   { return TypeNodeArchived }
 func (NodeRestored) Type() EventType   { return TypeNodeRestored }
 
-func (ItemKindChanged) Type() EventType        { return TypeItemKindChanged }
 func (ItemUnitChanged) Type() EventType        { return TypeItemUnitChanged }
 func (ItemPackageSizeChanged) Type() EventType { return TypeItemPackageSizeChanged }
 
@@ -387,7 +375,6 @@ func (e NodeReparented) Subject() (SubjectKind, int64) { return SubjectLocation,
 func (e NodeArchived) Subject() (SubjectKind, int64)   { return SubjectLocation, int64(e.Location) }
 func (e NodeRestored) Subject() (SubjectKind, int64)   { return SubjectLocation, int64(e.Location) }
 
-func (e ItemKindChanged) Subject() (SubjectKind, int64) { return SubjectItem, int64(e.Item) }
 func (e ItemUnitChanged) Subject() (SubjectKind, int64) { return SubjectItem, int64(e.Item) }
 func (e ItemPackageSizeChanged) Subject() (SubjectKind, int64) {
 	return SubjectItem, int64(e.Item)

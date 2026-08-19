@@ -36,7 +36,7 @@ CREATE TABLE events (
             'NodeCreated', 'NodeReparented', 'NodeArchived', 'NodeRestored'
         ))
      OR (subject_kind = 'Item' AND type IN (
-            'ItemKindChanged', 'ItemUnitChanged', 'ItemPackageSizeChanged'
+            'ItemUnitChanged', 'ItemPackageSizeChanged'
         ))
     )
 );
@@ -147,15 +147,6 @@ CREATE TABLE ev_node_lifecycle (
     FOREIGN KEY (event_id, type) REFERENCES events(id, type) ON DELETE RESTRICT
 );
 
-CREATE TABLE ev_kind_changed (
-    event_id   INTEGER PRIMARY KEY,
-    type       TEXT NOT NULL CHECK (type IN ('ItemKindChanged')),
-    from_kind TEXT NOT NULL CHECK (from_kind IN ('Unique','Bulk')),
-    to_kind   TEXT NOT NULL CHECK (to_kind   IN ('Unique','Bulk')),
-
-    FOREIGN KEY (event_id, type) REFERENCES events(id, type) ON DELETE RESTRICT,
-    CHECK (from_kind <> to_kind)
-);
 
 -- Both sides nullable: a Unique item has no unit, so promotion records
 -- {g -> NULL}. Without it the discarded definition is unrecoverable.
@@ -318,15 +309,9 @@ END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
-CREATE TRIGGER ev_kind_changed_no_update BEFORE UPDATE ON ev_kind_changed BEGIN
-    SELECT RAISE(ABORT, 'ev_kind_changed is append-only (E1)');
-END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
-CREATE TRIGGER ev_kind_changed_no_delete BEFORE DELETE ON ev_kind_changed BEGIN
-    SELECT RAISE(ABORT, 'ev_kind_changed is append-only (E1)');
-END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
@@ -358,8 +343,6 @@ DROP TRIGGER IF EXISTS ev_package_size_changed_no_delete;
 DROP TRIGGER IF EXISTS ev_package_size_changed_no_update;
 DROP TRIGGER IF EXISTS ev_unit_changed_no_delete;
 DROP TRIGGER IF EXISTS ev_unit_changed_no_update;
-DROP TRIGGER IF EXISTS ev_kind_changed_no_delete;
-DROP TRIGGER IF EXISTS ev_kind_changed_no_update;
 DROP TRIGGER IF EXISTS ev_node_lifecycle_no_delete;
 DROP TRIGGER IF EXISTS ev_node_lifecycle_no_update;
 DROP TRIGGER IF EXISTS ev_node_reparented_no_delete;
@@ -384,7 +367,6 @@ DROP TRIGGER IF EXISTS events_no_delete;
 DROP TRIGGER IF EXISTS events_no_update;
 DROP TABLE ev_package_size_changed;
 DROP TABLE ev_unit_changed;
-DROP TABLE ev_kind_changed;
 DROP TABLE ev_node_lifecycle;
 DROP TABLE ev_node_reparented;
 DROP TABLE ev_node_created;

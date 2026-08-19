@@ -33,6 +33,21 @@ func (q *Queries) GetUnit(ctx context.Context, code string) (Unit, error) {
 	return i, err
 }
 
+const getUnitDimension = `-- name: GetUnitDimension :one
+
+SELECT dimension FROM units WHERE code = ?
+`
+
+// Promotion asks whether an item's unit counts individual things. Grams of
+// rice cannot become individually tracked units of anything, so the dimension
+// decides whether the operation is meaningful at all.
+func (q *Queries) GetUnitDimension(ctx context.Context, code string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUnitDimension, code)
+	var dimension string
+	err := row.Scan(&dimension)
+	return dimension, err
+}
+
 const listUnits = `-- name: ListUnits :many
 
 SELECT code, dimension, to_base_factor

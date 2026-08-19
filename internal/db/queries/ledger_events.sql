@@ -56,9 +56,6 @@ INSERT INTO ev_node_reparented (event_id, type, from_parent_id, to_parent_id) VA
 -- name: InsertNodeLifecyclePayload :exec
 INSERT INTO ev_node_lifecycle (event_id, type, resolution) VALUES (?, ?, ?);
 
--- name: InsertKindChangedPayload :exec
-INSERT INTO ev_kind_changed (event_id, type, from_kind, to_kind) VALUES (?, ?, ?, ?);
-
 -- name: InsertUnitChangedPayload :exec
 INSERT INTO ev_unit_changed (event_id, type, from_unit, to_unit) VALUES (?, ?, ?, ?);
 
@@ -119,11 +116,6 @@ WHERE e.subject_kind = 'Location' AND e.subject_id = ?;
 SELECT p.event_id, p.resolution
 FROM ev_node_lifecycle p JOIN events e ON e.id = p.event_id
 WHERE e.subject_kind = 'Location' AND e.subject_id = ?;
-
--- name: KindChangedPayloadsForSubject :many
-SELECT p.event_id, p.from_kind, p.to_kind
-FROM ev_kind_changed p JOIN events e ON e.id = p.event_id
-WHERE e.subject_kind = 'Item' AND e.subject_id = ?;
 
 -- name: UnitChangedPayloadsForSubject :many
 SELECT p.event_id, p.from_unit, p.to_unit

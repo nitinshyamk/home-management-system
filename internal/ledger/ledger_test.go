@@ -217,8 +217,8 @@ func TestOrphanDetectionCatchesABypass(t *testing.T) {
 // TestFoldHandlesEveryEventType: the 13 shape tables exist to force an explicit
 // remapping, and this is what makes "forced" true rather than hoped for.
 func TestEveryEventTypePersists(t *testing.T) {
-	if len(domain.AllEventTypes) != 24 {
-		t.Fatalf("registry has %d types, want 24", len(domain.AllEventTypes))
+	if len(domain.AllEventTypes) != 23 {
+		t.Fatalf("registry has %d types, want 23", len(domain.AllEventTypes))
 	}
 	for _, proto := range domain.AllEventTypes {
 		t.Run(fmt.Sprintf("%T", proto), func(t *testing.T) {
@@ -299,12 +299,6 @@ func sampleEvent(t *testing.T, f *fixture, proto domain.Event) domain.Event {
 		return domain.NodeArchived{EventBase: evAt(), Location: f.garage, Resolution: domain.ResolutionLift}
 	case domain.NodeRestored:
 		return domain.NodeRestored{EventBase: evAt(), Location: f.garage}
-	case domain.ItemKindChanged:
-		// Applied to the spare Item, which has no Holdings. Against an Item that
-		// does, the composite foreign key refuses — that is the schema enforcing
-		// that Promote replaces Holdings rather than mutating them, and it has
-		// its own test.
-		return domain.ItemKindChanged{EventBase: evAt(), Item: f.spare, FromKind: domain.KindBulk, ToKind: domain.KindUnique}
 	case domain.ItemUnitChanged:
 		g, kg := domain.UnitCode("g"), domain.UnitCode("kg")
 		return domain.ItemUnitChanged{EventBase: evAt(), Item: f.riceItem, FromUnit: &g, ToUnit: &kg}
@@ -645,15 +639,15 @@ func TestReparentLocationRejectsCycles(t *testing.T) {
 // Item typing
 // ---------------------------------------------------------------------------
 
-// TestKindChangeIsRefusedWhileHoldingsExist is the schema enforcing that Promote
-// REPLACES Holdings rather than mutating them: kind and unit_basis are
-// immutable, so the composite foreign key blocks the change.
-func TestKindChangeIsRefusedWhileHoldingsExist(t *testing.T) {
+// TestItemKindIsImmutable: nothing changes an Item's kind any more, and the
+// composite foreign key is why. Promote re-identifies instead -- a new Item
+// with new Holdings -- so this asserts the schema still refuses what the
+// operations layer no longer attempts.
+func TestItemKindIsImmutable(t *testing.T) {
 	f := newFixture(t)
 
-	_, err := f.p.Apply(f.ctx, domain.ItemKindChanged{EventBase: evAt(),
-		Item: f.riceItem, FromKind: domain.KindBulk, ToKind: domain.KindUnique,
-	})
+	_, err := f.conn.Exec("UPDATE items SET kind = ? WHERE id = ?",
+		string(domain.KindUnique), int64(f.riceItem))
 	if err == nil {
 		t.Fatal("expected the composite foreign key to refuse the kind change")
 	}

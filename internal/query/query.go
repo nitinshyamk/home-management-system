@@ -628,6 +628,18 @@ func (r *Reader) Holdings(ctx context.Context) ([]HoldingDetail, error) {
 // This is what the composing operations plan against: consuming from a bag has
 // to know which holdings exist and in which unit basis before it can decide
 // whether a package must be opened.
+// UnitDimension reports what a unit measures: Count, Mass, Volume, or Length.
+func (r *Reader) UnitDimension(ctx context.Context, code domain.UnitCode) (string, error) {
+	dimension, err := r.q.GetUnitDimension(ctx, string(code))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("%w: unit %q", ErrNotFound, code)
+		}
+		return "", fmt.Errorf("query: unit %q: %w", code, err)
+	}
+	return dimension, nil
+}
+
 func (r *Reader) HoldingsOfItem(ctx context.Context, item domain.ItemID) ([]HoldingDetail, error) {
 	rows, err := r.q.HoldingsOfItemWithDetail(ctx, int64(item))
 	if err != nil {

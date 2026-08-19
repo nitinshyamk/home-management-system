@@ -5,9 +5,7 @@ import (
 	"testing"
 
 	"home-management-system/internal/domain"
-	"home-management-system/internal/ledger"
 	"home-management-system/internal/ops"
-	"home-management-system/internal/origin"
 )
 
 // ---------------------------------------------------------------------------
@@ -106,10 +104,6 @@ func TestNewStockedItemRejectsPackagesWithNoPackageSize(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Promote and Demote
-// ---------------------------------------------------------------------------
-
 func (tr *tree) itemKind(t *testing.T, id domain.ItemID) domain.Kind {
 	t.Helper()
 	it, err := tr.r.Item(tr.ctx, id)
@@ -117,167 +111,4 @@ func (tr *tree) itemKind(t *testing.T, id domain.ItemID) domain.Kind {
 		t.Fatalf("read item: %v", err)
 	}
 	return it.Kind()
-}
-
-// TestPromoteDropsTheDiscardedDefinition: three events, not one. Without the
-// unit and package-size events the discarded definition is unrecoverable and
-// the Item's history no longer closes backwards.
-func TestPromoteRecordsTheDiscardedDefinition(t *testing.T) {
-	tr := newTree(t)
-	size := domain.FromMilli(2000 * domain.Scale)
-	spare, err := origin.New(tr.conn).CreateBulkItem(tr.ctx, origin.CreateBulkItemInput{
-		Name: "Spare", Category: tr.cat, ContentUnit: "g", PackageSize: &size,
-	})
-	if err != nil {
-		t.Fatalf("create item: %v", err)
-	}
-
-	batch, err := tr.pl.Promote(tr.ctx, ops.PromoteRequest{Item: spare})
-	if err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	want := []string{"ItemUnitChanged", "ItemPackageSizeChanged", "ItemKindChanged"}
-	if got := shape(t, batch); !equal(got, want) {
-		t.Fatalf("plan = %v, want %v", got, want)
-	}
-	// The kind change is last: its handler deletes the bulk_items row, and the
-	// other two write to that row.
-	if got := shape(t, batch); got[len(got)-1] != "ItemKindChanged" {
-		t.Error("the kind change must come last, or the other events have no row to write to")
-	}
-
-	if _, err := tr.ex.Execute(tr.ctx, batch); err != nil {
-		t.Fatalf("execute: %v", err)
-	}
-	if got := tr.itemKind(t, spare); got != domain.KindUnique {
-		t.Errorf("kind = %s, want Unique", got)
-	}
-}
-
-// TestDemoteSuppliesTheUnitTheEventCannotCarry is what Stage 5 deferred to this
-// layer. ItemKindChanged has nowhere to put a content unit, and duplicating it
-// there would be derivable data inside the ledger (E7). It is derived instead
-// from the ItemUnitChanged travelling in the same batch.
-func TestDemoteSuppliesTheUnitTheEventCannotCarry(t *testing.T) {
-	tr := newTree(t)
-	spare, err := origin.New(tr.conn).CreateUniqueItem(tr.ctx, origin.CreateUniqueItemInput{
-		Name: "Spare Cable", Category: tr.cat,
-	})
-	if err != nil {
-		t.Fatalf("create item: %v", err)
-	}
-	size := domain.FromMilli(2000 * domain.Scale)
-
-	batch, err := tr.pl.Demote(tr.ctx, ops.DemoteRequest{
-		Item: spare, ContentUnit: "g", PackageSize: &size,
-	})
-	if err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	// The kind change is FIRST here: its handler creates the bulk_items row,
-	// and the other two need it to exist. The mirror of promotion.
-	want := []string{"ItemKindChanged", "ItemUnitChanged", "ItemPackageSizeChanged"}
-	if got := shape(t, batch); !equal(got, want) {
-		t.Fatalf("plan = %v, want %v", got, want)
-	}
-	if _, err := tr.ex.Execute(tr.ctx, batch); err != nil {
-		t.Fatalf("execute: %v", err)
-	}
-
-	it, err := tr.r.Item(tr.ctx, spare)
-	if err != nil {
-		t.Fatalf("read item: %v", err)
-	}
-	bulk, ok := it.(domain.BulkItem)
-	if !ok {
-		t.Fatalf("item is %s, want Bulk", it.Kind())
-	}
-	if bulk.ContentUnit != "g" {
-		t.Errorf("content unit = %q, want g", bulk.ContentUnit)
-	}
-	if bulk.PackageSize == nil || bulk.PackageSize.Milli() != size.Milli() {
-		t.Errorf("package size = %v, want %s", bulk.PackageSize, size)
-	}
-}
-
-// TestDemotionWithoutItsUnitCannotBeApplied: the coupling is enforced by the
-// ledger, not merely documented. A bare ItemKindChanged has no unit to read.
-func TestDemotionWithoutItsUnitCannotBeApplied(t *testing.T) {
-	tr := newTree(t)
-	spare, err := origin.New(tr.conn).CreateUniqueItem(tr.ctx, origin.CreateUniqueItemInput{
-		Name: "Spare Cable", Category: tr.cat,
-	})
-	if err != nil {
-		t.Fatalf("create item: %v", err)
-	}
-
-	_, err = tr.led.Apply(tr.ctx, domain.ItemKindChanged{
-		EventBase: domain.EventBase{OccurredAt: clock},
-		Item:      spare, FromKind: domain.KindUnique, ToKind: domain.KindBulk,
-	})
-	if err == nil {
-		t.Fatal("a lone ItemKindChanged demoted an item with no content unit")
-	}
-	if !errors.Is(err, ledger.ErrInvalidInput) {
-		t.Errorf("error = %v, want ErrInvalidInput", err)
-	}
-}
-
-func TestPromoteThenDemoteRoundTrips(t *testing.T) {
-	tr := newTree(t)
-	size := domain.FromMilli(2000 * domain.Scale)
-	spare, err := origin.New(tr.conn).CreateBulkItem(tr.ctx, origin.CreateBulkItemInput{
-		Name: "Spare", Category: tr.cat, ContentUnit: "g", PackageSize: &size,
-	})
-	if err != nil {
-		t.Fatalf("create item: %v", err)
-	}
-
-	tr.apply(tr.pl.Promote(tr.ctx, ops.PromoteRequest{Item: spare}))
-	if got := tr.itemKind(t, spare); got != domain.KindUnique {
-		t.Fatalf("kind = %s, want Unique", got)
-	}
-	tr.apply(tr.pl.Demote(tr.ctx, ops.DemoteRequest{
-		Item: spare, ContentUnit: "g", PackageSize: &size,
-	}))
-	if got := tr.itemKind(t, spare); got != domain.KindBulk {
-		t.Errorf("kind = %s, want Bulk", got)
-	}
-	// Identity survives, which is what makes this a change of definition
-	// rather than a replacement.
-	it, _ := tr.r.Item(tr.ctx, spare)
-	if it.Base().ID != spare {
-		t.Errorf("identity changed from %d to %d", spare, it.Base().ID)
-	}
-}
-
-// TestKindChangeIsRefusedOnceStocked records a real limit of the physical
-// schema, found by building this.
-//
-// Conceptual schema 3.12 says Promote "retires the Bulk Holding and creates N
-// Unique ones". That is not reachable: holdings carries FOREIGN KEY (item_id,
-// kind) REFERENCES items(id, kind), a holding row keeps the kind it was created
-// with, and retiring only sets retired_at. So the parent update is refused
-// while ANY holding row of the old kind exists -- retired ones included --  and
-// deleting those rows would break E4, which is what makes their events mean
-// anything.
-func TestKindChangeIsRefusedOnceStocked(t *testing.T) {
-	tr := newTree(t)
-	holding := tr.stow(t, tr.pantry)
-
-	_, err := tr.pl.Promote(tr.ctx, ops.PromoteRequest{Item: tr.item})
-	if !errors.Is(err, ledger.ErrItemHasHoldings) {
-		t.Fatalf("error = %v, want ErrItemHasHoldings", err)
-	}
-
-	// And retiring the holding does not help, which is the part worth pinning:
-	// the row survives, and so does its kind.
-	if _, err := tr.led.Apply(tr.ctx, domain.Gone{
-		EventBase: domain.EventBase{OccurredAt: clock}, Holding: holding, Reason: "promoting",
-	}); err != nil {
-		t.Fatalf("retire: %v", err)
-	}
-	if _, err := tr.pl.Promote(tr.ctx, ops.PromoteRequest{Item: tr.item}); !errors.Is(err, ledger.ErrItemHasHoldings) {
-		t.Errorf("error = %v, want ErrItemHasHoldings even after retiring", err)
-	}
 }

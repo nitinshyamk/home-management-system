@@ -20,7 +20,6 @@ var AllEventTypes = []Event{
 	Found{},
 	Gone{},
 	HoldingCreated{},
-	ItemKindChanged{},
 	ItemPackageSizeChanged{},
 	ItemUnitChanged{},
 	MarkedLost{},

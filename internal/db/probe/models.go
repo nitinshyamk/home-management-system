@@ -46,13 +46,6 @@ type EvCustody struct {
 	DisplacedToID sql.NullInt64
 }
 
-type EvKindChanged struct {
-	EventID  int64
-	Type     string
-	FromKind string
-	ToKind   string
-}
-
 type EvNodeCreated struct {
 	EventID  int64
 	Type     string

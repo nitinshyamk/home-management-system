@@ -55,7 +55,6 @@ type payloadSet struct {
 	nodeReparented map[int64]sqlc.NodeReparentedPayloadsForSubjectRow
 	nodeLifecycle  map[int64]sqlc.NodeLifecyclePayloadsForSubjectRow
 
-	kindChanged        map[int64]sqlc.KindChangedPayloadsForSubjectRow
 	unitChanged        map[int64]sqlc.UnitChangedPayloadsForSubjectRow
 	packageSizeChanged map[int64]sqlc.PackageSizeChangedPayloadsForSubjectRow
 }
@@ -130,12 +129,6 @@ func loadPayloads(ctx context.Context, q *sqlc.Queries, kind domain.SubjectKind,
 		set.nodeLifecycle = index(nl, func(r sqlc.NodeLifecyclePayloadsForSubjectRow) int64 { return r.EventID })
 
 	case domain.SubjectItem:
-		kc, err := q.KindChangedPayloadsForSubject(ctx, id)
-		if err != nil {
-			return nil, fail("kind_changed", err)
-		}
-		set.kindChanged = index(kc, func(r sqlc.KindChangedPayloadsForSubjectRow) int64 { return r.EventID })
-
 		uc, err := q.UnitChangedPayloadsForSubject(ctx, id)
 		if err != nil {
 			return nil, fail("unit_changed", err)
@@ -339,14 +332,6 @@ func hydrateEvent(row sqlc.Event, pl *payloadSet) (domain.Event, error) {
 			return nil, missing("node_lifecycle")
 		}
 		return domain.NodeRestored{EventBase: base, Location: location}, nil
-
-	case domain.TypeItemKindChanged:
-		p, ok := pl.kindChanged[row.ID]
-		if !ok {
-			return nil, missing("kind_changed")
-		}
-		return domain.ItemKindChanged{EventBase: base, Item: item,
-			FromKind: domain.Kind(p.FromKind), ToKind: domain.Kind(p.ToKind)}, nil
 
 	case domain.TypeItemUnitChanged:
 		p, ok := pl.unitChanged[row.ID]
