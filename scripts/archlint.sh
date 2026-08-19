@@ -293,8 +293,12 @@ grep_go "db.Enlist appears only in the write paths" \
 # ops is the only package that assembles writes across paths. If the UI could
 # call a write path directly it would bypass the transaction that makes an
 # intent atomic -- and bypass the review that makes origination deliberate.
+#
+# resolve is in the list for a different reason: it turns names into
+# identifiers, and a package that could also write could act on its own guess.
+# Reading through internal/query is the whole of its business.
 if command -v go >/dev/null 2>&1; then
-  for pkg in tui command; do
+  for pkg in tui command resolve; do
     if [ ! -d "internal/$pkg" ]; then
       skip "internal/$pkg does not import a write path" "internal/$pkg"
       continue
