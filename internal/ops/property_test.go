@@ -238,6 +238,13 @@ func randomOperation(rng *rand.Rand, tr *tree) (ops.Batch, error) {
 			Holding: aHolding(tr.cableItem), Present: rng.Intn(2) == 0,
 		})
 	default:
-		return tr.pl.Rehome(tr.ctx, ops.RehomeRequest{Holding: aHolding(tr.item), To: place()})
+		// Either kind, deliberately: Rehome is Unique-only, so drawing the Bulk
+		// item exercises the refusal and drawing the cable exercises the
+		// success. Narrowing this to the cable made a break of that guard
+		// invisible, which is how the narrowing was noticed.
+		if rng.Intn(2) == 0 {
+			return tr.pl.Rehome(tr.ctx, ops.RehomeRequest{Holding: aHolding(tr.item), To: place()})
+		}
+		return tr.pl.Rehome(tr.ctx, ops.RehomeRequest{Holding: aHolding(tr.cableItem), To: place()})
 	}
 }

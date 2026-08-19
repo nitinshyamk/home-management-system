@@ -116,7 +116,9 @@ func (p *Processor) PlanArchiveLocation(
 		})
 	}
 
-	// Holdings kept here directly did physically move, so each gets a Moved.
+	// Holdings kept here directly did physically move, so each gets a Moved --
+	// unless the destination already has the same slot, which O1 says is the
+	// same Holding and must be merged into rather than duplicated.
 	//
 	// A root being lifted has no parent to lift into. Children simply become
 	// roots themselves, but Holdings cannot: stowed_location_id is NOT NULL, so
@@ -127,17 +129,95 @@ func (p *Processor) PlanArchiveLocation(
 			return nil, fmt.Errorf("%w: location %d is a root holding %d things; "+
 				"lifting has nowhere to put them, so use Move", ErrRootNotEmpty, id, len(holdings))
 		}
-		for _, h := range holdings {
-			events = append(events, domain.Moved{
-				EventBase: domain.EventBase{OccurredAt: p.now()},
-				Holding:   domain.HoldingID(h),
-				From:      id,
-				To:        *toParent,
-			})
+		disposal, err := p.disposeContents(ctx, id, *toParent, holdings)
+		if err != nil {
+			return nil, err
 		}
+		events = append(events, disposal...)
 	}
 
 	return append(events, p.nodeArchived(id, resolution)), nil
+}
+
+// slotKey identifies a Bulk Holding the way H8 does: item, basis, and expiry,
+// with an unknown expiry as one value rather than many. Location is absent
+// because both sides of a lift are being compared AT the destination.
+type slotKey struct {
+	item      int64
+	basis     string
+	expiresOn string
+}
+
+// disposeContents works out what happens to each Holding kept in a Location
+// that is being archived.
+//
+// The interesting case is a collision. Lifting a shelf of rice into a cupboard
+// that already holds rice on the same basis with the same date produces, by
+// H8's definition, one Holding and not two -- so the contents merge and the
+// emptied Holding goes, rather than both arriving and quietly violating the
+// invariant. That was not hypothetical: the H8 check in VerifyAll found it the
+// day it was written.
+func (p *Processor) disposeContents(
+	ctx context.Context,
+	from, to domain.LocationID,
+	holdings []int64,
+) ([]domain.Event, error) {
+	occupied := map[slotKey]int64{}
+	rows, err := p.q.BulkHoldingSlotsAt(ctx, int64(to))
+	if err != nil {
+		return nil, fmt.Errorf("ledger: read holdings at %d: %w", to, err)
+	}
+	for _, r := range rows {
+		occupied[slotKey{r.ItemID, r.UnitBasis, r.ExpiresOn}] = r.ID
+	}
+
+	// Only Bulk Holdings have a slot. A Unique one is a specific object and two
+	// of them in one place are two things, so a Unique Holding always moves.
+	leaving := map[int64]BulkHoldingSlot{}
+	rows, err = p.q.BulkHoldingSlotsAt(ctx, int64(from))
+	if err != nil {
+		return nil, fmt.Errorf("ledger: read holdings at %d: %w", from, err)
+	}
+	for _, r := range rows {
+		leaving[r.ID] = BulkHoldingSlot{Key: slotKey{r.ItemID, r.UnitBasis, r.ExpiresOn}, Quantity: r.Quantity}
+	}
+
+	at := func() domain.EventBase { return domain.EventBase{OccurredAt: p.now()} }
+	var events []domain.Event
+	for _, h := range holdings {
+		bulk, isBulk := leaving[h]
+		target, collides := occupied[bulk.Key]
+		if !isBulk || !collides {
+			events = append(events, domain.Moved{
+				EventBase: at(), Holding: domain.HoldingID(h), From: from, To: to,
+			})
+			continue
+		}
+		// The contents move by value, then the container ceases to exist --
+		// it cannot stay, because the Location it is in is being archived.
+		if bulk.Quantity > 0 {
+			amount := domain.FromMilli(bulk.Quantity)
+			debit, err := amount.Neg()
+			if err != nil {
+				return nil, err
+			}
+			events = append(events,
+				domain.Merged{EventBase: at(), Holding: domain.HoldingID(h), Delta: debit, Reason: "archived"},
+				domain.Merged{EventBase: at(), Holding: domain.HoldingID(target), Delta: amount, Reason: "archived"},
+			)
+		}
+		events = append(events, domain.Gone{
+			EventBase: at(), Holding: domain.HoldingID(h),
+			Reason: fmt.Sprintf("merged into holding %d when location %d was archived", target, from),
+		})
+	}
+	return events, nil
+}
+
+// BulkHoldingSlot pairs a Holding's H8 key with how much is in it.
+type BulkHoldingSlot struct {
+	Key      slotKey
+	Quantity int64
 }
 
 // archiveDestination resolves where children and contents go, and refuses the

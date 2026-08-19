@@ -305,9 +305,10 @@ type CreateBulkHoldingInput struct {
 
 // CreateUniqueHoldingInput describes a new individually-tracked Holding.
 type CreateUniqueHoldingInput struct {
-	Item     domain.ItemID
-	Location domain.LocationID
-	Label    string
+	Item      domain.ItemID
+	Location  domain.LocationID
+	Label     string
+	ExpiresOn *time.Time
 }
 
 // CreateBulkHolding brings a Holding into existence at quantity zero.
@@ -318,7 +319,7 @@ func (p *Processor) CreateBulkHolding(ctx context.Context, in CreateBulkHoldingI
 	if !in.UnitBasis.Valid() {
 		return 0, fmt.Errorf("%w: unknown unit basis %q", ErrInvalidInput, in.UnitBasis)
 	}
-	return p.createHolding(ctx, in.Item, in.Location, domain.KindBulk, func(ctx context.Context, q *sqlc.Queries, id int64) error {
+	return p.createHolding(ctx, in.Item, in.Location, domain.KindBulk, in.ExpiresOn, func(ctx context.Context, q *sqlc.Queries, id int64) error {
 		return q.InsertBulkHoldingVariant(ctx, sqlc.InsertBulkHoldingVariantParams{
 			HoldingID: id, UnitBasis: string(in.UnitBasis),
 		})
@@ -328,7 +329,7 @@ func (p *Processor) CreateBulkHolding(ctx context.Context, in CreateBulkHoldingI
 // CreateUniqueHolding brings an individually-tracked Holding into existence,
 // AtRest at its stowed location.
 func (p *Processor) CreateUniqueHolding(ctx context.Context, in CreateUniqueHoldingInput) (domain.HoldingID, error) {
-	return p.createHolding(ctx, in.Item, in.Location, domain.KindUnique, func(ctx context.Context, q *sqlc.Queries, id int64) error {
+	return p.createHolding(ctx, in.Item, in.Location, domain.KindUnique, in.ExpiresOn, func(ctx context.Context, q *sqlc.Queries, id int64) error {
 		return q.InsertUniqueHoldingVariant(ctx, sqlc.InsertUniqueHoldingVariantParams{
 			HoldingID: id, Label: db.NullString(in.Label),
 		})
@@ -340,6 +341,7 @@ func (p *Processor) createHolding(
 	item domain.ItemID,
 	location domain.LocationID,
 	kind domain.Kind,
+	expiresOn *time.Time,
 	variant func(context.Context, *sqlc.Queries, int64) error,
 ) (domain.HoldingID, error) {
 	var id domain.HoldingID
@@ -355,6 +357,7 @@ func (p *Processor) createHolding(
 			ItemID:           int64(item),
 			Kind:             string(kind),
 			StowedLocationID: int64(location),
+			ExpiresOn:        db.FormatNullTime(expiresOn),
 		})
 		if err != nil {
 			return fmt.Errorf("insert holding: %w", err)
@@ -535,6 +538,51 @@ func (p *Processor) applyToItem(ctx context.Context, q *sqlc.Queries, id domain.
 type Orphans struct {
 	Holdings  []domain.HoldingID
 	Locations []domain.LocationID
+}
+
+// DuplicateSlot is an H8 violation: two or more active Bulk Holdings that are,
+// by the schema's definition of identity, the same Holding.
+//
+// H8 is transactional, which means the operations uphold it and nothing below
+// them does. That is a complete story only while every layer beneath behaves --
+// and one did not: an INSERT that dropped expires_on made every operation ask
+// for a slot that could not exist, be correctly told there was none, and create
+// a second Holding. This check exists because that failure was invisible from
+// the layer that was supposedly responsible.
+type DuplicateSlot struct {
+	Item      domain.ItemID
+	Location  domain.LocationID
+	UnitBasis domain.UnitBasis
+	ExpiresOn string // "" when unknown, which is one slot rather than many
+	Holdings  int64
+}
+
+func (d DuplicateSlot) String() string {
+	expires := d.ExpiresOn
+	if expires == "" {
+		expires = "no expiry"
+	}
+	return fmt.Sprintf("%d active holdings share item %d at location %d, %s, %s (H8)",
+		d.Holdings, d.Item, d.Location, d.UnitBasis, expires)
+}
+
+// FindDuplicateSlots reports every H8 violation.
+func (p *Processor) FindDuplicateSlots(ctx context.Context) ([]DuplicateSlot, error) {
+	rows, err := p.q.DuplicateHoldingSlots(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ledger: find duplicate holding slots: %w", err)
+	}
+	out := make([]DuplicateSlot, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, DuplicateSlot{
+			Item:      domain.ItemID(r.ItemID),
+			Location:  domain.LocationID(r.StowedLocationID),
+			UnitBasis: domain.UnitBasis(r.UnitBasis),
+			ExpiresOn: r.ExpiresOn,
+			Holdings:  r.Holdings,
+		})
+	}
+	return out, nil
 }
 
 func (p *Processor) FindOrphans(ctx context.Context) (Orphans, error) {

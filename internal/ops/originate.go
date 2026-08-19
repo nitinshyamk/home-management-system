@@ -159,9 +159,10 @@ func (n NewBulkHolding) originate(ctx context.Context, _ *origin.Originator, l *
 
 // NewUniqueHolding puts an individually-tracked Item somewhere.
 type NewUniqueHolding struct {
-	Item     *domain.ItemID // nil means "the first Item this Step created"
-	Location domain.LocationID
-	Label    string
+	Item      *domain.ItemID // nil means "the first Item this Step created"
+	Location  domain.LocationID
+	Label     string
+	ExpiresOn *time.Time
 }
 
 func (NewUniqueHolding) isOrigination()          {}
@@ -175,7 +176,7 @@ func (n NewUniqueHolding) originate(ctx context.Context, _ *origin.Originator, l
 		return err
 	}
 	id, err := l.CreateUniqueHolding(ctx, ledger.CreateUniqueHoldingInput{
-		Item: item, Location: n.Location, Label: n.Label,
+		Item: item, Location: n.Location, Label: n.Label, ExpiresOn: n.ExpiresOn,
 	})
 	if err != nil {
 		return err

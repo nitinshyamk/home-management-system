@@ -1,6 +1,7 @@
 package ops_test
 
 import (
+	"errors"
 	"testing"
 
 	"home-management-system/internal/domain"
@@ -236,4 +237,26 @@ func TestPlanningReadsTheDatabaseState(t *testing.T) {
 	if _, err := tr.pl.CheckOut(tr.ctx, ops.CheckOutRequest{Holding: cable, To: &tr.garage}); err == nil {
 		t.Error("checked out a holding that was already out")
 	}
+}
+
+// TestRehomeRefusesABulkHolding is the guard that keeps Rehome out of H8's key.
+//
+// A Bulk Holding IS its stowed location -- there is no custody, so nothing can
+// be elsewhere while its home changes, and Rehome and Move would mean the same
+// thing. Worse, stowed_location is part of H8's key and Rehome snapshots one
+// Holding, so it cannot see that the destination slot is taken. Allowing it
+// produced two active Holdings that the schema says are one.
+func TestRehomeRefusesABulkHolding(t *testing.T) {
+	tr := newTree(t)
+	rice := tr.stow(t, tr.pantry)
+
+	if _, err := tr.pl.Rehome(tr.ctx, ops.RehomeRequest{Holding: rice, To: tr.garage}); err == nil {
+		t.Fatal("rehomed a Bulk holding; use Move, which can see a collision")
+	} else if !errors.Is(err, ops.ErrWrongKind) {
+		t.Errorf("refused with %v, want ErrWrongKind", err)
+	}
+
+	// And it still works for the kind it is for.
+	cable := tr.unique(t, tr.shelf1)
+	tr.apply(tr.pl.Rehome(tr.ctx, ops.RehomeRequest{Holding: cable, To: tr.garage}))
 }

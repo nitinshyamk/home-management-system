@@ -228,6 +228,12 @@ func (c *controller) Integrity(ctx context.Context) (IntegrityRow, error) {
 	for _, id := range report.Orphans.Locations {
 		row.Orphans = append(row.Orphans, fmt.Sprintf("location %d has no creation event", id))
 	}
+	// H8 duplicates sit under Orphans rather than Discrepancies because they are
+	// the same kind of finding: a row that exists but should not, as opposed to
+	// a row whose value disagrees with its own history.
+	for _, d := range report.Duplicates {
+		row.Orphans = append(row.Orphans, d.String())
+	}
 	return row, nil
 }
 
