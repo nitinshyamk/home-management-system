@@ -290,6 +290,14 @@ grep_go "db.InTx is called only from internal/db" \
 grep_go "db.Enlist appears only in the write paths" \
         'db\.Enlist\(' internal/origin internal/ledger internal/annotate
 
+# RawCommand is the untrusted-text entry point, not the universal one. A
+# keystroke on a selected row already holds an identifier, and serialising it to
+# a name to fuzzy-match back would be lossy in the worst way: an ambiguous name
+# could resolve to a DIFFERENT row than the one under the cursor. So it appears
+# only where text genuinely arrives.
+grep_go "RawCommand appears only where untrusted text arrives" \
+        'RawCommand' internal/command internal/importer
+
 # ops is the only package that assembles writes across paths. If the UI could
 # call a write path directly it would bypass the transaction that makes an
 # intent atomic -- and bypass the review that makes origination deliberate.
