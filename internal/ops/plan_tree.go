@@ -35,6 +35,13 @@ func (p *Planner) WithClock(now func() time.Time) *Planner {
 	return &clone
 }
 
+// RestoreLocationRequest brings a place back. Its contents are not restored
+// with it: they were moved, the move was recorded, and where they went is now
+// where they are.
+type RestoreLocationRequest struct {
+	Location domain.LocationID
+}
+
 // ArchiveLocationRequest removes a place, disposing of its children and
 // contents. Resolution is required rather than defaulted: what happens to the
 // contents is the caller's decision, and silently picking one is how things end
@@ -62,7 +69,8 @@ func (p *Planner) ArchiveLocation(ctx context.Context, req ArchiveLocationReques
 
 // RestoreLocation plans the reversal of an archival. What was moved out stays
 // where it went: undoing the archival does not un-happen the move.
-func (p *Planner) RestoreLocation(ctx context.Context, id domain.LocationID) (Batch, error) {
+func (p *Planner) RestoreLocation(ctx context.Context, req RestoreLocationRequest) (Batch, error) {
+	id := req.Location
 	events, err := p.led.PlanRestoreLocation(ctx, id)
 	if err != nil {
 		return Batch{}, err

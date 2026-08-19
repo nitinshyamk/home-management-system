@@ -85,6 +85,23 @@ func (ix *Index) All() []Candidate { return ix.candidates }
 // Len reports how many things are indexed.
 func (ix *Index) Len() int { return len(ix.candidates) }
 
+// Label renders an identifier as the name it resolved from, which is what makes
+// a review screen readable: a Command holds only identifiers, and the index is
+// the honest place for the names to come back from.
+//
+// It returns "" for something not indexed, so the caller decides what to show
+// rather than being handed a plausible-looking wrong answer. Archived
+// candidates DO get a label -- a summary of what happened to something put away
+// still has to say what it was.
+func (ix *Index) Label(kind domain.EntityKind, id int64) string {
+	for _, c := range ix.candidates {
+		if c.Kind == kind && c.ID == id {
+			return c.Path
+		}
+	}
+	return ""
+}
+
 // Build reads the whole vocabulary through the query path.
 //
 // Everything, in one pass, because the alternative is a query per keystroke.
