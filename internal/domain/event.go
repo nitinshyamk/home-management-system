@@ -380,4 +380,4 @@ func (e ItemPackageSizeChanged) Subject() (SubjectKind, int64) {
 	return SubjectItem, int64(e.Item)
 }
 
-//go:generate go run ../../tools/eventgen -dir . -out registry_gen.go
+//go:generate go run ../../tools/sealedgen -dir . -out registry_gen.go -marker isEvent -iface Event -var AllEventTypes

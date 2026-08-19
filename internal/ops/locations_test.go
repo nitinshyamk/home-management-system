@@ -376,7 +376,7 @@ func TestRestoreLocationLeavesMovedContentsWhereTheyWent(t *testing.T) {
 		t.Fatalf("archive: %v", err)
 	}
 
-	restore, err := tr.pl.RestoreLocation(tr.ctx, tr.pantry)
+	restore, err := tr.pl.RestoreLocation(tr.ctx, ops.RestoreLocationRequest{Location: tr.pantry})
 	if err != nil {
 		t.Fatalf("plan restore: %v", err)
 	}
@@ -398,7 +398,7 @@ func TestRestoreLocationLeavesMovedContentsWhereTheyWent(t *testing.T) {
 
 func TestRestoreRefusesALiveLocation(t *testing.T) {
 	tr := newTree(t)
-	if _, err := tr.pl.RestoreLocation(tr.ctx, tr.pantry); !errors.Is(err, ledger.ErrInvalidInput) {
+	if _, err := tr.pl.RestoreLocation(tr.ctx, ops.RestoreLocationRequest{Location: tr.pantry}); !errors.Is(err, ledger.ErrInvalidInput) {
 		t.Errorf("error = %v, want ErrInvalidInput", err)
 	}
 }
