@@ -111,7 +111,7 @@ the next reviewer needs to know what was already asked for.
 | The cursor is clear; bolding the text helps identify the row | keep | — |
 | Narrow terminals degrade gracefully | keep | — |
 | Uniform rows make it hard to parse a screenful at once. A subtle line or shading would help; black-and-white alternating would be too loud | **changed** | Alternating row banding, one step off the background, adaptive for light terminals. It costs no vertical space, which is what a dense table cannot spare. |
-| Selection is harder to read than it should be; even an underline would help | **changed** | Selected rows are underlined as well as gutter-marked. The mark says *which*; the underline makes the set legible *as a set* without competing with the cursor. |
+| Selection is harder to read than it should be; even an underline would help | **changed** | First an underline, then — on the follow-up — a **tint** instead. See *Review 1a* below. |
 | Sort should be stated from the start — the indication only appears once you sort | **changed** | The table now starts sorted (first column, ascending) and says so from the first frame. It also sorts the rows itself, so the stated order is true rather than assumed from the caller. The footer states it in words too, because a narrow terminal can drop the sorted column and then the table is ordered by something you cannot see. |
 | Tree rollups should be right-aligned, not staggered by depth — perhaps inversely staggered | **deferred to 10b**, recorded in `10b-trees.md` | — |
 
@@ -122,6 +122,39 @@ Banding and the selection underline have no plain-text form, so the frames in
 make reseed
 ./bin/hms --db-path=hms.db --render docs/review/10a.keys --color | less -R
 ```
+
+### Review 1a — selection by colour rather than underline
+
+> Given that we have that much control over the colour, could we change the
+> colour slightly for selection instead?
+
+Done, and it removed a state rather than adding one.
+
+Selection now differs from banding in **hue**, not in degree: banding is a grey
+step, selection is a tint. That is the whole reason it works — banding and
+selection are two independent things a row can be saying, and saying both with
+the same dimension (a bit darker, a bit darker still) makes them compete: four
+shades where the eye can reliably separate two.
+
+So a selected row is tinted and **does not band**. Three background states, not
+four:
+
+| Row | Background |
+|---|---|
+| unselected, even | none |
+| unselected, odd | grey step (`254` light / `236` dark) |
+| selected | tint (`189` light / `17` dark) |
+
+Suppressing the band inside a selection is a gain rather than a compromise: a
+run of selected rows reads as **one solid block**, which is exactly what makes a
+selection countable at a glance. Banding it would break the block back up into
+stripes.
+
+The underline is gone. The `*` gutter mark stays — it is the part that survives
+a monochrome terminal, and it is what the plain-text frames can show.
+
+Both colours are single constants at the top of `internal/tui/table/table.go`
+(`stripe` and `picked`) if the tint wants to be quieter or louder.
 
 ## Sign-off
 
