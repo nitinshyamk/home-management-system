@@ -10,6 +10,7 @@ import (
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/domain"
+	"home-management-system/internal/resolve"
 )
 
 // fakeController stands in for the real one. The Controller being a plain Go
@@ -67,6 +68,18 @@ func (f *fakeController) Integrity(context.Context) (app.IntegrityRow, error) {
 
 func (f *fakeController) Nudges(context.Context) ([]app.NudgeRow, error) {
 	return []app.NudgeRow{{Item: "Cumin", Category: "Spices", Siblings: 1}}, nil
+}
+
+// SearchIndex returns a small vocabulary so the jump palette has something to
+// find. The widget tests use the fake because they cross no boundary; anything
+// that does uses the Simulator.
+func (f *fakeController) SearchIndex(context.Context) (*resolve.Index, error) {
+	return resolve.NewIndex([]resolve.Candidate{
+		{Kind: resolve.KindLocation, ID: 1, Path: "Kitchen > Left Pantry", Leaf: "Left Pantry"},
+		{Kind: resolve.KindLocation, ID: 2, Path: "Kitchen > Left Pantry > Shelf 1", Leaf: "Shelf 1"},
+		{Kind: resolve.KindItem, ID: 3, Path: "Grains > Basmati Rice", Leaf: "Basmati Rice"},
+		{Kind: resolve.KindHolding, ID: 9, Path: "Basmati Rice > Shelf 1 (loose)", Leaf: "Basmati Rice"},
+	}), nil
 }
 
 func (f *fakeController) CreateCategory(context.Context, string, *domain.CategoryID) (domain.CategoryID, error) {

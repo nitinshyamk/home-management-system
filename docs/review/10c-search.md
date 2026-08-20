@@ -1,0 +1,98 @@
+# 10c — Search
+
+**Status:** not built
+**Gate:** human.
+
+Written before the substage is built.
+
+---
+
+## The one mistake to avoid
+
+`/` and `C-p` are two different things that feel identical for exactly one
+keystroke and then diverge completely.
+
+| Key | Scope | Purpose |
+|---|---|---|
+| `/` | **this view** | *Filter.* Narrows the rows in front of you. `n` / `N` step through what is left |
+| `C-p` | **everything** | *Jump.* Fuzzy across Categories, Locations, Items, and Holdings at once; `Enter` goes there |
+
+Conflating them is the failure mode. If a reviewer has to pause to work out
+which one they are in, the substage has not passed, however well either works on
+its own.
+
+## Facets and text share one input
+
+A token containing `:` is a facet; everything else is fuzzy text.
+
+```
+/loc:kitchen state:out rice
+   └── facets ────────┘ └─ fuzzy over the row
+```
+
+---
+
+## What to run
+
+```bash
+make reseed && ./bin/hms
+```
+
+## The script
+
+| # | Keys | What to look at |
+|---|---|---|
+| 1 | `4` then `/` | The filter opens. **Is it obvious you are filtering rather than jumping?** |
+| 2 | type `ancho` | Rows narrow as you type. Does the count say what happened? |
+| 3 | `enter` | The filter stays applied and the cursor returns to the list. Is that clear? |
+| 4 | `n` `n` `n` | Step through the matches. Does it wrap, and is the wrap obvious? |
+| 5 | `esc` | The filter clears. Everything comes back. |
+| 6 | `/` then `loc:garage` | A facet alone. Does it read as a *field* rather than as text you typed wrong? |
+| 7 | `/` then `loc:garage ancho` | Facet and text together, one line. |
+| 8 | `/` then `zzzz` | No matches. Does the empty state say *why* it is empty? |
+| 9 | `C-p` | The jump palette. **Is it visibly a different thing from step 1?** |
+| 10 | type `shelf` | Results from more than one kind at once. Is the kind of each result legible? |
+| 11 | `enter` | It goes there — the right view, cursor on the right row. |
+| 12 | `C-p`, `esc` | Cancelling leaves you exactly where you were. |
+
+---
+
+## What "good" means here
+
+1. **Filtering and jumping look different at a glance.** Step 1 against step 9.
+   Different prompt, different position, or different framing — but different
+   before you have read a word.
+
+2. **The filter says what it did.** A narrowed list that does not say it is
+   narrowed is a list that lies about what you own. Step 2 and step 8 are the
+   two halves: how many, and *why none*.
+
+3. **A facet reads as a field.** At step 6, `loc:garage` should look like
+   structure, not like a typo. If it renders as plain text the grammar is
+   invisible and nobody will discover it.
+
+4. **A jump result says what kind of thing it is.** At step 10, `Shelf 1` as a
+   Location and `Shelf 1` as part of a Holding path must be distinguishable
+   before `Enter` is pressed, or the jump lands somewhere surprising.
+
+5. **Escape is never destructive.** Step 12. Cancelling a jump must not move
+   the cursor, change the view, or clear a filter that was already applied.
+
+6. **Density survives.** The omnibox costs a line. If it costs two, or if it
+   pushes the table into scrolling when it did not before, that is worth
+   knowing at 60 columns as well as 100.
+
+---
+
+## What is deliberately NOT being judged yet
+
+- **`:` commands.** 10d. `/` and `C-p` only.
+- **Autocomplete inside the input.** 10d, where it is needed for editing.
+- **Acting on the filtered set.** 10f.
+
+## Sign-off
+
+- [ ] Reviewed by:
+- [ ] Date:
+- [ ] Verdict: accept / rework
+- [ ] Notes:

@@ -21,6 +21,7 @@ import (
 	"home-management-system/internal/ledger"
 	"home-management-system/internal/origin"
 	"home-management-system/internal/query"
+	"home-management-system/internal/resolve"
 )
 
 // Controller is what the UI depends on. v01 is read-only apart from Category
@@ -33,6 +34,7 @@ type Controller interface {
 	Holdings(ctx context.Context) ([]HoldingRow, error)
 	HoldingHistory(ctx context.Context, id domain.HoldingID) ([]EventRow, error)
 	Integrity(ctx context.Context) (IntegrityRow, error)
+	SearchIndex(ctx context.Context) (*resolve.Index, error)
 	Nudges(ctx context.Context) ([]NudgeRow, error)
 
 	CreateCategory(ctx context.Context, name string, parent *domain.CategoryID) (domain.CategoryID, error)
@@ -276,6 +278,16 @@ func (c *controller) Integrity(ctx context.Context) (IntegrityRow, error) {
 		row.Orphans = append(row.Orphans, d.String())
 	}
 	return row, nil
+}
+
+// SearchIndex is the one flat index of everything that can be referred to.
+//
+// One index, four consumers: the jump palette, inline autocomplete, the `:`
+// line, and the bulk importer. If bulk import matched names differently from
+// the interface, a CSV row and the equivalent typed command would resolve to
+// different things, and the claim that they are one contract would be false.
+func (c *controller) SearchIndex(ctx context.Context) (*resolve.Index, error) {
+	return resolve.Build(ctx, c.read)
 }
 
 func (c *controller) Nudges(ctx context.Context) ([]NudgeRow, error) {

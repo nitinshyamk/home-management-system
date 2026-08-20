@@ -46,6 +46,7 @@ const (
 type Model struct {
 	nodes     []Node
 	collapsed map[int64]bool
+	filter    string
 	unit      string // "items" or "holdings", for the count column's title
 	pendingZ  bool
 	tbl       table.Model
@@ -93,6 +94,28 @@ func (m Model) SetNodes(nodes []Node) Model {
 		}
 	}
 	return m.refresh()
+}
+
+// SetFilter narrows the tree to matching nodes AND their ancestors.
+//
+// The ancestors are the point. A tree filtered to bare matches is a list, and a
+// list is what the Items view already is -- what a tree adds is where the thing
+// sits, so a match five levels down has to arrive with its path attached.
+//
+// Filtering also ignores folds. A node hidden inside a fold that matches what
+// you typed is a match you cannot see, which reads as the filter being broken.
+func (m Model) SetFilter(text string) Model {
+	m.filter = strings.ToLower(strings.TrimSpace(text))
+	return m.refresh()
+}
+
+// Filtered reports whether a filter is in force.
+func (m Model) Filtered() bool { return m.filter != "" }
+
+// Counts returns how many nodes are shown and how many exist.
+func (m Model) Counts() (shown, total int) {
+	rows, _ := m.tbl.Counts()
+	return rows, len(m.nodes)
 }
 
 // SetSize passes the terminal on to the table.
@@ -267,6 +290,9 @@ func (m Model) refresh() Model {
 
 // rows renders the visible nodes, skipping everything inside a fold.
 func (m Model) rows() []table.Row {
+	if m.filter != "" {
+		return m.filteredRows()
+	}
 	var out []table.Row
 	skipBelow := -1
 	for _, n := range m.nodes {
@@ -283,6 +309,39 @@ func (m Model) rows() []table.Row {
 		if m.collapsed[n.ID] {
 			skipBelow = n.Depth
 		}
+	}
+	return out
+}
+
+// filteredRows keeps the nodes that match and every ancestor above them.
+func (m Model) filteredRows() []table.Row {
+	keep := make([]bool, len(m.nodes))
+	for i, n := range m.nodes {
+		if !strings.Contains(strings.ToLower(n.Name), m.filter) {
+			continue
+		}
+		keep[i] = true
+		// Walk up by depth: the ancestors of node i are the nearest preceding
+		// nodes of each shallower depth.
+		want := n.Depth - 1
+		for j := i - 1; j >= 0 && want >= 0; j-- {
+			if m.nodes[j].Depth == want {
+				keep[j] = true
+				want--
+			}
+		}
+	}
+	var out []table.Row
+	for i, n := range m.nodes {
+		if !keep[i] {
+			continue
+		}
+		out = append(out, table.Row{
+			Key: n.ID,
+			// No fold marker while filtering: what is shown is what matched,
+			// not what is open, and a marker would claim otherwise.
+			Cells: []string{strings.Repeat(indent, n.Depth) + "  " + n.Name, fmt.Sprintf("%d", n.Count)},
+		})
 	}
 	return out
 }
@@ -349,6 +408,10 @@ func (m Model) node(id int64) (Node, bool) {
 	}
 	return Node{}, false
 }
+
+// Focus puts the cursor on a node by identity, for a caller arriving from
+// somewhere else -- a jump that has just landed in this view.
+func (m Model) Focus(id int64) Model { return m.focusVisible(id) }
 
 // focus puts the cursor on a node by identity, which is what keeps it in place
 // when folding changes how many rows there are.

@@ -25,15 +25,15 @@ func (m Model) View() string {
 	b.WriteString(m.header(widths, visible))
 	b.WriteByte('\n')
 
-	if len(m.rows) == 0 {
-		b.WriteString(emptyStyle.Render("  (nothing here)"))
+	if len(m.visible) == 0 {
+		b.WriteString(emptyStyle.Render(m.emptyMessage()))
 		return b.String()
 	}
 
 	page := m.page()
-	for i := m.top; i < len(m.rows) && i < m.top+page; i++ {
-		b.WriteString(m.line(m.rows[i], i, i == m.cursor, widths, visible))
-		if i < len(m.rows)-1 && i < m.top+page-1 {
+	for i := m.top; i < len(m.visible) && i < m.top+page; i++ {
+		b.WriteString(m.line(m.visible[i], i, i == m.cursor, widths, visible))
+		if i < len(m.visible)-1 && i < m.top+page-1 {
 			b.WriteByte('\n')
 		}
 	}
@@ -167,6 +167,16 @@ func (m Model) squeeze(widths []int, visible []int, available int) []int {
 		widths[at]--
 	}
 	return widths
+}
+
+// emptyMessage says WHY the list is empty, which is the half of "the filter
+// says what it did" that is easy to forget. "Nothing here" and "nothing matches
+// what you typed" are different facts about the house.
+func (m Model) emptyMessage() string {
+	if m.Filtered() && len(m.rows) > 0 {
+		return "  (nothing matches this filter -- esc to clear it)"
+	}
+	return "  (nothing here)"
 }
 
 func (m Model) naturalWidths(visible []int) []int {

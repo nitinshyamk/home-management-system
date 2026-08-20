@@ -140,6 +140,12 @@ func keyByName(name string) (tea.KeyMsg, bool) {
 		return tea.KeyMsg{Type: tea.KeyCtrlU}, true
 	case "ctrl+b":
 		return tea.KeyMsg{Type: tea.KeyCtrlB}, true
+	case "ctrl+p":
+		return tea.KeyMsg{Type: tea.KeyCtrlP}, true
+	case "ctrl+n":
+		return tea.KeyMsg{Type: tea.KeyCtrlN}, true
+	case "backspace":
+		return tea.KeyMsg{Type: tea.KeyBackspace}, true
 	case "ctrl+f":
 		return tea.KeyMsg{Type: tea.KeyCtrlF}, true
 	}

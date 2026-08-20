@@ -72,7 +72,11 @@ type Row struct {
 // Model is the widget's state.
 type Model struct {
 	cols []Column
-	rows []Row
+	// rows is everything; visible is what survives the filter. Keeping both is
+	// what lets the count say "12 of 34" rather than just "12".
+	rows    []Row
+	visible []Row
+	filter  Filter
 
 	cursor   int
 	col      int // the focused column, which sorting and h/l act on
@@ -179,8 +183,9 @@ func (m Model) SetRows(rows []Row) Model {
 	if !m.fixed {
 		m.rows = m.applySort(rows)
 	}
-	if m.cursor >= len(m.rows) {
-		m.cursor = max(0, len(m.rows)-1)
+	m.visible = m.matching()
+	if m.cursor >= len(m.visible) {
+		m.cursor = max(0, len(m.visible)-1)
 	}
 	present := map[int64]bool{}
 	for _, r := range rows {
@@ -203,12 +208,16 @@ func (m Model) SetSize(width, height int) Model {
 	return m
 }
 
-// Rows returns the contents in display order.
-func (m Model) Rows() []Row { return m.rows }
+// Rows returns what is SHOWN, in display order. Callers map a cursor back
+// through these, so they must be the filtered set.
+func (m Model) Rows() []Row { return m.visible }
+
+// AllRows returns every row, filtered or not.
+func (m Model) AllRows() []Row { return m.rows }
 
 // Cursor is the index of the row under the cursor, or -1 when there are none.
 func (m Model) Cursor() int {
-	if len(m.rows) == 0 {
+	if len(m.visible) == 0 {
 		return -1
 	}
 	return m.cursor
@@ -220,20 +229,20 @@ func (m Model) Cursor() int {
 // folding a subtree away -- and who therefore have to restore the cursor by
 // IDENTITY rather than let it keep an index that now means a different row.
 func (m Model) SetCursor(i int) Model {
-	if len(m.rows) == 0 {
+	if len(m.visible) == 0 {
 		return m
 	}
-	m.cursor = clamp(i, 0, len(m.rows)-1)
+	m.cursor = clamp(i, 0, len(m.visible)-1)
 	m.clampScroll()
 	return m
 }
 
 // Current is the row under the cursor.
 func (m Model) Current() (Row, bool) {
-	if len(m.rows) == 0 {
+	if len(m.visible) == 0 {
 		return Row{}, false
 	}
-	return m.rows[m.cursor], true
+	return m.visible[m.cursor], true
 }
 
 // Selected returns the keys of the selected rows in display order. With nothing
@@ -241,7 +250,7 @@ func (m Model) Current() (Row, bool) {
 // and "act on this row" are the same gesture with and without a prior space.
 func (m Model) Selected() []int64 {
 	var out []int64
-	for _, r := range m.rows {
+	for _, r := range m.visible {
 		if m.selected[r.Key] {
 			out = append(out, r.Key)
 		}
@@ -309,8 +318,16 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	case "k", "up":
 		m.move(-1)
 	case "G":
-		m.cursor = max(0, len(m.rows)-1)
+		m.cursor = max(0, len(m.visible)-1)
 		m.clampScroll()
+	// n and N step through what a filter left, wrapping. Wrapping is what makes
+	// them different from j and k rather than a second name for them: at the
+	// end of three matches, the useful next match is the first one.
+	case "n":
+		m.step(1)
+	case "N":
+		m.step(-1)
+
 	case "ctrl+d":
 		m.move(m.page() / 2)
 	case "ctrl+u":
@@ -334,8 +351,10 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 			}
 			m.move(1)
 		}
+	// V picks what is SHOWN. Selecting rows a filter is hiding would mean
+	// acting on a set nobody has looked at.
 	case "V":
-		for _, r := range m.rows {
+		for _, r := range m.visible {
 			m.selected[r.Key] = true
 		}
 	case "esc":
@@ -370,7 +389,8 @@ func (m Model) sortBy(col int) Model {
 		under = r.Key
 	}
 	m.rows = m.applySort(m.rows)
-	for i, r := range m.rows {
+	m.visible = m.matching()
+	for i, r := range m.visible {
 		if r.Key == under {
 			m.cursor = i
 		}
@@ -399,11 +419,20 @@ func cell(r Row, i int) string {
 	return ""
 }
 
-func (m *Model) move(n int) {
-	if len(m.rows) == 0 {
+// step moves with wrap-around.
+func (m *Model) step(n int) {
+	if len(m.visible) == 0 {
 		return
 	}
-	m.cursor = clamp(m.cursor+n, 0, len(m.rows)-1)
+	m.cursor = (m.cursor + n + len(m.visible)) % len(m.visible)
+	m.clampScroll()
+}
+
+func (m *Model) move(n int) {
+	if len(m.visible) == 0 {
+		return
+	}
+	m.cursor = clamp(m.cursor+n, 0, len(m.visible)-1)
 	m.clampScroll()
 }
 
@@ -411,7 +440,7 @@ func (m *Model) move(n int) {
 func (m Model) page() int { return max(1, m.height-2) }
 
 func (m *Model) centre() {
-	m.top = clamp(m.cursor-m.page()/2, 0, max(0, len(m.rows)-m.page()))
+	m.top = clamp(m.cursor-m.page()/2, 0, max(0, len(m.visible)-m.page()))
 }
 
 // clampScroll keeps the cursor on screen, scrolling by the least that achieves
@@ -424,7 +453,7 @@ func (m *Model) clampScroll() {
 	if m.cursor >= m.top+page {
 		m.top = m.cursor - page + 1
 	}
-	m.top = clamp(m.top, 0, max(0, len(m.rows)-page))
+	m.top = clamp(m.top, 0, max(0, len(m.visible)-page))
 }
 
 func clamp(v, lo, hi int) int {
