@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ledger"
-	"home-management-system/internal/origin"
 	"home-management-system/internal/query"
 	"home-management-system/internal/testsupport"
 )
@@ -22,11 +22,7 @@ import (
 func TestTheSampleHouseKeepsItsAwkwardCases(t *testing.T) {
 	ctx := context.Background()
 	conn := testsupport.NewDB(t)
-	s := &seeder{
-		ctx: ctx, o: origin.New(conn), l: ledger.New(conn),
-		now: time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC),
-	}
-	if err := s.build(); err != nil {
+	if _, err := seed(ctx, conn, "test.db", time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC)); err != nil {
 		t.Fatalf("build: %v", err)
 	}
 	r := query.New(conn)
@@ -157,4 +153,43 @@ func TestTheSampleHouseKeepsItsAwkwardCases(t *testing.T) {
 			t.Errorf("the sample house does not verify: %+v", report)
 		}
 	})
+}
+
+// TestSeedingTwiceIsRefused is the defect a rendered review frame surfaced:
+// two Kitchens, two Gardens, twenty-six locations.
+//
+// Nothing in the schema stops it, and nothing should -- duplicate names are
+// legal by design (3.10), so a second Kitchen is a second Kitchen rather than
+// an error. The refusal belongs here, in the program that knows it is building
+// a SAMPLE house rather than adding to a real one.
+func TestSeedingTwiceIsRefused(t *testing.T) {
+	ctx := context.Background()
+	conn := testsupport.NewDB(t)
+	// Through seed(), which is the path the command takes. Calling
+	// refuseIfOccupied directly would test that the guard exists rather than
+	// that it is used, and deleting the call from run() would leave this green.
+	build := func() error {
+		_, err := seed(ctx, conn, "test.db", time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC))
+		return err
+	}
+
+	if err := build(); err != nil {
+		t.Fatalf("the first house: %v", err)
+	}
+	err := build()
+	if err == nil {
+		t.Fatal("a second house was built beside the first")
+	}
+	// The message has to say what to do about it, or it is just a refusal.
+	if !strings.Contains(err.Error(), "--reset") {
+		t.Errorf("the refusal does not say how to proceed: %v", err)
+	}
+
+	locations, readErr := query.New(conn).LocationForest(ctx)
+	if readErr != nil {
+		t.Fatalf("read locations: %v", readErr)
+	}
+	if len(locations) != 13 {
+		t.Errorf("%d locations after a refused second seed, want the 13 of one house", len(locations))
+	}
 }

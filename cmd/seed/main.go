@@ -9,6 +9,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ledger"
 	"home-management-system/internal/origin"
+	"home-management-system/internal/query"
 )
 
 func main() {
@@ -29,12 +31,20 @@ func main() {
 
 func run() error {
 	dbPath := flag.String("db-path", "", "path to the SQLite database")
+	reset := flag.Bool("reset", false, "delete the database first and build a fresh house")
 	flag.Parse()
 
 	cfg := db.DefaultConfig()
 	if *dbPath != "" {
 		cfg.DSN = *dbPath
 	}
+
+	if *reset {
+		if err := os.Remove(cfg.DSN); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("reset %s: %w", cfg.DSN, err)
+		}
+	}
+
 	conn, err := db.Open(cfg)
 	if err != nil {
 		return err
@@ -45,11 +55,8 @@ func run() error {
 	}
 
 	ctx := context.Background()
-	o := origin.New(conn)
-	l := ledger.New(conn)
-
-	s := &seeder{ctx: ctx, o: o, l: l, now: time.Now().UTC().Add(-90 * 24 * time.Hour)}
-	if err := s.build(); err != nil {
+	s, err := seed(ctx, conn, cfg.DSN, time.Now().UTC().Add(-90*24*time.Hour))
+	if err != nil {
 		return err
 	}
 
@@ -57,6 +64,54 @@ func run() error {
 	fmt.Printf("  %d categories, %d locations, %d items, %d holdings, %d events\n",
 		s.categories, s.locations, s.items, s.holdings, s.events)
 	return nil
+}
+
+// seed is the whole job: refuse an occupied database, then build.
+//
+// One function rather than two steps in run(), so a test drives the same path
+// the command does. The first version of this test called refuseIfOccupied
+// directly, which meant deleting the call from run() left it passing -- a test
+// that checks a guard exists rather than that it is used.
+func seed(ctx context.Context, conn *sql.DB, dsn string, start time.Time) (*seeder, error) {
+	if err := refuseIfOccupied(ctx, conn, dsn); err != nil {
+		return nil, err
+	}
+	s := &seeder{ctx: ctx, o: origin.New(conn), l: ledger.New(conn), now: start}
+	if err := s.build(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// refuseIfOccupied stops a second house being built on top of the first.
+//
+// Seeding a database that already has a house in it builds a SECOND one
+// alongside it, and nothing in the schema stops that: duplicate names are legal
+// by design (3.10), so two Kitchens are two Kitchens rather than an error.
+//
+// Which makes this a refusal rather than a constraint. The sample house is the
+// dataset every reviewed screen is judged against, and a dataset that doubles
+// each time somebody runs `make seed` is not the deterministic thing it is
+// supposed to be. It refuses rather than resetting, because --db-path may point
+// at a real database and this program has no business deciding that.
+func refuseIfOccupied(ctx context.Context, conn *sql.DB, dsn string) error {
+	r := query.New(conn)
+	locations, err := r.LocationForest(ctx)
+	if err != nil {
+		return err
+	}
+	categories, err := r.CategoryForest(ctx)
+	if err != nil {
+		return err
+	}
+	if len(locations)+len(categories) == 0 {
+		return nil
+	}
+	return fmt.Errorf(
+		"%s already holds %d locations and %d categories; seeding again would build a "+
+			"second house beside the first.\n       Use --reset to start over, or point "+
+			"--db-path somewhere empty",
+		dsn, len(locations), len(categories))
 }
 
 type seeder struct {

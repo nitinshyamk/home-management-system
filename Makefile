@@ -1,4 +1,4 @@
-.PHONY: build run test lint generate verify-generate verify seed deps clean setup check fmt
+.PHONY: build run test lint generate verify-generate verify seed reseed deps clean setup check fmt
 
 DB_PATH ?= ./hms.db
 
@@ -48,8 +48,19 @@ verify-generate:
 	@echo "generated files are up to date"
 
 ## seed: build a sample house, entirely through the real write paths
+##
+## Refuses a database that already has one. The sample house is the dataset
+## every reviewed screen is judged against, and a dataset that doubles each time
+## somebody runs this is not the deterministic thing it is supposed to be.
 seed:
 	go run ./cmd/seed --db-path=$(DB_PATH)
+
+## reseed: throw the sample house away and build it again
+##
+## Separate from seed, and explicit, because --db-path may point at a real
+## database and deleting one is not a thing to do as a side effect.
+reseed:
+	go run ./cmd/seed --db-path=$(DB_PATH) --reset
 
 ## verify: run the integrity check against DB_PATH
 verify:
