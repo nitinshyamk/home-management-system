@@ -1,0 +1,640 @@
+# 10b — frames for review
+
+Two candidate rollup layouts, from one build:
+
+```
+./bin/hms --db-path=hms.db --render docs/review/10b.keys                     # A
+./bin/hms --db-path=hms.db --render docs/review/10b.keys --rollup staggered  # B
+```
+
+Colour is stripped, so banding and the selection tint do not appear.
+Add `--color` and pipe to `less -R` for those.
+
+## A — right-aligned
+
+```
+
+===== start  (84x22) =============================================================
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+------------------------------------------------------------------------------------
+  ITEM ^                                      QTY  LOCATION          FLAGS          
+> Ancho Chile                               120 g  Shelf 2                          
+  Ancho Chile                               120 g  Garage                           
+  Ancho Chile                                40 g  Small Parts Tray                 
+  Basmati Rice                3 packages (6000 g)  Shelf 1                          
+  Basmati Rice                              800 g  Shelf 1                          
+  Brass Thumbtack                        82 count  Desk Drawer 2                    
+  Cumin                                      90 g  Shelf 2                          
+  Empty Computer Box                      at rest  Attic                            
+  Forever Stamp                           3 count  Desk Drawer 2                    
+  Thunderbolt 4 to Dual…  at rest: boxed, unopen…  Small Parts Tray                 
+  USB-C to HDMI Cable 2m            out at Office  Desk Drawer 2     out 83d        
+  Winter Coat                             at rest  Garage            gone 2026-05-29
+------------------------------------------------------------------------------------
+12 holdings - enter for history - sorted by item a-z
+
+===== the locations tree  (84x22) ================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+>   Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+        ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== j  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+        ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== j  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+>   ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+        ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== j  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+>     ▾ Bay 3                                                                      2
+        ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== four deep, inside the Garage  (84x22) ======================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+>       ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== z  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+>       ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== fold the node under the cursor  (84x22) ====================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+>       ▸ Blue Crate                                                               2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== z  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+>       ▸ Blue Crate                                                               2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== unfold it  (84x22) =========================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+>       ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== z  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+>       ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== collapse everything  (84x22) ===============================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▸ Garage                                                                         3
+  ▸ Kitchen                                                                        4
+  ▸ Office                                                                         3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== z  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▸ Garage                                                                         3
+  ▸ Kitchen                                                                        4
+  ▸ Office                                                                         3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== expand everything  (84x22) =================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+        ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== ascend  (84x22) ============================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▸ Garage                                                                         3
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== descend  (84x22) ===========================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                          2
+      ▾ Bay 3                                                                      2
+        ▾ Blue Crate                                                               2
+            Small Parts Tray                                                       2
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                                2
+        Shelf 2                                                                    2
+    ▾ Left Pantry                                                                  2
+        Shelf 1                                                                    2
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                                3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== the categories tree  (84x22) ===============================================
+[1 Categories]  2 Locations   3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                         ITEMS
+> ▾ Electronics                                                                    2
+      Cables                                                                       2
+    Pantry                                                                         1
+  ▾ Spices                                                                         2
+      Dried Peppers                                                                1
+    Stationery                                                                     2
+    Storage                                                                        2
+------------------------------------------------------------------------------------
+7 categories - za fold - zR expand all - zM collapse all
+```
+
+## B — inversely staggered
+
+```
+
+===== start  (84x22) =============================================================
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+------------------------------------------------------------------------------------
+  ITEM ^                                      QTY  LOCATION          FLAGS          
+> Ancho Chile                               120 g  Shelf 2                          
+  Ancho Chile                               120 g  Garage                           
+  Ancho Chile                                40 g  Small Parts Tray                 
+  Basmati Rice                3 packages (6000 g)  Shelf 1                          
+  Basmati Rice                              800 g  Shelf 1                          
+  Brass Thumbtack                        82 count  Desk Drawer 2                    
+  Cumin                                      90 g  Shelf 2                          
+  Empty Computer Box                      at rest  Attic                            
+  Forever Stamp                           3 count  Desk Drawer 2                    
+  Thunderbolt 4 to Dual…  at rest: boxed, unopen…  Small Parts Tray                 
+  USB-C to HDMI Cable 2m            out at Office  Desk Drawer 2     out 83d        
+  Winter Coat                             at rest  Garage            gone 2026-05-29
+------------------------------------------------------------------------------------
+12 holdings - enter for history - sorted by item a-z
+
+===== the locations tree  (84x22) ================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+>   Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+        ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== j  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+        ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== j  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+>   ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+        ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== j  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+>     ▾ Bay 3                                                                  2    
+        ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== four deep, inside the Garage  (84x22) ======================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+>       ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== z  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+>       ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== fold the node under the cursor  (84x22) ====================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+>       ▸ Blue Crate                                                         2      
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== z  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+>       ▸ Blue Crate                                                         2      
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== unfold it  (84x22) =========================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+>       ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== z  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+  ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+>       ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== collapse everything  (84x22) ===============================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▸ Garage                                                                         3
+  ▸ Kitchen                                                                        4
+  ▸ Office                                                                         3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== z  (84x22) =================================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▸ Garage                                                                         3
+  ▸ Kitchen                                                                        4
+  ▸ Office                                                                         3
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== expand everything  (84x22) =================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+        ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== ascend  (84x22) ============================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▸ Garage                                                                         3
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== descend  (84x22) ===========================================================
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+    Attic                                                                          1
+> ▾ Garage                                                                         3
+    ▾ Metal Shelving Unit                                                        2  
+      ▾ Bay 3                                                                  2    
+        ▾ Blue Crate                                                         2      
+            Small Parts Tray                                               2        
+  ▾ Kitchen                                                                        4
+    ▾ Spice Cabinet                                                              2  
+        Shelf 2                                                                2    
+    ▾ Left Pantry                                                                2  
+        Shelf 1                                                                2    
+  ▾ Office                                                                         3
+      Desk Drawer 2                                                              3  
+------------------------------------------------------------------------------------
+13 locations - za fold - zR expand all - zM collapse all
+
+===== the categories tree  (84x22) ===============================================
+[1 Categories]  2 Locations   3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                         ITEMS
+> ▾ Electronics                                                                    2
+      Cables                                                                     2  
+    Pantry                                                                         1
+  ▾ Spices                                                                         2
+      Dried Peppers                                                              1  
+    Stationery                                                                     2
+    Storage                                                                        2
+------------------------------------------------------------------------------------
+7 categories - za fold - zR expand all - zM collapse all
+```
+

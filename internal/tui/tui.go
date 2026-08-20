@@ -18,6 +18,7 @@ import (
 	"home-management-system/internal/app"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/tui/table"
+	"home-management-system/internal/tui/tree"
 )
 
 type view int
@@ -60,6 +61,11 @@ type Model struct {
 	// views stay on plain rows in a viewport until 10b, because folding is a
 	// different problem and merging them early would settle it by accident.
 	table table.Model
+
+	// tree is the working surface for Categories and Locations. It is built on
+	// the same table, so density, cursor, banding, and selection are the same
+	// decisions rather than two answers to one question.
+	tree tree.Model
 	// holdingIDs parallels rows in the Holdings view, so Enter knows what was
 	// selected without the rendering layer carrying domain types.
 	holdingIDs []domain.HoldingID
@@ -77,8 +83,16 @@ func New(ctx context.Context, ctrl app.Controller) Model {
 }
 
 // tabular reports whether a view is a table. Holdings and Items are; hierarchy
-// is not something a table shows, so Categories and Locations are trees.
+// is not something a flat table shows, so Categories and Locations are trees.
 func tabular(v view) bool { return v == viewHoldings || v == viewItems }
+
+// forest reports whether a view is a tree.
+func forest(v view) bool { return v == viewCategories || v == viewLocations }
+
+// Rollup is where a tree puts its counts. It is a package-level setting so the
+// two candidate layouts can be rendered from the same build during review;
+// after 10b is signed off it collapses to whichever was chosen.
+var Rollup = tree.RollupRight
 
 // columnsFor declares each table's shape, and with it what a narrow terminal
 // loses. Drop order is a decision recorded here rather than an accident of
@@ -114,6 +128,7 @@ type loadedMsg struct {
 	view       view
 	rows       []string
 	cells      []table.Row
+	nodes      []tree.Node
 	holdingIDs []domain.HoldingID
 	status     string
 }
@@ -122,6 +137,13 @@ type errMsg struct{ err error }
 
 func (m Model) load(v view) tea.Cmd {
 	return func() tea.Msg {
+		if forest(v) {
+			nodes, status, err := m.renderTree(v)
+			if err != nil {
+				return errMsg{err}
+			}
+			return loadedMsg{view: v, nodes: nodes, status: status}
+		}
 		if tabular(v) {
 			cells, ids, status, err := m.renderTable(v)
 			if err != nil {
@@ -163,6 +185,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.Width, m.viewport.Height = msg.Width, body
 		}
 		m.table = m.table.SetSize(msg.Width, m.bodyHeight())
+		m.tree = m.tree.SetSize(msg.Width, m.bodyHeight())
 		m.viewport.SetContent(m.body())
 		return m, nil
 
@@ -174,6 +197,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// selection across views would mean acting on rows a person picked
 			// while looking at something else.
 			m.table = table.New(columnsFor(msg.view)).SetRows(msg.cells).SetSize(m.width, m.bodyHeight())
+		}
+		if forest(msg.view) {
+			m.tree = tree.New(unitFor(msg.view), Rollup).
+				SetNodes(msg.nodes).SetSize(m.width, m.bodyHeight())
 		}
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoTop()
@@ -199,6 +226,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if next, handled := m.table.Update(msg); handled {
 			m.table = next
 			m.cursor = max(0, m.table.Cursor())
+			return m, nil
+		}
+	}
+	if forest(m.view) {
+		if next, handled := m.tree.Update(msg); handled {
+			m.tree = next
 			return m, nil
 		}
 	}
@@ -261,6 +294,9 @@ func (m Model) View() string {
 		return "loading..."
 	}
 	body := m.viewport.View()
+	if forest(m.view) {
+		body = m.tree.View()
+	}
 	if tabular(m.view) {
 		// The table scrolls itself, so it renders straight rather than through
 		// the viewport. Two things scrolling one list is how a cursor ends up
@@ -359,6 +395,11 @@ func (m Model) footer() string {
 			status = strings.TrimSpace(status + " - sorted " + sorted)
 		}
 		if n := m.table.SelectionCount(); n > 0 {
+			status += fmt.Sprintf(" - %d selected", n)
+		}
+	}
+	if forest(m.view) {
+		if n := m.tree.SelectionCount(); n > 0 {
 			status += fmt.Sprintf(" - %d selected", n)
 		}
 	}
@@ -558,4 +599,38 @@ func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, string, err
 		return cells, nil, fmt.Sprintf("%d items", len(rows)), nil
 	}
 	return nil, nil, "", fmt.Errorf("view %d is not a table", v)
+}
+
+// unitFor names what a tree's rollup counts, which is also the count column's
+// title.
+func unitFor(v view) string {
+	if v == viewCategories {
+		return "items"
+	}
+	return "holdings"
+}
+
+// renderTree turns Controller rows into tree nodes. As with renderTable, this
+// is a mapping and nothing more: anything deciding something here would be a
+// decision the tree would have to make again, differently.
+func (m Model) renderTree(v view) ([]tree.Node, string, error) {
+	var rows []app.TreeRow
+	var err error
+	if v == viewCategories {
+		rows, err = m.ctrl.CategoryTree(m.ctx)
+	} else {
+		rows, err = m.ctrl.LocationTree(m.ctx)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	nodes := make([]tree.Node, 0, len(rows))
+	for _, r := range rows {
+		nodes = append(nodes, tree.Node{ID: r.ID, Name: r.Name, Depth: r.Depth, Count: r.Count})
+	}
+	noun := "categories"
+	if v == viewLocations {
+		noun = "locations"
+	}
+	return nodes, fmt.Sprintf("%d %s - za fold - zR expand all - zM collapse all", len(nodes), noun), nil
 }

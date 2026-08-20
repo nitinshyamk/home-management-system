@@ -82,6 +82,11 @@ type Model struct {
 	sortCol  int
 	sortDesc bool
 
+	// fixed means the caller's order IS the order. A tree's rows are in
+	// hierarchy order, and sorting them would destroy the containment the view
+	// exists to show -- so a fixed table offers no sort and claims none.
+	fixed bool
+
 	// pending holds the first key of a two-key sequence (g, z), because gg and
 	// zz are one gesture each and the widget has to remember it saw the first.
 	pending rune
@@ -161,10 +166,19 @@ func New(cols []Column) Model {
 	return Model{cols: cols, selected: map[int64]bool{}, width: 80, height: 20}
 }
 
+// Fixed marks the rows as arriving in an order the caller owns.
+func (m Model) Fixed() Model {
+	m.fixed = true
+	return m
+}
+
 // SetRows replaces the contents, keeping the cursor in bounds and keeping any
 // selection that still refers to something present.
 func (m Model) SetRows(rows []Row) Model {
-	m.rows = m.applySort(rows)
+	m.rows = rows
+	if !m.fixed {
+		m.rows = m.applySort(rows)
+	}
 	if m.cursor >= len(m.rows) {
 		m.cursor = max(0, len(m.rows)-1)
 	}
@@ -198,6 +212,20 @@ func (m Model) Cursor() int {
 		return -1
 	}
 	return m.cursor
+}
+
+// SetCursor puts the cursor on a row by index, scrolling if it has to.
+//
+// It exists for callers whose rows can be rebuilt under the cursor -- a tree
+// folding a subtree away -- and who therefore have to restore the cursor by
+// IDENTITY rather than let it keep an index that now means a different row.
+func (m Model) SetCursor(i int) Model {
+	if len(m.rows) == 0 {
+		return m
+	}
+	m.cursor = clamp(i, 0, len(m.rows)-1)
+	m.clampScroll()
+	return m
 }
 
 // Current is the row under the cursor.
@@ -237,7 +265,7 @@ func (m Model) SelectionCount() int { return len(m.selected) }
 // screen -- a narrow terminal can drop it, and then the table is ordered by
 // something the person cannot see.
 func (m Model) SortDescription() string {
-	if m.sortCol >= len(m.cols) {
+	if m.fixed || m.sortCol >= len(m.cols) {
 		return ""
 	}
 	direction := "a-z"
@@ -317,6 +345,9 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 		m.selected = map[int64]bool{}
 
 	case "s":
+		if m.fixed {
+			return m, false
+		}
 		m = m.sortBy(m.col)
 
 	default:
