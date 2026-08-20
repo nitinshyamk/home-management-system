@@ -194,6 +194,13 @@ func (c *controller) Holdings(ctx context.Context) ([]HoldingRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Where a checked-out thing went is a NAME, not the identifier the ledger
+	// records. Reading the location tree once is cheaper than a lookup per row
+	// and gives every row the same answer.
+	where, err := c.locationNames(ctx)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]HoldingRow, 0, len(details))
 	for _, d := range details {
 		out = append(out, HoldingRow{
@@ -201,9 +208,31 @@ func (c *controller) Holdings(ctx context.Context) ([]HoldingRow, error) {
 			Item:     d.ItemName,
 			Kind:     string(d.Holding.Kind()),
 			Location: d.LocationName,
-			State:    describeState(d),
+			State:    describeState(d, where),
 			Note:     describeFlags(d),
 		})
+	}
+	return out, nil
+}
+
+// locationNames maps location identifiers to their names.
+type locationNames map[int64]string
+
+func (n locationNames) Label(kind domain.EntityKind, id int64) string {
+	if kind != domain.EntityLocation {
+		return ""
+	}
+	return n[id]
+}
+
+func (c *controller) locationNames(ctx context.Context) (locationNames, error) {
+	nodes, err := c.read.LocationForest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(locationNames, len(nodes))
+	for _, n := range nodes {
+		out[int64(n.Location.ID)] = n.Location.Name
 	}
 	return out, nil
 }

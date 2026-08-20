@@ -143,11 +143,18 @@ func showQty(q *domain.Quantity) string {
 // Holdings and Items
 // ---------------------------------------------------------------------------
 
+// names resolves a displaced location for describeState. Nil means the caller
+// has no name for it, and the state says so rather than showing a raw id --
+// "out at 6" is a number a person cannot act on.
+type names interface {
+	Label(kind domain.EntityKind, id int64) string
+}
+
 // describeState renders what a Holding currently is.
 //
 // The two kinds read completely differently, which is the point: a Bulk holding
 // has an amount, a Unique one has a custody state. Neither has the other's.
-func describeState(d query.HoldingDetail) string {
+func describeState(d query.HoldingDetail, where names) string {
 	switch h := d.Holding.(type) {
 	case domain.BulkHolding:
 		if h.UnitBasis == domain.BasisPackage {
@@ -169,7 +176,12 @@ func describeState(d query.HoldingDetail) string {
 		case h.IsMissing():
 			return "out, whereabouts unknown"
 		case h.Custody == domain.CustodyOut:
-			return fmt.Sprintf("out at %d", *h.DisplacedTo)
+			if where != nil {
+				if name := where.Label(domain.EntityLocation, int64(*h.DisplacedTo)); name != "" {
+					return "out at " + name
+				}
+			}
+			return "out"
 		case h.Custody == domain.CustodyLost:
 			return "lost"
 		default:

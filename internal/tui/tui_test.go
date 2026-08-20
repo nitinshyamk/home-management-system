@@ -169,7 +169,9 @@ func TestNumberKeysSwitchViews(t *testing.T) {
 func TestEnterOpensTheSelectedHoldingsHistory(t *testing.T) {
 	fake := &fakeController{}
 	// Move to the second holding, then open it.
-	m, view := drive(t, fake, "ctrl+n", "enter")
+	// j rather than the Emacs C-n v01 used: 10a adopts the plan's vim-like
+	// bindings, and the table widget is where motion now lives.
+	m, view := drive(t, fake, "j", "enter")
 
 	if m.view != viewHistory {
 		t.Fatalf("view = %v, want history", m.view)
@@ -210,11 +212,11 @@ func TestIntegrityViewReportsWithoutRepairing(t *testing.T) {
 
 func TestCursorStaysInBounds(t *testing.T) {
 	// Far more downs than rows, then far more ups.
-	m, _ := drive(t, &fakeController{}, "ctrl+n", "ctrl+n", "ctrl+n", "ctrl+n")
+	m, _ := drive(t, &fakeController{}, "j", "j", "j", "j")
 	if m.cursor != 1 {
 		t.Errorf("cursor = %d, want 1 (two rows)", m.cursor)
 	}
-	m, _ = drive(t, &fakeController{}, "ctrl+p", "ctrl+p")
+	m, _ = drive(t, &fakeController{}, "k", "k")
 	if m.cursor != 0 {
 		t.Errorf("cursor = %d, want 0", m.cursor)
 	}
@@ -223,7 +225,7 @@ func TestCursorStaysInBounds(t *testing.T) {
 // TestTheUIMakesNoWrites is the v01 scope stated as a test.
 func TestTheUIMakesNoWrites(t *testing.T) {
 	fake := &fakeController{}
-	drive(t, fake, "1", "2", "3", "4", "5", "enter", "ctrl+b", "ctrl+n", "r")
+	drive(t, fake, "1", "2", "3", "4", "5", "enter", "ctrl+b", "j", "s", " ", "r")
 
 	for _, call := range fake.calls {
 		switch call {
