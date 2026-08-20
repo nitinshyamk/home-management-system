@@ -11,12 +11,9 @@ import (
 	"fmt"
 	"os"
 
-	"home-management-system/internal/annotate"
 	"home-management-system/internal/app"
 	"home-management-system/internal/db"
 	"home-management-system/internal/ledger"
-	"home-management-system/internal/origin"
-	"home-management-system/internal/query"
 	"home-management-system/internal/tui"
 )
 
@@ -83,7 +80,7 @@ func run() error {
 	}
 
 	// No flags: browse.
-	ctrl := app.New(query.New(conn), proc, origin.New(conn), annotate.New(conn))
+	ctrl := app.Open(conn)
 	return tui.Run(ctx, ctrl)
 }
 

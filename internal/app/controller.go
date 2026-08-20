@@ -12,6 +12,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -112,6 +113,17 @@ type controller struct {
 // New wires the paths together.
 func New(read *query.Reader, proc *ledger.Processor, o *origin.Originator, a *annotate.Annotator) Controller {
 	return &controller{read: read, proc: proc, origin: o, annotate: a}
+}
+
+// Open assembles a Controller over a connection.
+//
+// One place knows how the paths fit together, which is what lets everything
+// above this layer -- the entry point, the test harness -- reach a Controller
+// without importing a write path itself. That is not tidiness: archlint asserts
+// that internal/tui imports none of origin, ledger, or annotate, and before
+// this existed the only way to get a Controller was to import all three.
+func Open(conn *sql.DB) Controller {
+	return New(query.New(conn), ledger.New(conn), origin.New(conn), annotate.New(conn))
 }
 
 func (c *controller) CategoryTree(ctx context.Context) ([]TreeRow, error) {

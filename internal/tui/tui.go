@@ -197,20 +197,70 @@ func (m Model) View() string {
 }
 
 func (m Model) header() string {
-	var tabs []string
-	for _, v := range []view{viewCategories, viewLocations, viewItems, viewHoldings, viewIntegrity} {
-		label := fmt.Sprintf("%d %s", int(v)+1, viewNames[v])
-		if v == m.view {
-			label = titleStyle.Render("[" + label + "]")
+	// The tab bar drops to numbers alone when the names will not fit.
+	//
+	// Not cosmetic: a line wider than the terminal WRAPS, which shifts every
+	// row below it and makes the whole screen unreadable rather than merely
+	// cramped. Found by the Simulator's width check at 60 columns, where the
+	// full names come to 65.
+	names := len(m.tabLabels(true)) <= m.width
+	var rendered []string
+	for _, t := range m.tabs() {
+		label := t.label(names)
+		if t.view == m.view {
+			rendered = append(rendered, titleStyle.Render("["+label+"]"))
 		} else {
-			label = dimStyle.Render(" " + label + " ")
+			rendered = append(rendered, dimStyle.Render(" "+label+" "))
 		}
-		tabs = append(tabs, label)
 	}
 	if m.view == viewHistory {
-		tabs = append(tabs, titleStyle.Render("[History]"))
+		suffix := "History"
+		if !names {
+			suffix = "H"
+		}
+		rendered = append(rendered, titleStyle.Render("["+suffix+"]"))
 	}
-	return strings.Join(tabs, " ") + "\n" + dimStyle.Render(strings.Repeat("-", max(10, m.width)))
+	return strings.Join(rendered, " ") + "\n" + dimStyle.Render(strings.Repeat("-", max(10, m.width)))
+}
+
+type tab struct {
+	view view
+	name string
+	key  int
+}
+
+func (t tab) label(withName bool) string {
+	if withName {
+		return fmt.Sprintf("%d %s", t.key, t.name)
+	}
+	return fmt.Sprintf("%d", t.key)
+}
+
+func (m Model) tabs() []tab {
+	var out []tab
+	for _, v := range []view{viewCategories, viewLocations, viewItems, viewHoldings, viewIntegrity} {
+		out = append(out, tab{view: v, name: viewNames[v], key: int(v) + 1})
+	}
+	return out
+}
+
+// tabLabels renders the bar as plain text, so its width can be measured before
+// any styling is applied. Styling adds escape sequences that occupy no columns,
+// which is exactly why measuring the rendered string would be wrong.
+func (m Model) tabLabels(withName bool) string {
+	var parts []string
+	for _, t := range m.tabs() {
+		parts = append(parts, " "+t.label(withName)+" ")
+	}
+	s := strings.Join(parts, " ")
+	if m.view == viewHistory {
+		if withName {
+			s += " [History]"
+		} else {
+			s += " [H]"
+		}
+	}
+	return s
 }
 
 func (m Model) footer() string {
