@@ -1,6 +1,6 @@
 # 10a — The table widget
 
-**Status:** reviewed once, reworked, awaiting re-review
+**Status:** signed off (2026-08-19). Golden frames captured.
 **Gate:** human. Tests decide whether it is correct; a person decides whether it
 is *readable* and *fast*, and no assertion reaches either.
 
@@ -161,11 +161,19 @@ Both colours are single constants at the top of `internal/tui/table/table.go`
 A human-gated substage is not done when its tests pass — that is what makes it
 *ready for review*.
 
-- [ ] Reviewed by:
-- [ ] Date:
-- [ ] Verdict: accept / rework
+- [x] Reviewed by: Nitin
+- [x] Date: 08/19
+- [x] Verdict: accept
 - [ ] Notes:
 
-**The golden frames are captured after sign-off**, not before, so the regression
-alarm is anchored to a layout a person approved rather than to the first one
-that compiled.
+**The golden frames were captured after sign-off**, not before, so the
+regression alarm is anchored to this layout rather than to the first one that
+compiled. They live in `internal/tui/testing/testdata/golden/` and are asserted
+by `TestGolden*`.
+
+A golden failure is not automatically a bug — it says "this differs from what
+was approved". Re-review the screen, and if the change is wanted, re-capture:
+
+```bash
+go test ./internal/tui/testing -update-golden
+```

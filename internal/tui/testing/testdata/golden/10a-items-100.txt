@@ -1,0 +1,7 @@
+ 1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
+----------------------------------------------------------------------------------------------------
+  ITEM ^                                                    ON HAND  CATEGORY  MEASURE        KIND  
+> Ancho Chile                                                 300 g  Spices    g              Bulk  
+  Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space Gr…   1 held  Spices    one of a kind  Unique
+----------------------------------------------------------------------------------------------------
+2 items - sorted by item a-z
