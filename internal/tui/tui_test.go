@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"home-management-system/internal/app"
+	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
 )
@@ -19,6 +20,15 @@ import (
 type fakeController struct {
 	historyFor domain.HoldingID
 	calls      []string
+
+	// What the write surface was asked to do, and what it should answer.
+	boundLine    string
+	boundSubject command.Subject
+	bindResult   command.BindResult
+	bindErr      error
+	plan         app.Plan
+	planErr      error
+	applyErr     error
 }
 
 func (f *fakeController) CategoryTree(context.Context) ([]app.TreeRow, error) {
@@ -80,6 +90,32 @@ func (f *fakeController) SearchIndex(context.Context) (*resolve.Index, error) {
 		{Kind: resolve.KindItem, ID: 3, Path: "Grains > Basmati Rice", Leaf: "Basmati Rice"},
 		{Kind: resolve.KindHolding, ID: 9, Path: "Basmati Rice > Shelf 1 (loose)", Leaf: "Basmati Rice"},
 	}), nil
+}
+
+// The write surface. The fake records what it was ASKED to do and does none of
+// it, which is what lets TestTheUIMakesNoWrites assert on the calls a browse
+// keystroke did not make. Anything that actually writes uses the Simulator.
+func (f *fakeController) BindLine(_ context.Context, line string, subject command.Subject) (command.BindResult, error) {
+	f.calls = append(f.calls, "BindLine")
+	f.boundLine, f.boundSubject = line, subject
+	if f.bindResult.Command != nil || len(f.bindResult.Issues) > 0 {
+		return f.bindResult, f.bindErr
+	}
+	return command.BindResult{}, f.bindErr
+}
+
+func (f *fakeController) PlanCommand(context.Context, command.Command) (app.Plan, error) {
+	f.calls = append(f.calls, "PlanCommand")
+	return f.plan, f.planErr
+}
+
+func (f *fakeController) ApplyPlan(context.Context, app.Plan) error {
+	f.calls = append(f.calls, "ApplyPlan")
+	return f.applyErr
+}
+
+func (f *fakeController) Describe(_ context.Context, cmd command.Command) string {
+	return command.Summary(cmd, nil)
 }
 
 func (f *fakeController) CreateCategory(context.Context, string, *domain.CategoryID) (domain.CategoryID, error) {
