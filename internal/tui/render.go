@@ -105,7 +105,11 @@ func parseScript(r io.Reader) ([]step, error) {
 		if text == "" || strings.HasPrefix(text, "#") {
 			continue
 		}
-		name, label, _ := strings.Cut(text, ":")
+		// Split on COLON-SPACE, not on a bare colon. `:` is itself a key -- it
+		// is the command leader, and a facet script types one too -- so a
+		// format that cannot express it is a format that cannot drive the
+		// interface it exists to photograph.
+		name, label, _ := strings.Cut(text, ": ")
 		name = strings.TrimSpace(name)
 		label = strings.TrimSpace(label)
 		key, ok := keyByName(name)

@@ -211,3 +211,55 @@ func TestSearchFitsNarrowTerminals(t *testing.T) {
 		s.Send(sim.Esc, sim.Esc)
 	}
 }
+
+// TestAbandoningAFilterEditRestoresTheOldOne is the bug a rendered frame found:
+// rows narrow as you type, so an abandoned edit was leaving the half-typed
+// filter on the table. It showed as "0 of 12 holdings" underneath a jump
+// palette, long after the filter that produced it had been cancelled.
+func TestAbandoningAFilterEditRestoresTheOldOne(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("4"))
+
+	s.Send(sim.Press("/"))
+	s.Send(sim.Type("ancho"))
+	s.Send(sim.Enter)
+	s.ShowsText("3 of 4")
+
+	// Start refining, change your mind.
+	s.Send(sim.Press("/"))
+	s.Send(sim.Type("zzzz"))
+	s.HidesText("Ancho Chile") // narrowing as you type
+	s.Send(sim.Esc)
+
+	s.ShowsText("3 of 4")
+	s.ShowsText("Ancho Chile")
+	s.ShowsText("/ancho")
+}
+
+// With no filter to restore, abandoning an edit leaves the list whole.
+func TestAbandoningAFirstFilterLeavesEverything(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("4"))
+
+	s.Send(sim.Press("/"))
+	s.Send(sim.Type("zzzz"))
+	s.Send(sim.Esc)
+
+	s.ShowsText("Ancho Chile")
+	s.HidesText(" of 4")
+}
+
+// While the palette is up it is what the person is looking at, so the footer
+// describes IT. Counting the list underneath describes a screen nobody reads.
+func TestTheFooterDescribesThePaletteWhileJumping(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("4"))
+	s.Send(sim.CtrlP)
+	s.Send(sim.Type("shelf"))
+
+	s.ShowsText("matches across every kind")
+	s.HidesText("holdings -")
+}
