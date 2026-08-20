@@ -550,6 +550,15 @@ func (m Model) footer() string {
 	// The count leads, and it is built in one place rather than by each view: a
 	// count assembled per view is a count that says "3 of 12" in only some of
 	// them.
+	// While the palette is up it is what the person is looking at, so the
+	// footer describes IT. Counting the list underneath would be describing a
+	// screen nobody is reading.
+	if m.box.Mode() == omnibox.Jump {
+		shown, _ := m.jump.Counts()
+		return rule + "\n" + dimStyle.Render(fmt.Sprintf(
+			"%d matches across every kind - enter go - esc cancel", shown))
+	}
+
 	var parts []string
 	if phrase := m.countPhrase(); phrase != "" {
 		parts = append(parts, phrase)
@@ -812,7 +821,11 @@ func (m Model) handleOmnibox(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	switch msg.Type {
 	case tea.KeyEsc:
 		m.box = m.box.Cancel()
-		return m, nil, true
+		// Restoring the ACCEPTED filter, not merely closing the line. Rows
+		// narrow as you type, so an abandoned edit leaves the half-typed filter
+		// on the table -- which showed up as "0 of 12 holdings" under a jump
+		// palette, long after the filter that produced it had been cancelled.
+		return m.applyFilter(), nil, true
 	case tea.KeyEnter:
 		if m.box.Mode() == omnibox.Jump {
 			return m.acceptJump()
