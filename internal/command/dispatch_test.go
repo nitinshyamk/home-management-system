@@ -15,7 +15,7 @@ import (
 func plan(t *testing.T, c command.Command) (ops.Batch, error) {
 	t.Helper()
 	conn := testsupport.NewDB(t)
-	return app.Plan(context.Background(), ops.NewPlanner(conn), c)
+	return app.PlanFor(context.Background(), ops.NewPlanner(conn), c)
 }
 
 // isUnhandled distinguishes "the dispatcher has no case for this" from "the
