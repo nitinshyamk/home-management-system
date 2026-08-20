@@ -81,7 +81,6 @@ type Model struct {
 
 	sortCol  int
 	sortDesc bool
-	sorted   bool
 
 	// pending holds the first key of a two-key sequence (g, z), because gg and
 	// zz are one gesture each and the widget has to remember it saw the first.
@@ -93,10 +92,40 @@ type Model struct {
 var (
 	headerStyle  = lipgloss.NewStyle().Faint(true)
 	focusedStyle = lipgloss.NewStyle().Bold(true).Underline(true)
-	cursorStyle  = lipgloss.NewStyle().Bold(true)
-	markStyle    = lipgloss.NewStyle().Bold(true)
 	emptyStyle   = lipgloss.NewStyle().Faint(true)
+
+	// stripe is the banding that makes a dense table scannable across.
+	//
+	// Uniform rows are hard to read a whole screenful of at once -- the eye has
+	// nothing to track along -- but alternating black and white is far too
+	// loud for a surface this repetitive. This is one step off the background
+	// in each direction, adaptive so it stays one step off in a light terminal
+	// too. It costs no vertical space, which is the other thing a dense table
+	// cannot spare.
+	stripe = lipgloss.AdaptiveColor{Light: "254", Dark: "236"}
 )
+
+// rowStyle composes the three things a row can be saying at once.
+//
+// One style rather than three spans, so they layer predictably: a selected row
+// under the cursor on a striped line is banded, underlined, and bold, and reads
+// as all three rather than as whichever was applied last.
+func rowStyle(striped, selected, cursor bool) lipgloss.Style {
+	s := lipgloss.NewStyle()
+	if striped {
+		s = s.Background(stripe)
+	}
+	if selected {
+		// Underline rather than more weight or more colour. The gutter mark
+		// says WHICH rows are picked; the underline makes the set legible as a
+		// set without competing with the cursor for attention.
+		s = s.Underline(true)
+	}
+	if cursor {
+		s = s.Bold(true)
+	}
+	return s
+}
 
 // gutter is the two fixed columns at the left: the cursor mark and the
 // selection mark.
@@ -108,6 +137,12 @@ var (
 const gutter = 2
 
 // New builds a table over a fixed set of columns.
+//
+// It starts SORTED, by the first column ascending, rather than in whatever
+// order the rows arrived. A table always has an order, so the only question is
+// whether it says what that order is -- and one that does not is quietly lying
+// about what "first" means. Sorting the rows here rather than trusting the
+// caller's order is what makes the stated order true.
 func New(cols []Column) Model {
 	return Model{cols: cols, selected: map[int64]bool{}, width: 80, height: 20}
 }
@@ -115,10 +150,7 @@ func New(cols []Column) Model {
 // SetRows replaces the contents, keeping the cursor in bounds and keeping any
 // selection that still refers to something present.
 func (m Model) SetRows(rows []Row) Model {
-	m.rows = rows
-	if m.sorted {
-		m.rows = m.applySort(m.rows)
-	}
+	m.rows = m.applySort(rows)
 	if m.cursor >= len(m.rows) {
 		m.cursor = max(0, len(m.rows)-1)
 	}
@@ -184,6 +216,22 @@ func (m Model) Selected() []int64 {
 // status line should report -- Selected()'s fallback to the cursor row would
 // make it claim a selection nobody made.
 func (m Model) SelectionCount() int { return len(m.selected) }
+
+// SortDescription says how the table is ordered, in words, for a status line.
+//
+// The header arrow says it too, but only if the sorted column happens to be on
+// screen -- a narrow terminal can drop it, and then the table is ordered by
+// something the person cannot see.
+func (m Model) SortDescription() string {
+	if m.sortCol >= len(m.cols) {
+		return ""
+	}
+	direction := "a-z"
+	if m.sortDesc {
+		direction = "z-a"
+	}
+	return "by " + strings.ToLower(m.cols[m.sortCol].Title) + " " + direction
+}
 
 // FocusedColumn is the column h and l move between.
 func (m Model) FocusedColumn() int { return m.col }
@@ -265,10 +313,10 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 
 // sortBy sorts on a column, reversing if it is already the sort column.
 func (m Model) sortBy(col int) Model {
-	if m.sorted && m.sortCol == col {
+	if m.sortCol == col {
 		m.sortDesc = !m.sortDesc
 	} else {
-		m.sortCol, m.sortDesc, m.sorted = col, false, true
+		m.sortCol, m.sortDesc = col, false
 	}
 	// The cursor follows its row rather than its index. A sort that moves the
 	// selection out from under the cursor is how you act on the wrong thing.

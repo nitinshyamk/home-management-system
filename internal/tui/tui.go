@@ -347,10 +347,25 @@ func (m Model) tabLabels(withName bool) string {
 
 func (m Model) footer() string {
 	help := "j/k move - h/l column - s sort - space select - enter history - 1-5 views - q quit"
-	if m.status != "" {
-		return dimStyle.Render(strings.Repeat("-", max(10, m.width))) + "\n" + m.status
+	rule := dimStyle.Render(strings.Repeat("-", max(10, m.width)))
+
+	status := m.status
+	if tabular(m.view) {
+		// How the table is ordered, said in the one place that is always
+		// visible. The header arrow says it too, but a narrow terminal can drop
+		// the sorted column -- and then the table is ordered by something the
+		// person cannot see.
+		if sorted := m.table.SortDescription(); sorted != "" {
+			status = strings.TrimSpace(status + " - sorted " + sorted)
+		}
+		if n := m.table.SelectionCount(); n > 0 {
+			status += fmt.Sprintf(" - %d selected", n)
+		}
 	}
-	return dimStyle.Render(strings.Repeat("-", max(10, m.width))) + "\n" + dimStyle.Render(help)
+	if status != "" {
+		return rule + "\n" + status
+	}
+	return rule + "\n" + dimStyle.Render(help)
 }
 
 func (m Model) body() string {

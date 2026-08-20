@@ -1,6 +1,6 @@
 # 10a — The table widget
 
-**Status:** awaiting review
+**Status:** reviewed once, reworked, awaiting re-review
 **Gate:** human. Tests decide whether it is correct; a person decides whether it
 is *readable* and *fast*, and no assertion reaches either.
 
@@ -99,6 +99,29 @@ Judge these, in this order. The first three are the ones that matter.
   different problem.
 
 ---
+
+## Review 1 — verdict and what changed
+
+Accepted with four changes. Recorded here rather than only in a commit, because
+the next reviewer needs to know what was already asked for.
+
+| Feedback | Verdict | What changed |
+|---|---|---|
+| Vertical density is good | keep | — |
+| The cursor is clear; bolding the text helps identify the row | keep | — |
+| Narrow terminals degrade gracefully | keep | — |
+| Uniform rows make it hard to parse a screenful at once. A subtle line or shading would help; black-and-white alternating would be too loud | **changed** | Alternating row banding, one step off the background, adaptive for light terminals. It costs no vertical space, which is what a dense table cannot spare. |
+| Selection is harder to read than it should be; even an underline would help | **changed** | Selected rows are underlined as well as gutter-marked. The mark says *which*; the underline makes the set legible *as a set* without competing with the cursor. |
+| Sort should be stated from the start — the indication only appears once you sort | **changed** | The table now starts sorted (first column, ascending) and says so from the first frame. It also sorts the rows itself, so the stated order is true rather than assumed from the caller. The footer states it in words too, because a narrow terminal can drop the sorted column and then the table is ordered by something you cannot see. |
+| Tree rollups should be right-aligned, not staggered by depth — perhaps inversely staggered | **deferred to 10b**, recorded in `10b-trees.md` | — |
+
+Banding and the selection underline have no plain-text form, so the frames in
+`10a-frames.md` cannot show them. To see them:
+
+```bash
+make reseed
+./bin/hms --db-path=hms.db --render docs/review/10a.keys --color | less -R
+```
 
 ## Sign-off
 

@@ -32,7 +32,7 @@ func (m Model) View() string {
 
 	page := m.page()
 	for i := m.top; i < len(m.rows) && i < m.top+page; i++ {
-		b.WriteString(m.line(m.rows[i], i == m.cursor, widths, visible))
+		b.WriteString(m.line(m.rows[i], i, i == m.cursor, widths, visible))
 		if i < len(m.rows)-1 && i < m.top+page-1 {
 			b.WriteByte('\n')
 		}
@@ -48,7 +48,7 @@ func (m Model) header(widths []int, visible []int) string {
 	cells := make([]string, 0, len(visible))
 	for n, i := range visible {
 		title := m.cols[i].Title
-		if m.sorted && i == m.sortCol {
+		if i == m.sortCol {
 			arrow := " ^"
 			if m.sortDesc {
 				arrow = " v"
@@ -66,13 +66,19 @@ func (m Model) header(widths []int, visible []int) string {
 	return strings.Repeat(" ", gutter) + strings.Join(cells, separator)
 }
 
-// line renders one row, gutter first.
-func (m Model) line(r Row, isCursor bool, widths []int, visible []int) string {
+// line renders one row: gutter, cells, and the banding that makes a screenful
+// of them scannable.
+//
+// The whole line is padded to the terminal width before it is styled, so a
+// stripe is a BAND across the screen rather than a ragged blob that stops
+// wherever the last column happened to end.
+func (m Model) line(r Row, index int, isCursor bool, widths []int, visible []int) string {
 	cursorMark, selectMark := " ", " "
 	if isCursor {
 		cursorMark = ">"
 	}
-	if m.selected[r.Key] {
+	selected := m.selected[r.Key]
+	if selected {
 		selectMark = "*"
 	}
 
@@ -80,18 +86,12 @@ func (m Model) line(r Row, isCursor bool, widths []int, visible []int) string {
 	for n, i := range visible {
 		cells = append(cells, pad(fit(cell(r, i), widths[n], m.cols[i].Elide), widths[n], m.cols[i].Align))
 	}
-	body := strings.Join(cells, separator)
+	text := cursorMark + selectMark + strings.Join(cells, separator)
 
-	if isCursor {
-		// The cursor is a gutter mark AND weight on the row.
-		//
-		// Either alone was rejected on purpose: reverse video across a whole
-		// row is loud enough to dominate a dense screen, and a gutter mark by
-		// itself is easy to lose among thirty rows. The mark says where, the
-		// weight says which.
-		return cursorStyle.Render(cursorMark) + markStyle.Render(selectMark) + cursorStyle.Render(body)
-	}
-	return cursorMark + markStyle.Render(selectMark) + body
+	// Striping follows the row's place in the DATA, not its place on screen, so
+	// a row keeps its band while the list scrolls under the cursor. Banding by
+	// screen position makes every stripe appear to move on every keystroke.
+	return rowStyle(index%2 == 1, selected, isCursor).Render(pad(text, m.width, Left))
 }
 
 // layout decides column widths, and which columns survive.
@@ -173,7 +173,7 @@ func (m Model) naturalWidths(visible []int) []int {
 	widths := make([]int, len(visible))
 	for n, i := range visible {
 		w := len(m.cols[i].Title)
-		if m.sorted && i == m.sortCol {
+		if i == m.sortCol {
 			w += 2 // the sort arrow lives in the header cell
 		}
 		for _, r := range m.rows {

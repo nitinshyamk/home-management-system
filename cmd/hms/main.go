@@ -33,6 +33,7 @@ func run() error {
 	render := flag.String("render", "", "replay a .keys script and print each frame (for design review)")
 	width := flag.Int("width", 100, "terminal width for --render")
 	height := flag.Int("height", 30, "terminal height for --render")
+	colour := flag.Bool("color", false, "keep colour in --render output (pipe to less -R)")
 	flag.Parse()
 
 	cfg := db.DefaultConfig()
@@ -89,7 +90,7 @@ func run() error {
 	// is about a specific screen rather than a description of one. It is the
 	// Simulator with a main() around it: same model, same keys, same loop.
 	if *render != "" {
-		return tui.RenderFile(ctx, ctrl, *render, os.Stdout, *width, *height)
+		return tui.RenderFile(ctx, ctrl, *render, os.Stdout, *width, *height, *colour)
 	}
 
 	// No flags: browse.
