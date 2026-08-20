@@ -2,7 +2,6 @@ package omnibox
 
 import (
 	"fmt"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -22,6 +21,9 @@ const (
 	Filter
 	// Jump searches everything at once and goes somewhere.
 	Jump
+	// Command is the `:` line -- the same syntax a CSV row and an agent speak,
+	// which is why learning it once pays three times.
+	Command
 )
 
 // Model is the input line.
@@ -39,6 +41,13 @@ var (
 	filterStyle = lipgloss.NewStyle().Bold(true)
 	jumpStyle   = lipgloss.NewStyle().Bold(true).Reverse(true)
 	hintStyle   = lipgloss.NewStyle().Faint(true)
+
+	// The command prompt is tinted rather than reversed, so the three modes
+	// differ from each other in KIND -- a slash, a reversed badge, a tinted
+	// badge -- rather than by degree of emphasis.
+	commandStyle = lipgloss.NewStyle().Bold(true).
+			Foreground(lipgloss.AdaptiveColor{Light: "231", Dark: "231"}).
+			Background(lipgloss.AdaptiveColor{Light: "24", Dark: "24"})
 )
 
 func New() Model { return Model{width: 80} }
@@ -105,12 +114,16 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 		return m, false
 	}
 	switch msg.Type {
-	case tea.KeyRunes, tea.KeySpace:
+	case tea.KeyRunes:
 		m.input += string(msg.Runes)
-		if msg.Type == tea.KeySpace {
-			m.input += " "
-			m.input = strings.TrimSuffix(m.input, "  ")
-		}
+		return m, true
+	case tea.KeySpace:
+		// A space is a space. The first version appended msg.Runes AND a
+		// literal space and then trimmed a double -- which trimmed both, so
+		// typing a space did nothing at all. Only a real terminal sends
+		// KeySpace, and the harness's Type() was sending KeyRunes, so every
+		// test passed while `:consume 100g` arrived as "consume100g".
+		m.input += " "
 		return m, true
 	case tea.KeyBackspace:
 		if r := []rune(m.input); len(r) > 0 {
@@ -133,6 +146,12 @@ func (m Model) View() string {
 	case m.mode == Jump:
 		return jumpStyle.Render(" JUMP ") + " " + filterStyle.Render(m.input) +
 			hintStyle.Render("_  enter go   esc cancel")
+	case m.mode == Command:
+		// A third prompt, distinct from both. `:` reads as a command line
+		// everywhere a terminal has ever had one, so it earns the leader; what
+		// it must not do is look like `/`.
+		return commandStyle.Render(" : ") + " " + filterStyle.Render(m.input) +
+			hintStyle.Render("_  enter run   esc cancel")
 	case m.applied != "":
 		return hintStyle.Render("filtered ") + filterStyle.Render("/"+m.applied) +
 			hintStyle.Render("   esc clear")

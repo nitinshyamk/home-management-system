@@ -10,8 +10,15 @@ import (
 	"home-management-system/internal/origin"
 )
 
-// The Origination variants. Each Describe names exactly what cannot be changed
-// later, because that is the whole content of the confirmation a person gives.
+// The Origination variants.
+//
+// Each carries two strings and the difference between them matters. Describe is
+// prose for a plan line; Permanent is the FACTS that cannot be changed
+// afterwards, which the confirmation panel sets out on their own.
+//
+// Separate accessors rather than one string the panel picks apart, because the
+// confirmation is the highest-stakes text in the application and string surgery
+// on prose is how it would quietly start saying the wrong thing.
 
 // NewCategory creates a classification node.
 type NewCategory struct {
@@ -22,6 +29,11 @@ type NewCategory struct {
 
 func (NewCategory) isOrigination()          {}
 func (NewCategory) NeedsConfirmation() bool { return true }
+
+// A Category has nothing permanent: name, description, and parent are all
+// revisable. It is confirmed anyway, because a second one created by accident
+// is the hazard rather than anything about it being fixed.
+func (NewCategory) Permanent() string { return "" }
 
 // Describe is short because a Category has no permanent fields worth warning
 // about: name, description, and parent are all revisable. It is originated
@@ -48,6 +60,10 @@ type NewUniqueItem struct {
 
 func (NewUniqueItem) isOrigination()          {}
 func (NewUniqueItem) NeedsConfirmation() bool { return true }
+
+// Kind is the one thing about a Unique Item that can never change: making it
+// countable later means Promote's opposite, which replaces every Holding.
+func (NewUniqueItem) Permanent() string { return "kind = Unique" }
 
 func (n NewUniqueItem) Describe() string {
 	return fmt.Sprintf("item %q as one of a kind (permanent: kind = Unique)", n.Name)
@@ -80,6 +96,17 @@ func (NewBulkItem) NeedsConfirmation() bool { return true }
 // matters most in the system: changing kind later means Promote, which replaces
 // every Holding, and changing content unit is not expressible as an event at
 // all (E7).
+// All three, because this is the confirmation that matters most in the system:
+// changing kind later means Promote, which replaces every Holding, and changing
+// the content unit is not expressible as an event at all (E7).
+func (n NewBulkItem) Permanent() string {
+	pkg := "none"
+	if n.PackageSize != nil {
+		pkg = n.PackageSize.String()
+	}
+	return fmt.Sprintf("kind = Bulk   unit = %s   package = %s", n.ContentUnit, pkg)
+}
+
 func (n NewBulkItem) Describe() string {
 	pkg := "none"
 	if n.PackageSize != nil {
@@ -112,6 +139,10 @@ type NewLocation struct {
 func (NewLocation) isOrigination()          {}
 func (NewLocation) NeedsConfirmation() bool { return true }
 
+// A Location has nothing permanent either -- its name is annotation and its
+// parent is recorded, so both can change.
+func (NewLocation) Permanent() string { return "" }
+
 func (n NewLocation) Describe() string { return fmt.Sprintf("location %q", n.Name) }
 
 func (n NewLocation) originate(ctx context.Context, _ *origin.Originator, l *ledger.Processor, c *Created) error {
@@ -137,6 +168,11 @@ type NewBulkHolding struct {
 
 func (NewBulkHolding) isOrigination()          {}
 func (NewBulkHolding) NeedsConfirmation() bool { return false }
+
+// A Holding's unit basis is immutable, but a Holding is not confirmed -- it is
+// implied by acquiring stock rather than chosen -- so there is nothing here for
+// a panel to set out.
+func (NewBulkHolding) Permanent() string { return "" }
 
 func (n NewBulkHolding) Describe() string {
 	return fmt.Sprintf("holding counted by %s (permanent: unit basis = %s)", n.UnitBasis, n.UnitBasis)
@@ -167,6 +203,8 @@ type NewUniqueHolding struct {
 
 func (NewUniqueHolding) isOrigination()          {}
 func (NewUniqueHolding) NeedsConfirmation() bool { return false }
+
+func (NewUniqueHolding) Permanent() string { return "" }
 
 func (n NewUniqueHolding) Describe() string { return "holding, individually tracked" }
 

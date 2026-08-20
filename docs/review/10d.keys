@@ -1,0 +1,119 @@
+# 10d — inline editing and the command line.
+#
+#   ./bin/hms --db-path=hms.db --render docs/review/10d.keys --width 92 --height 20
+#
+# The steps are the walkthrough in 10d-editing.md, in order.
+
+2: the locations tree
+j: onto the Garage
+e: rename, in place
+space
+T
+w
+o
+enter: saved
+e
+space
+X
+esc: abandoned, and nothing changed
+4: the holdings table
+:: the command line
+c
+o
+n
+s
+u
+m
+e
+space
+1
+0
+0
+enter: it acts on the row under the cursor
+:
+c
+o
+n
+s
+u
+m
+e
+space
+5
+k
+g
+enter: a refusal, in a sentence
+:
+n
+e
+w
+space
+i
+t
+e
+m
+space
+T
+u
+r
+m
+e
+r
+i
+c
+space
+c
+o
+u
+n
+t
+i
+n
+g
+space
+m
+e
+a
+s
+u
+r
+e
+d
+space
+u
+n
+i
+t
+space
+g
+space
+p
+a
+c
+k
+a
+g
+e
+space
+2
+0
+0
+0
+space
+c
+a
+t
+e
+g
+o
+r
+y
+space
+S
+p
+i
+c
+e
+s
+enter: the permanent-fields confirmation
+esc: nothing was created

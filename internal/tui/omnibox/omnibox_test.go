@@ -131,3 +131,51 @@ func strip(s string) string {
 	}
 	return b.String()
 }
+
+// Three modes now, and they have to differ in KIND rather than by degree of
+// emphasis: a slash, a reversed badge, a tinted badge. The old interface's
+// defect was modes you could not tell apart from the screen.
+func TestAllThreeModesLookDifferent(t *testing.T) {
+	seen := map[string]omnibox.Mode{}
+	for _, mode := range []omnibox.Mode{omnibox.Filter, omnibox.Jump, omnibox.Command} {
+		view := strip(typeInto(omnibox.New().Open(mode), "rice").View())
+		if prior, dup := seen[view]; dup {
+			t.Errorf("modes %v and %v render identically: %q", prior, mode, view)
+		}
+		seen[view] = mode
+	}
+	if got := strip(typeInto(omnibox.New().Open(omnibox.Command), "consume 100g").View()); !strings.Contains(got, ":") {
+		t.Errorf("the command line has no leader: %q", got)
+	}
+}
+
+// A command line is not a filter, so accepting one must not leave a filter
+// behind.
+func TestAcceptingACommandDoesNotBecomeAFilter(t *testing.T) {
+	m := typeInto(omnibox.New().Open(omnibox.Filter), "ancho").Accept()
+	m = typeInto(m.Open(omnibox.Command), "consume 100g").Accept()
+	if m.Applied() != "ancho" {
+		t.Errorf("applied filter = %q after running a command", m.Applied())
+	}
+}
+
+// A real terminal sends KeySpace, never a space rune. The first version of
+// Update handled both in one case, appended msg.Runes AND a literal space, then
+// trimmed a double -- which trimmed both, so typing a space did nothing.
+//
+// Every test was green, because the harness's Type() was sending runes. So this
+// sends the message a terminal actually sends, which is the only kind of test
+// that could have caught it.
+func TestASpaceFromARealTerminalIsASpace(t *testing.T) {
+	m := omnibox.New().Open(omnibox.Command)
+	for _, msg := range []tea.KeyMsg{
+		{Type: tea.KeyRunes, Runes: []rune("consume")},
+		{Type: tea.KeySpace, Runes: []rune{' '}},
+		{Type: tea.KeyRunes, Runes: []rune("100g")},
+	} {
+		m, _ = m.Update(msg)
+	}
+	if m.Input() != "consume 100g" {
+		t.Errorf("input = %q, want %q", m.Input(), "consume 100g")
+	}
+}

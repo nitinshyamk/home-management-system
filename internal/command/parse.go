@@ -23,7 +23,16 @@ import (
 var ErrSyntax = errors.New("command: cannot read line")
 
 // Parse reads one typed line.
-func Parse(line string) (RawCommand, error) {
+func Parse(line string) (RawCommand, error) { return parse(line, "") }
+
+// parse reads a line, optionally skipping one positional slot because the
+// caller is going to supply it from context.
+//
+// Skipping is what makes `:consume 100g` mean what it looks like. Without it
+// the parser assigns positionals strictly in order, so "100g" lands in the item
+// slot and the quantity is missing -- the line reads as naming an item called
+// "100g", which is exactly what it said.
+func parse(line string, skip string) (RawCommand, error) {
 	tokens, err := tokenise(line)
 	if err != nil {
 		return RawCommand{}, err
@@ -40,6 +49,15 @@ func Parse(line string) (RawCommand, error) {
 
 	raw := RawCommand{Op: string(op), Fields: map[string]string{}}
 	positional := spec.Positional()
+	if skip != "" {
+		remaining := positional[:0:0]
+		for _, f := range positional {
+			if f.Key != skip {
+				remaining = append(remaining, f)
+			}
+		}
+		positional = remaining
+	}
 
 	for len(rest) > 0 {
 		// A bare token that names one of this command's pair keys starts a

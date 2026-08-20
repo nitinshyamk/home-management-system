@@ -130,7 +130,11 @@ var specs = []Spec{
 			Required: true, Choices: []string{"unique", "pile", "measured"}},
 		{Key: "unit", Type: FieldUnit, What: "what it is measured in -- PERMANENT"},
 		{Key: "package", Type: FieldQuantity, What: "how much is in one package -- PERMANENT"},
-		name("category", "where to file it", false, false, domain.EntityCategory),
+		// Required, because items.category_id is NOT NULL. Left optional it
+		// reached the database and came back as "FOREIGN KEY constraint
+		// failed", which is the schema talking to itself where a sentence
+		// belonged.
+		name("category", "where to file it", true, false, domain.EntityCategory),
 		text("notes", "anything worth knowing about it"),
 	}},
 	{Op: OpNewCategory, What: "add a classification", Fields: []Field{

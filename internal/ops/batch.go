@@ -125,8 +125,17 @@ func (c Created) Category(n int) (domain.CategoryID, error) {
 type Origination interface {
 	isOrigination()
 
-	// Describe renders the permanent fields for confirmation.
+	// Describe renders the origination as prose, for a plan line.
 	Describe() string
+
+	// Permanent is what cannot be changed afterwards, set out as FACTS rather
+	// than prose, for the confirmation panel to lay out on their own. Empty
+	// when there is nothing of the sort -- a Category has no permanent fields.
+	//
+	// Separate from Describe because the confirmation is the highest-stakes
+	// text in the application, and picking facts back out of a sentence is how
+	// it would quietly start saying the wrong thing.
+	Permanent() string
 
 	// NeedsConfirmation reports whether a person must approve this before it
 	// is applied.

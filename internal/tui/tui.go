@@ -18,6 +18,7 @@ import (
 	"home-management-system/internal/app"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
+	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/omnibox"
 	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/tree"
@@ -79,6 +80,11 @@ type Model struct {
 	// pending is where a jump is going, held until the destination view has
 	// loaded and there is a row to put the cursor on.
 	pending *resolve.Candidate
+
+	// editor is the in-place field. confirm is the one thing that stands
+	// between a person and a permanent change.
+	editor  editor.Model
+	confirm *pendingPlan
 	// holdingIDs parallels rows in the Holdings view, so Enter knows what was
 	// selected without the rendering layer carrying domain types.
 	holdingIDs []domain.HoldingID
@@ -94,9 +100,10 @@ type Model struct {
 func New(ctx context.Context, ctrl app.Controller) Model {
 	return Model{
 		ctx: ctx, ctrl: ctrl, view: viewHoldings,
-		table: table.New(columnsFor(viewHoldings)),
-		box:   omnibox.New(),
-		jump:  table.New(jumpColumns).Fixed(),
+		table:  table.New(columnsFor(viewHoldings)),
+		box:    omnibox.New(),
+		editor: editor.New(),
+		jump:   table.New(jumpColumns).Fixed(),
 	}
 }
 
@@ -258,6 +265,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case planMsg:
+		if msg.plan.Empty() {
+			m.status = "nothing to do"
+			return m, nil
+		}
+		if msg.plan.NeedsConfirmation() {
+			// Creation is never silent and never one keystroke. The plan says
+			// so itself -- a non-empty Permanent IS the signal -- so the
+			// interface cannot fail to notice.
+			m.confirm = &pendingPlan{plan: msg.plan, summary: msg.summary}
+			m.status = ""
+			return m, nil
+		}
+		return m, m.apply(msg.plan, msg.summary)
+
+	case issuesMsg:
+		m.status = alertStyle.Render(strings.Join(msg.issues, " - "))
+		return m, nil
+
+	case appliedMsg:
+		// Reload, because something changed. The list a person is looking at
+		// must not disagree with the house.
+		m.status = msg.summary
+		return m, m.reloadKeepingStatus()
+
 	case candidatesMsg:
 		m.candidates = msg.candidates
 		m = m.refreshJump()
@@ -268,6 +300,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Innermost mode first, and this ORDER is the whole answer to the old
+		// interface's defect. Every mode gets the keystroke before the one that
+		// contains it, so esc leaves exactly one -- never two, and never
+		// depending on how you got there.
+		if next, cmd, handled := m.handleConfirm(msg); handled {
+			return next, cmd
+		}
+		if next, cmd, handled := m.handleEditor(msg); handled {
+			return next, cmd
+		}
 		if next, cmd, handled := m.handleOmnibox(msg); handled {
 			return next, cmd
 		}
@@ -311,6 +353,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.box = m.box.Open(omnibox.Jump)
 		m = m.refreshJump()
 		return m, m.loadCandidates()
+	case ":":
+		m.box = m.box.Open(omnibox.Command)
+		return m, nil
+
+	// e renames whatever the cursor is on, in place.
+	case "e":
+		return m.openEditor(), nil
 
 	// The Emacs aliases v01 carried are gone: C-p is the jump leader now, and
 	// two motion idioms in one application is one too many.
@@ -383,6 +432,15 @@ func (m Model) View() string {
 		// off screen with nothing obviously wrong.
 		body = m.table.View()
 	}
+	if m.editor.IsOpen() {
+		// Inside the list, under the row it belongs to, so the rows around it
+		// stay where they are. Losing your place is the thing that made the old
+		// interface unusable for its actual job.
+		body = body + "\n" + m.editor.SetWidth(m.width).View()
+	}
+	if m.confirm != nil {
+		body = m.confirmView()
+	}
 	if m.box.Mode() == omnibox.Jump {
 		// The palette REPLACES the list rather than floating over it. A jump
 		// searches everything, so leaving the current view visible underneath
@@ -401,7 +459,7 @@ func (m Model) View() string {
 // bodyHeight is the room left after the header, the footer, and the input line
 // when there is one.
 func (m Model) bodyHeight() int {
-	if h := m.height - 4 - m.box.Height(); h > 3 {
+	if h := m.height - 4 - m.box.Height() - m.editor.Height(); h > 3 {
 		return h
 	}
 	return 3
@@ -830,15 +888,22 @@ func (m Model) handleOmnibox(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		if m.box.Mode() == omnibox.Jump {
 			return m.acceptJump()
 		}
+		if m.box.Mode() == omnibox.Command {
+			line := m.box.Input()
+			m.box = m.box.Accept()
+			m.status = "working..."
+			return m, m.runLine(line), true
+		}
 		m.box = m.box.Accept()
 		m = m.applyFilter()
 		return m, nil, true
 	}
 	if next, handled := m.box.Update(msg); handled {
 		m.box = next
-		if m.box.Mode() == omnibox.Jump {
+		switch m.box.Mode() {
+		case omnibox.Jump:
 			m = m.refreshJump()
-		} else {
+		case omnibox.Filter:
 			// Narrow as you type: the filter that would apply if accepted now.
 			m = m.applyLive()
 		}
@@ -963,4 +1028,22 @@ func viewFor(k resolve.Kind) view {
 		return viewItems
 	}
 	return viewHoldings
+}
+
+// reloadKeepingStatus re-reads the current view without discarding what the
+// last action said it did.
+//
+// A status that vanished on reload would mean the feedback for a write was
+// visible for exactly as long as it took to refresh, which is to say never.
+func (m Model) reloadKeepingStatus() tea.Cmd {
+	said := m.status
+	reload := m.load(m.view)
+	return func() tea.Msg {
+		msg := reload()
+		if loaded, ok := msg.(loadedMsg); ok {
+			loaded.status = said
+			return loaded
+		}
+		return msg
+	}
 }
