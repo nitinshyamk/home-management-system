@@ -85,6 +85,10 @@ func mark(i int, other []string, line string) string {
 	return "! "
 }
 
+// PlainView is the view with colour stripped, for assertions that read the
+// layout rather than look at it.
+func (s *Simulator) PlainView() string { return stripANSI(s.View()) }
+
 // stripANSI removes escape sequences so a frame is plain text.
 func stripANSI(s string) string {
 	var b strings.Builder

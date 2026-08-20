@@ -48,7 +48,7 @@ func (m Model) header(widths []int, visible []int) string {
 	cells := make([]string, 0, len(visible))
 	for n, i := range visible {
 		title := m.cols[i].Title
-		if i == m.sortCol {
+		if i == m.sortCol && !m.fixed {
 			arrow := " ^"
 			if m.sortDesc {
 				arrow = " v"
@@ -173,7 +173,7 @@ func (m Model) naturalWidths(visible []int) []int {
 	widths := make([]int, len(visible))
 	for n, i := range visible {
 		w := len(m.cols[i].Title)
-		if i == m.sortCol {
+		if i == m.sortCol && !m.fixed {
 			w += 2 // the sort arrow lives in the header cell
 		}
 		for _, r := range m.rows {
