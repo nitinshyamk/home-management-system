@@ -1,0 +1,8 @@
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+------------------------------------------------------------------------------------------
+  ITEM ^                                                      QTY  LOCATION          FLAGS
+  Ancho Chile                                               100 g  Small Parts Tray       
+> Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space …  at rest  Small Parts Tray       
+filtered /loc:tray   esc clear
+------------------------------------------------------------------------------------------
+2 of 4 holdings - enter for history - sorted by item a-z

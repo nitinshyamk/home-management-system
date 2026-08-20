@@ -1,0 +1,7 @@
+ 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                      HOLDINGS
+> ▸ Garage                                                                         3
+    Left Pantry                                                                    1
+------------------------------------------------------------------------------------
+6 locations - za fold - zR expand all - zM collapse all

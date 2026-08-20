@@ -56,3 +56,37 @@ func TestGoldenItemsTable(t *testing.T) {
 	s.Send(sim.Press("3"))
 	s.AssertFrame("10a-items-100")
 }
+
+// 10b and 10c, provisionally accepted 2026-08-20 with more UI shifts expected.
+//
+// Captured anyway, and on purpose: 10d edits these same screens, and what a
+// golden is for here is the change nobody intended. A deliberate shift means
+// re-capturing, which is one command and a legible diff.
+
+func TestGoldenLocationTree(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(84, 22)
+	s.Send(sim.Press("2"))
+	s.AssertFrame("10b-locations-84")
+
+	// Collapsed is the overview, and it is a different layout question.
+	s.Send(sim.Press("z"), sim.Press("M"))
+	s.AssertFrame("10b-locations-collapsed")
+}
+
+func TestGoldenFilterAndJumpDoNotLookAlike(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(90, 20)
+
+	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Type("loc:tray"))
+	s.Send(sim.Enter)
+	s.AssertFrame("10c-filtered")
+
+	s.Send(sim.Esc)
+	s.Send(sim.CtrlP)
+	s.Send(sim.Type("shelf"))
+	s.AssertFrame("10c-jump")
+}

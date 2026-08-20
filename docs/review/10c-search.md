@@ -1,6 +1,6 @@
 # 10c — Search
 
-**Status:** not built
+**Status:** provisionally accepted (2026-08-20). Golden frames captured.
 **Gate:** human.
 
 Written before the substage is built.
@@ -89,6 +89,21 @@ make reseed && ./bin/hms
 - **`:` commands.** 10d. `/` and `C-p` only.
 - **Autocomplete inside the input.** 10d, where it is needed for editing.
 - **Acting on the filtered set.** 10f.
+
+
+## Review — verdict
+
+> This looks fine for now. There's some more UI shifts we'll make, but for the
+> most part it looks good.
+
+**Provisionally accepted.** Golden frames captured, deliberately, even though
+more shifts are expected: 10d edits these same screens, and the point of a
+golden here is to catch the changes nobody intended. A deliberate shift means
+re-capturing, which is one command and a legible diff.
+
+The narrower question 10d actually depended on — whether the prompt vocabulary,
+the escape semantics, and the vertical line budget were settled enough to build
+on — was answered yes.
 
 ## Sign-off
 
