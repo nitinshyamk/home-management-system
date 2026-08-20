@@ -1,9 +1,9 @@
 # 10b — Trees
 
-**Status:** not built
+**Status:** built; rollup layout decided; awaiting sign-off on the rest
 **Gate:** human.
 
-Written before the substage is built.
+Written before the substage was built.
 
 ---
 
@@ -56,6 +56,21 @@ A is the conventional choice and the easier scan. B encodes depth twice, which
 may read as reinforcing or as noisy. **Both are to be rendered and looked at
 before one is picked** — this is exactly the kind of judgement no assertion
 reaches.
+
+### Decided: A, right-aligned
+
+> No, let's do right-aligned. The different colors address the underlying need.
+
+Which is the reason worth recording, because it is not the reason the question
+was originally asked. B existed to give the eye something to track along a row
+and a way to feel the depth. **The banding added in 10a already does the first,
+and the indentation already does the second** — so B would have been repeating an
+answer at the cost of the column.
+
+`RollupStaggered` and the `--rollup` flag are gone rather than left behind. A
+rejected alternative kept "in case" is the drift this project spends its effort
+avoiding, and the decision is recorded here where it can be re-opened on
+purpose.
 
 ---
 

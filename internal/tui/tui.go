@@ -89,11 +89,6 @@ func tabular(v view) bool { return v == viewHoldings || v == viewItems }
 // forest reports whether a view is a tree.
 func forest(v view) bool { return v == viewCategories || v == viewLocations }
 
-// Rollup is where a tree puts its counts. It is a package-level setting so the
-// two candidate layouts can be rendered from the same build during review;
-// after 10b is signed off it collapses to whichever was chosen.
-var Rollup = tree.RollupRight
-
 // columnsFor declares each table's shape, and with it what a narrow terminal
 // loses. Drop order is a decision recorded here rather than an accident of
 // layout arithmetic.
@@ -199,7 +194,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.table = table.New(columnsFor(msg.view)).SetRows(msg.cells).SetSize(m.width, m.bodyHeight())
 		}
 		if forest(msg.view) {
-			m.tree = tree.New(unitFor(msg.view), Rollup).
+			m.tree = tree.New(unitFor(msg.view)).
 				SetNodes(msg.nodes).SetSize(m.width, m.bodyHeight())
 		}
 		m.viewport.SetContent(m.body())
