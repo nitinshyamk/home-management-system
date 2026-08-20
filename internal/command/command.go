@@ -194,12 +194,16 @@ type MarkLost struct {
 	Holding domain.HoldingID
 }
 
-// Found reverses a conclusion, and carries no location on purpose. The event
-// does not have one: finding something returns it to rest at the place it is
-// kept, and "I found it somewhere else" is two facts -- it is not lost, and it
-// has moved -- which are two commands.
+// Found reverses a conclusion. At is where it turned up, which is the common
+// case rather than the exotic one -- things are rarely lost and then found
+// exactly where they were supposed to be.
+//
+// The EVENT carries no location, because Moved is already the one way to say
+// "it is here now". The command does, and the operation composes the two. A
+// command is an intent, not an event: consume emits three.
 type Found struct {
 	Holding domain.HoldingID
+	At      *domain.LocationID
 }
 
 type Verify struct {

@@ -391,3 +391,33 @@ func TestAKeystrokeSkipsBindAndLandsInTheSamePlace(t *testing.T) {
 		t.Errorf("the keystroke and the line disagree:\n bound %+v\n built %+v", bound, constructed)
 	}
 }
+
+// `found at X` binds as one command. The location survives the round trip,
+// which is what makes it worth having on the command at all.
+func TestFoundCarriesWhereItTurnedUp(t *testing.T) {
+	h := newHouse(t)
+	h.loseTheCable(t)
+
+	plain := h.mustBind(t, `found "USB-C Cable > Left Pantry"`).(command.Found)
+	if plain.At != nil {
+		t.Errorf("At = %v, want none", plain.At)
+	}
+	somewhere := h.mustBind(t, `found "USB-C Cable > Left Pantry" at Garage`).(command.Found)
+	if somewhere.At == nil || *somewhere.At != h.garage {
+		t.Errorf("At = %v, want Garage (%d)", somewhere.At, h.garage)
+	}
+	if got := command.Summary(somewhere, h.v.Names); !strings.Contains(got, "Garage") {
+		t.Errorf("summary = %q, want it to say where", got)
+	}
+}
+
+// loseTheCable puts a Unique Holding in the pantry so `found` has a subject.
+func (h *house) loseTheCable(t *testing.T) {
+	t.Helper()
+	if _, err := ledger.New(h.conn).CreateUniqueHolding(h.ctx, ledger.CreateUniqueHoldingInput{
+		Item: h.cable, Location: h.pantry,
+	}); err != nil {
+		t.Fatalf("create holding: %v", err)
+	}
+	h.reload(t)
+}

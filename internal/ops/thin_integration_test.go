@@ -260,3 +260,71 @@ func TestRehomeRefusesABulkHolding(t *testing.T) {
 	cable := tr.unique(t, tr.shelf1)
 	tr.apply(tr.pl.Rehome(tr.ctx, ops.RehomeRequest{Holding: cable, To: tr.garage}))
 }
+
+// TestFoundSomewhereElseIsOneIntentAndTwoEvents is the case that motivates the
+// `at` field: things are rarely lost and then found exactly where they were
+// supposed to be.
+//
+// The event vocabulary stays minimal -- Moved is the ONE way to say "it is here
+// now", and a location on Found would give the ledger two -- while the
+// operation composes. That is the whole shape of this layer, and Consume
+// already does the same for one keystroke.
+func TestFoundSomewhereElseIsOneIntentAndTwoEvents(t *testing.T) {
+	tr := newTree(t)
+	cable := tr.unique(t, tr.shelf1)
+	tr.apply(tr.pl.MarkLost(tr.ctx, ops.MarkLostRequest{Holding: cable}))
+
+	batch, err := tr.pl.Found(tr.ctx, ops.FoundRequest{Holding: cable, At: &tr.garage})
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	events, err := batch.Steps[0].Records(ops.Created{})
+	if err != nil {
+		t.Fatalf("records: %v", err)
+	}
+	// Found first: it stopped being lost, and then it is somewhere. The reverse
+	// would record a Lost thing moving, which is a claim about a location the
+	// system had just admitted it did not know.
+	if got := types(events); !equal(got, []string{"Found", "Moved"}) {
+		t.Fatalf("plan = %v, want [Found Moved]", got)
+	}
+	if _, err := tr.ex.Execute(tr.ctx, batch); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	d, err := tr.r.Holding(tr.ctx, cable)
+	if err != nil {
+		t.Fatalf("read holding: %v", err)
+	}
+	u := d.Holding.(domain.UniqueHolding)
+	if u.Custody != domain.CustodyAtRest {
+		t.Errorf("custody = %s, want AtRest", u.Custody)
+	}
+	if u.StowedLocation != tr.garage {
+		t.Errorf("stowed at %d, want Garage (%d)", u.StowedLocation, tr.garage)
+	}
+	tr.verifyClean(t)
+}
+
+// Found where it belongs is one event. Emitting a Moved to the place it already
+// is would put a no-op in the history, and a history full of nothing-happened
+// is a history nobody reads.
+func TestFoundWhereItBelongsMovesNothing(t *testing.T) {
+	tr := newTree(t)
+	cable := tr.unique(t, tr.shelf1)
+	tr.apply(tr.pl.MarkLost(tr.ctx, ops.MarkLostRequest{Holding: cable}))
+
+	for _, at := range []*domain.LocationID{nil, &tr.shelf1} {
+		batch, err := tr.pl.Found(tr.ctx, ops.FoundRequest{Holding: cable, At: at})
+		if err != nil {
+			t.Fatalf("plan: %v", err)
+		}
+		events, err := batch.Steps[0].Records(ops.Created{})
+		if err != nil {
+			t.Fatalf("records: %v", err)
+		}
+		if got := types(events); !equal(got, []string{"Found"}) {
+			t.Errorf("at %v: plan = %v, want [Found]", at, got)
+		}
+	}
+}

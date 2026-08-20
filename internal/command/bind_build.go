@@ -156,7 +156,7 @@ func (b *binding) build(op Op) Command {
 
 	case OpFound:
 		holding, _ := b.holding("holding")
-		return Found{Holding: holding}
+		return Found{Holding: holding, At: b.optionalLocation("at")}
 
 	case OpVerify:
 		holding, _ := b.holding("holding")
