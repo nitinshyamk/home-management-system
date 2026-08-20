@@ -16,7 +16,6 @@ import (
 	"home-management-system/internal/db"
 	"home-management-system/internal/ledger"
 	"home-management-system/internal/tui"
-	"home-management-system/internal/tui/tree"
 )
 
 func main() {
@@ -35,7 +34,6 @@ func run() error {
 	width := flag.Int("width", 100, "terminal width for --render")
 	height := flag.Int("height", 30, "terminal height for --render")
 	colour := flag.Bool("color", false, "keep colour in --render output (pipe to less -R)")
-	rollup := flag.String("rollup", "right", "where a tree puts its counts: right | staggered (for 10b review)")
 	flag.Parse()
 
 	cfg := db.DefaultConfig()
@@ -84,12 +82,6 @@ func run() error {
 
 	if *verify {
 		return runVerify(ctx, proc)
-	}
-
-	// --rollup renders the two candidate tree layouts from one build, so 10b's
-	// open question can be looked at side by side rather than described.
-	if *rollup == "staggered" {
-		tui.Rollup = tree.RollupStaggered
 	}
 
 	ctrl := app.Open(conn)

@@ -32,20 +32,6 @@ type Node struct {
 	Count int64
 }
 
-// Rollup is where the count sits, which is the decision 10b's review is about.
-type Rollup int
-
-const (
-	// RollupRight puts the counts in a straight column against the right edge.
-	// Comparing magnitudes becomes a single vertical scan, which is what a
-	// rollup is for.
-	RollupRight Rollup = iota
-	// RollupStaggered steps the count LEFT as the tree deepens, so indentation
-	// and count position together say the depth and the counts still nearly
-	// line up.
-	RollupStaggered
-)
-
 // indent is two spaces per level: enough to see, cheap enough to go five deep
 // in sixty columns.
 const indent = "  "
@@ -60,17 +46,15 @@ const (
 type Model struct {
 	nodes     []Node
 	collapsed map[int64]bool
-	rollup    Rollup
 	unit      string // "items" or "holdings", for the count column's title
 	pendingZ  bool
 	tbl       table.Model
 }
 
 // New builds a tree whose counts are labelled with unit.
-func New(unit string, rollup Rollup) Model {
+func New(unit string) Model {
 	m := Model{
 		collapsed: map[int64]bool{},
-		rollup:    rollup,
 		unit:      unit,
 	}
 	m.tbl = table.New(m.columns()).Fixed()
@@ -80,8 +64,18 @@ func New(unit string, rollup Rollup) Model {
 func (m Model) columns() []table.Column {
 	return []table.Column{
 		{Title: "NAME", Min: 12, Grow: true},
-		// The count is never dropped. A tree without its rollup is a list of
-		// names, which the Items view already gives you.
+		// Right-aligned into a straight column, whatever the depth, so
+		// comparing magnitudes down a branch is a single vertical scan -- which
+		// is the only thing a rollup is for.
+		//
+		// Stepping the count leftward as the tree deepens was the alternative,
+		// and it was rejected once the banding existed: indentation already
+		// says the depth, and the banding already gives the eye something to
+		// track along, so a second encoding of depth would be repeating an
+		// answer at the cost of the column.
+		//
+		// Never dropped. A tree without its rollup is a list of names, which
+		// the Items view already gives you.
 		{Title: strings.ToUpper(m.unit), Min: 5, Align: table.Right},
 	}
 }
@@ -273,13 +267,6 @@ func (m Model) refresh() Model {
 
 // rows renders the visible nodes, skipping everything inside a fold.
 func (m Model) rows() []table.Row {
-	deepest := 0
-	for _, n := range m.nodes {
-		if n.Depth > deepest {
-			deepest = n.Depth
-		}
-	}
-
 	var out []table.Row
 	skipBelow := -1
 	for _, n := range m.nodes {
@@ -291,7 +278,7 @@ func (m Model) rows() []table.Row {
 		}
 		out = append(out, table.Row{
 			Key:   n.ID,
-			Cells: []string{m.label(n), m.count(n, deepest)},
+			Cells: []string{m.label(n), fmt.Sprintf("%d", n.Count)},
 		})
 		if m.collapsed[n.ID] {
 			skipBelow = n.Depth
@@ -314,17 +301,6 @@ func (m Model) label(n Node) string {
 		}
 	}
 	return strings.Repeat(indent, n.Depth) + marker + " " + n.Name
-}
-
-// count renders the rollup, positioned according to the chosen scheme.
-func (m Model) count(n Node, deepest int) string {
-	value := fmt.Sprintf("%d", n.Count)
-	if m.rollup == RollupStaggered {
-		// Right-aligned with trailing padding, so the number steps LEFT as the
-		// tree deepens.
-		return value + strings.Repeat(indent, n.Depth)
-	}
-	return value
 }
 
 func (m Model) hasChildren(n Node) bool {

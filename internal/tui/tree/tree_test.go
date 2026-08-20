@@ -20,21 +20,26 @@ import (
 //	        Small Parts Tray                (leaf)
 //	Kitchen
 //	  Spice Cabinet
+//
+// The counts deliberately differ in WIDTH -- 1, 4, 137 -- because single-digit
+// counts land in the same place whether the column is left- or right-aligned,
+// so a fixture of them cannot tell the two apart. A tray of small parts is also
+// exactly where a household ends up with a three-digit rollup.
 func house() []tree.Node {
 	return []tree.Node{
 		{ID: 1, Name: "Attic", Depth: 0, Count: 1},
-		{ID: 2, Name: "Garage", Depth: 0, Count: 3},
-		{ID: 3, Name: "Metal Shelving Unit", Depth: 1, Count: 2},
-		{ID: 4, Name: "Bay 3", Depth: 2, Count: 2},
-		{ID: 5, Name: "Blue Crate", Depth: 3, Count: 2},
-		{ID: 6, Name: "Small Parts Tray", Depth: 4, Count: 2},
+		{ID: 2, Name: "Garage", Depth: 0, Count: 137},
+		{ID: 3, Name: "Metal Shelving Unit", Depth: 1, Count: 128},
+		{ID: 4, Name: "Bay 3", Depth: 2, Count: 128},
+		{ID: 5, Name: "Blue Crate", Depth: 3, Count: 128},
+		{ID: 6, Name: "Small Parts Tray", Depth: 4, Count: 128},
 		{ID: 7, Name: "Kitchen", Depth: 0, Count: 4},
 		{ID: 8, Name: "Spice Cabinet", Depth: 1, Count: 2},
 	}
 }
 
 func newTree() tree.Model {
-	return tree.New("holdings", tree.RollupRight).SetNodes(house()).SetSize(70, 14)
+	return tree.New("holdings").SetNodes(house()).SetSize(70, 14)
 }
 
 func press(m tree.Model, keys ...string) tree.Model {
@@ -226,23 +231,23 @@ func TestTheTableUnderneathStillWorks(t *testing.T) {
 	}
 }
 
-// The rollup is the decision 10b's review is about, so both candidates are
-// pinned rather than only the one currently chosen.
-func TestBothRollupLayoutsPlaceTheCountDifferently(t *testing.T) {
-	right := tree.New("holdings", tree.RollupRight).SetNodes(house()).SetSize(70, 14)
-	staggered := tree.New("holdings", tree.RollupStaggered).SetNodes(house()).SetSize(70, 14)
+// The counts form a straight column whatever the depth, which is the whole
+// claim of the layout that was chosen: comparing magnitudes down a branch is a
+// single vertical scan.
+func TestTheRollupIsAStraightColumn(t *testing.T) {
+	m := newTree()
 
 	// In COLUMNS, not bytes. The fold marker is one column and three bytes, so
 	// a byte index would report two rows as misaligned that line up perfectly
 	// on screen -- which is exactly the mistake the widget itself must not make.
-	column := func(m tree.Model, name string) int {
+	column := func(name string) int {
 		for _, line := range strings.Split(strip(m.View()), "\n") {
 			if !strings.Contains(line, name) {
 				continue
 			}
 			runes := []rune(strings.TrimRight(line, " "))
 			for i := len(runes) - 1; i >= 0; i-- {
-				if runes[i] == '2' {
+				if runes[i] >= '0' && runes[i] <= '9' {
 					return i
 				}
 			}
@@ -250,36 +255,18 @@ func TestBothRollupLayoutsPlaceTheCountDifferently(t *testing.T) {
 		return -1
 	}
 
-	// Right-aligned: the counts form a straight column whatever the depth.
-	shallow, deep := column(right, "Metal Shelving Unit"), column(right, "Small Parts Tray")
-	if shallow != deep {
-		t.Errorf("right-aligned counts are not in a column: %d vs %d", shallow, deep)
+	// Attic first, because its count is ONE digit against the others' three:
+	// a left-aligned column would put its last digit two places short, and a
+	// right-aligned one lines them all up.
+	shallow := column("Attic")
+	if shallow < 0 {
+		t.Fatal("no count found on the Attic row")
 	}
-	// Staggered: the deeper node's count sits further LEFT.
-	shallow, deep = column(staggered, "Metal Shelving Unit"), column(staggered, "Small Parts Tray")
-	if deep >= shallow {
-		t.Errorf("staggered counts do not step left with depth: %d then %d", shallow, deep)
-	}
-}
-
-// TestAMultiByteMarkerDoesNotShiftTheColumns is the hazard the fold markers
-// introduce: ▾ is one column and three bytes, so any width arithmetic done in
-// bytes puts every row carrying a marker three columns out.
-//
-// It shows up as a ragged right edge that looks like a rounding error and is
-// not one.
-func TestAMultiByteMarkerDoesNotShiftTheColumns(t *testing.T) {
-	m := newTree()
-	widths := map[int]bool{}
-	for _, line := range strings.Split(strip(m.View()), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
+	for _, deeper := range []string{"Garage", "Metal Shelving Unit", "Bay 3", "Blue Crate", "Small Parts Tray"} {
+		if got := column(deeper); got != shallow {
+			t.Errorf("%q ends its count at column %d and Attic at %d; the rollup is not a column",
+				deeper, got, shallow)
 		}
-		widths[len([]rune(line))] = true
-	}
-	if len(widths) != 1 {
-		t.Errorf("rows render at %d different widths %v; a marker is being measured in bytes",
-			len(widths), widths)
 	}
 }
 
