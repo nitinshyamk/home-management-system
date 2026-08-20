@@ -165,12 +165,42 @@ func Build(ctx context.Context, r *query.Reader) (*Index, error) {
 		base := h.Holding.Base()
 		out = append(out, Candidate{
 			Kind: KindHolding, ID: int64(base.ID),
-			Path: h.ItemName + PathSeparator + h.LocationName,
+			Path: h.ItemName + PathSeparator + h.LocationName + distinguish(h.Holding),
 			Leaf: h.ItemName, Archived: base.RetiredAt != nil,
 		})
 	}
 
 	return NewIndex(out), nil
+}
+
+// distinguish appends what tells one Holding from its sibling in the same
+// place, because "Basmati Rice > Left Pantry" is routinely TWO Holdings -- the
+// sealed bags and the loose contents -- and a label that names both names
+// neither.
+//
+// H8's key is exactly what makes two Holdings of one Item in one place
+// distinct, so it is exactly what the label has to carry: the unit basis, and
+// the expiry when there is one.
+func distinguish(h domain.Holding) string {
+	switch v := h.(type) {
+	case domain.BulkHolding:
+		s := " (sealed)"
+		if v.UnitBasis == domain.BasisContent {
+			s = " (loose)"
+		}
+		if v.ExpiresOn != nil {
+			s += " expiring " + v.ExpiresOn.Format("2006-01-02")
+		}
+		return s
+	case domain.UniqueHolding:
+		// A Unique Holding is a specific object and two of them in one place
+		// are two things, so its own label is the only thing that separates
+		// them -- and it may not have one.
+		if v.Label != "" {
+			return " (" + v.Label + ")"
+		}
+	}
+	return ""
 }
 
 func min(a, b int) int {

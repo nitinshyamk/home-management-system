@@ -77,7 +77,9 @@ func TestBuildLabelsEveryKind(t *testing.T) {
 		{resolve.KindCategory, "Food"},
 		{resolve.KindCategory, "Food > Spices"},
 		{resolve.KindItem, "Food > Spices > Turmeric"},
-		{resolve.KindHolding, "Turmeric > Shelf 1"},
+		// A Holding's label carries what tells it from its sibling in the same
+		// place, which is H8's key: the basis, and the expiry when set.
+		{resolve.KindHolding, "Turmeric > Shelf 1 (loose)"},
 	} {
 		if !contains(paths[want.kind], want.path) {
 			t.Errorf("no %s labelled %q; got %v", want.kind, want.path, paths[want.kind])
@@ -141,4 +143,66 @@ func contains(haystack []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+// TestTwoHoldingsInOnePlaceAreDistinguishable is the state a normal pantry is
+// in: a sealed bag and a loose one, of the same thing, on the same shelf.
+//
+// Both are legal, both are active, and H8 says they are different Holdings. If
+// the index labels them identically then nothing downstream can target one --
+// which is exactly what happened, and made `discard` tell a person to say which
+// while giving them no way to say it.
+func TestTwoHoldingsInOnePlaceAreDistinguishable(t *testing.T) {
+	ctx := context.Background()
+	conn := testsupport.NewDB(t)
+	led, orig := ledger.New(conn), origin.New(conn)
+
+	shelf, err := led.CreateLocation(ctx, "Shelf 1", nil, "")
+	if err != nil {
+		t.Fatalf("create location: %v", err)
+	}
+	cat, err := orig.CreateCategory(ctx, origin.CreateCategoryInput{Name: "Grains"})
+	if err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+	size := domain.FromMilli(2_000_000)
+	rice, err := orig.CreateBulkItem(ctx, origin.CreateBulkItemInput{
+		Name: "Basmati Rice", Category: cat, ContentUnit: "g", PackageSize: &size,
+	})
+	if err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+	for _, basis := range []domain.UnitBasis{domain.BasisPackage, domain.BasisContent} {
+		if _, err := led.CreateBulkHolding(ctx, ledger.CreateBulkHoldingInput{
+			Item: rice, Location: shelf, UnitBasis: basis,
+		}); err != nil {
+			t.Fatalf("create holding: %v", err)
+		}
+	}
+
+	ix, err := resolve.Build(ctx, query.New(conn))
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	labels := map[string]bool{}
+	for _, c := range ix.All() {
+		if c.Kind != resolve.KindHolding {
+			continue
+		}
+		if labels[c.Path] {
+			t.Fatalf("two holdings share the label %q; neither can be targeted", c.Path)
+		}
+		labels[c.Path] = true
+	}
+	for _, want := range []string{
+		"Basmati Rice > Shelf 1 (sealed)",
+		"Basmati Rice > Shelf 1 (loose)",
+	} {
+		if !labels[want] {
+			t.Errorf("no holding labelled %q; got %v", want, labels)
+		}
+	}
+	// And each one actually resolves, which is the point of distinguishing them.
+	wantExact(t, ix.Resolve("Basmati Rice > Shelf 1 (sealed)"), "Basmati Rice > Shelf 1 (sealed)")
 }

@@ -181,11 +181,18 @@ func (b *binding) optionalCategory(key string) *domain.CategoryID {
 }
 
 // where resolves the `at` field, which disambiguates when an Item is kept in
-// several places.
+// several PLACES.
 //
-// Omitted with exactly one candidate, it resolves; with several it is an issue
-// and blocks. Guessing would be the single most damaging thing this layer could
-// do -- stock removed from the wrong shelf is invisible until someone looks.
+// Places, not Holdings, and the distinction is the whole of this function. One
+// Item in one place is routinely two Holdings -- a sealed bag and an opened one
+// -- and that is not an ambiguity about where anything is. Counting Holdings
+// here made `consume rice 100` refuse a perfectly ordinary pantry with "it is
+// kept in 2 places (Left Pantry, Left Pantry)", which is the shape of the most
+// common command in the system failing on its most common input.
+//
+// Omitted with exactly one place, it resolves; with several it is an issue and
+// blocks. Guessing would be the single most damaging thing this layer could do
+// -- stock removed from the wrong shelf is invisible until someone looks.
 func (b *binding) where(item domain.ItemID, itemOK bool) (domain.LocationID, bool) {
 	if s := strings.TrimSpace(b.raw.Fields["at"]); s != "" {
 		return b.location("at")
@@ -193,34 +200,52 @@ func (b *binding) where(item domain.ItemID, itemOK bool) (domain.LocationID, boo
 	if !itemOK {
 		return 0, false
 	}
-	live := b.v.liveHoldings(item)
-	switch len(live) {
+
+	var places []domain.LocationID
+	seen := map[domain.LocationID]bool{}
+	for _, h := range b.v.liveHoldings(item) {
+		if !seen[h.Location] {
+			seen[h.Location] = true
+			places = append(places, h.Location)
+		}
+	}
+
+	switch len(places) {
 	case 0:
 		b.fail("at", "%s is not kept anywhere yet, so say where this is",
 			b.v.Names.Label(domain.EntityItem, int64(item)))
 		return 0, false
 	case 1:
-		return live[0].Location, true
+		return places[0], true
 	}
-	var places []string
-	for _, h := range live {
-		places = append(places, b.v.Names.Label(domain.EntityLocation, int64(h.Location)))
+	var names []string
+	for _, id := range places {
+		names = append(names, b.v.Names.Label(domain.EntityLocation, int64(id)))
 	}
-	b.fail("at", "it is kept in %d places (%s), so say which", len(live), strings.Join(places, ", "))
+	b.fail("at", "it is kept in %d places (%s), so say which", len(places), strings.Join(names, ", "))
 	return 0, false
 }
 
-// holdingOf picks the Holding an Item has at a place, which is how the
-// stock-shaped commands reach a Holding without a person naming one.
+// holdingOf picks the Holding an Item has at a place, narrowed by `basis` when
+// one was given.
+//
+// This is how the commands that act on ONE Holding reach it without a person
+// naming a Holding directly -- which they would struggle to do, since a Holding
+// has no name of its own.
 func (b *binding) holdingOf(item domain.ItemID, at domain.LocationID, ok bool) (domain.HoldingID, bool) {
 	if !ok {
 		return 0, false
 	}
+	want, narrowed := b.basis()
 	var found []HoldingFacts
 	for _, h := range b.v.liveHoldings(item) {
-		if h.Location == at {
-			found = append(found, h)
+		if h.Location != at {
+			continue
 		}
+		if narrowed && h.Basis != want {
+			continue
+		}
+		found = append(found, h)
 	}
 	switch len(found) {
 	case 0:
@@ -231,9 +256,21 @@ func (b *binding) holdingOf(item domain.ItemID, at domain.LocationID, ok bool) (
 	case 1:
 		return found[0].ID, true
 	}
-	// Same item, same place, two Holdings: they differ by basis or expiry, and
-	// only a person can say which is meant.
-	b.fail("at", "there are %d of those kept there; name the holding instead", len(found))
+	// Same item, same place, several Holdings: they differ by basis or expiry,
+	// and only a person can say which is meant. Unlike where(), this one really
+	// is ambiguous -- throwing away from the sealed bag and from the open one
+	// are different acts.
+	//
+	// The message names what to type. A message that says "say which" without
+	// saying how is the state this command was in before `basis` existed.
+	var which []string
+	for _, h := range found {
+		which = append(which, b.v.Names.Label(domain.EntityHolding, int64(h.ID)))
+	}
+	b.fail("basis", "%s at %s is %s -- say `basis sealed` or `basis loose`",
+		b.v.Names.Label(domain.EntityItem, int64(item)),
+		b.v.Names.Label(domain.EntityLocation, int64(at)),
+		strings.Join(which, " and "))
 	return 0, false
 }
 
@@ -330,6 +367,23 @@ func (b *binding) money(key string) *int64 {
 		return nil
 	}
 	return &cents
+}
+
+// basis reads the sealed/loose narrowing, reporting whether one was given at
+// all -- absent is not a default, it is "do not narrow".
+func (b *binding) basis() (domain.UnitBasis, bool) {
+	s, ok := b.text("basis")
+	if !ok {
+		return "", false
+	}
+	switch strings.ToLower(s) {
+	case "sealed", "package", "packages":
+		return domain.BasisPackage, true
+	case "loose", "content", "contents", "open", "opened":
+		return domain.BasisContent, true
+	}
+	b.fail("basis", "%q is not sealed or loose", s)
+	return "", false
 }
 
 func (b *binding) plain(key string) string {

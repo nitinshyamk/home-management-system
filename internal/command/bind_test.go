@@ -421,3 +421,72 @@ func (h *house) loseTheCable(t *testing.T) {
 	}
 	h.reload(t)
 }
+
+// TestANormalPantryBinds is the regression for the worst bug in this layer.
+//
+// A sealed bag and a loose one of the same thing on the same shelf is not an
+// ambiguity about WHERE anything is -- it is the ordinary state of a pantry,
+// and it is the exact state the walkthrough case describes ("consume 100 g of
+// rice with no bag open"). Counting Holdings instead of places made the most
+// common command in the system refuse its most common input, with the
+// tell-tale message "it is kept in 2 places (Left Pantry, Left Pantry)".
+//
+// The tests missed it because they created holdings in two genuinely different
+// locations, where counting Holdings and counting places give the same answer.
+func TestANormalPantryBinds(t *testing.T) {
+	h := newHouse(t)
+	h.sealAndOpen(t)
+
+	// consume and open name an Item and a place, and let the operation work out
+	// which Holding that implies.
+	used := h.mustBind(t, `consume "Basmati Rice" 100`).(command.Consume)
+	if used.Location != h.pantry {
+		t.Errorf("location = %d, want the one place it is kept (%d)", used.Location, h.pantry)
+	}
+	if _, ok := h.mustBind(t, `open "Basmati Rice"`).(command.Open); !ok {
+		t.Error("open did not bind")
+	}
+}
+
+// The commands that act on ONE Holding really are ambiguous here, and the
+// message has to say what to type. "Say which" without saying how is where this
+// command was before `basis` existed.
+func TestOneHoldingCommandsNarrowByBasis(t *testing.T) {
+	h := newHouse(t)
+	h.sealAndOpen(t)
+
+	blocked := h.bind(t, `discard "Basmati Rice" 100 reason spoiled`)
+	if blocked.Ready() {
+		t.Fatalf("guessed which bag to throw away from: %+v", blocked.Command)
+	}
+	issue := blocked.Issues[0].String()
+	for _, want := range []string{"basis sealed", "basis loose", "(sealed)", "(loose)"} {
+		if !strings.Contains(issue, want) {
+			t.Errorf("issue %q does not mention %q", issue, want)
+		}
+	}
+
+	// And saying which resolves it, to two different Holdings.
+	sealed := h.mustBind(t, `discard "Basmati Rice" 1 basis sealed reason spoiled`).(command.Discard)
+	loose := h.mustBind(t, `discard "Basmati Rice" 100 basis loose reason spoiled`).(command.Discard)
+	if sealed.Holding == loose.Holding {
+		t.Error("sealed and loose picked the same holding")
+	}
+	if _, err := command.Bind(h.v, command.RawCommand{Op: "discard", Fields: map[string]string{
+		"item": "Basmati Rice", "qty": "100", "basis": "mostly",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// sealAndOpen puts the same Item in one place twice, on both bases -- a sealed
+// bag and the loose contents, which H8 says are two Holdings.
+func (h *house) sealAndOpen(t *testing.T) {
+	t.Helper()
+	if _, err := ledger.New(h.conn).CreateBulkHolding(h.ctx, ledger.CreateBulkHoldingInput{
+		Item: h.rice, Location: h.pantry, UnitBasis: domain.BasisPackage,
+	}); err != nil {
+		t.Fatalf("create holding: %v", err)
+	}
+	h.reload(t)
+}
