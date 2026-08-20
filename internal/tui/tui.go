@@ -17,6 +17,8 @@ import (
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/domain"
+	"home-management-system/internal/resolve"
+	"home-management-system/internal/tui/omnibox"
 	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/tree"
 )
@@ -66,6 +68,17 @@ type Model struct {
 	// the same table, so density, cursor, banding, and selection are the same
 	// decisions rather than two answers to one question.
 	tree tree.Model
+
+	// box is the one input line. Its mode says whether a keystroke is a
+	// character or a command, which is why every key handler consults it first.
+	box omnibox.Model
+	// jump holds the palette's results, rendered through the same table so the
+	// density decisions are not made twice.
+	jump       table.Model
+	candidates []resolve.Candidate
+	// pending is where a jump is going, held until the destination view has
+	// loaded and there is a row to put the cursor on.
+	pending *resolve.Candidate
 	// holdingIDs parallels rows in the Holdings view, so Enter knows what was
 	// selected without the rendering layer carrying domain types.
 	holdingIDs []domain.HoldingID
@@ -79,12 +92,38 @@ type Model struct {
 }
 
 func New(ctx context.Context, ctrl app.Controller) Model {
-	return Model{ctx: ctx, ctrl: ctrl, view: viewHoldings, table: table.New(columnsFor(viewHoldings))}
+	return Model{
+		ctx: ctx, ctrl: ctrl, view: viewHoldings,
+		table: table.New(columnsFor(viewHoldings)),
+		box:   omnibox.New(),
+		jump:  table.New(jumpColumns).Fixed(),
+	}
 }
 
 // tabular reports whether a view is a table. Holdings and Items are; hierarchy
 // is not something a flat table shows, so Categories and Locations are trees.
 func tabular(v view) bool { return v == viewHoldings || v == viewItems }
+
+// jumpColumns are the palette's. KIND comes first and is never dropped:
+// "Shelf 1" as a Location and "Shelf 1" inside a Holding path are different
+// destinations, and a jump that does not say which lands somewhere surprising.
+var jumpColumns = []table.Column{
+	{Title: "KIND", Min: 8},
+	{Title: "NAME", Min: 12, Grow: true, Elide: table.ElideStart},
+}
+
+// facetColumns says which column each facet name restricts, per view. Only the
+// view knows that `loc:` means the LOCATION column here and nothing at all in
+// the Items table.
+func facetColumns(v view) map[string]int {
+	switch v {
+	case viewHoldings:
+		return map[string]int{"item": 0, "qty": 1, "state": 1, "loc": 2, "at": 2, "flag": 3}
+	case viewItems:
+		return map[string]int{"item": 0, "name": 0, "cat": 2, "unit": 3, "kind": 4}
+	}
+	return nil
+}
 
 // forest reports whether a view is a tree.
 func forest(v view) bool { return v == viewCategories || v == viewLocations }
@@ -129,6 +168,19 @@ type loadedMsg struct {
 }
 
 type errMsg struct{ err error }
+
+// candidatesMsg carries the flat index the jump palette searches.
+type candidatesMsg struct{ candidates []resolve.Candidate }
+
+func (m Model) loadCandidates() tea.Cmd {
+	return func() tea.Msg {
+		index, err := m.ctrl.SearchIndex(m.ctx)
+		if err != nil {
+			return errMsg{err}
+		}
+		return candidatesMsg{candidates: index.All()}
+	}
+}
 
 func (m Model) load(v view) tea.Cmd {
 	return func() tea.Msg {
@@ -181,6 +233,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.table = m.table.SetSize(msg.Width, m.bodyHeight())
 		m.tree = m.tree.SetSize(msg.Width, m.bodyHeight())
+		m.jump = m.jump.SetSize(msg.Width, m.bodyHeight())
 		m.viewport.SetContent(m.body())
 		return m, nil
 
@@ -199,6 +252,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoTop()
+		if m.pending != nil {
+			m = m.land(*m.pending)
+			m.pending = nil
+		}
+		return m, nil
+
+	case candidatesMsg:
+		m.candidates = msg.candidates
+		m = m.refreshJump()
 		return m, nil
 
 	case errMsg:
@@ -206,6 +268,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		if next, cmd, handled := m.handleOmnibox(msg); handled {
+			return next, cmd
+		}
 		return m.handleKey(msg)
 	}
 	return m, nil
@@ -235,21 +300,35 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 
-	case "ctrl+n", "down", "j":
+	// The two leaders. They feel identical for exactly one keystroke and then
+	// diverge completely, which is why the omnibox renders them differently
+	// before a word has been read.
+	case "/":
+		m.box = m.box.Open(omnibox.Filter)
+		m = m.applyLive()
+		return m, nil
+	case "ctrl+p":
+		m.box = m.box.Open(omnibox.Jump)
+		m = m.refreshJump()
+		return m, m.loadCandidates()
+
+	// The Emacs aliases v01 carried are gone: C-p is the jump leader now, and
+	// two motion idioms in one application is one too many.
+	case "down", "j":
 		if m.cursor < len(m.rows)-1 {
 			m.cursor++
 			m.viewport.SetContent(m.body())
 		}
-	case "ctrl+p", "up", "k":
+	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
 			m.viewport.SetContent(m.body())
 		}
-	case "ctrl+a", "home":
+	case "home", "g":
 		m.cursor = 0
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoTop()
-	case "ctrl+e", "end":
+	case "end", "G":
 		m.cursor = max(0, len(m.rows)-1)
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoBottom()
@@ -264,6 +343,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "ctrl+b", "esc", "left", "h":
+		// esc in the LIST clears an applied filter -- a different escape from
+		// the one that closes the input line.
+		if msg.String() == "esc" && m.box.Applied() != "" {
+			m.box = m.box.Clear()
+			return m.filterWith(omnibox.Query{}), nil
+		}
 		if m.view == viewHistory {
 			return m, m.load(m.fromView)
 		}
@@ -298,15 +383,92 @@ func (m Model) View() string {
 		// off screen with nothing obviously wrong.
 		body = m.table.View()
 	}
-	return strings.Join([]string{m.header(), body, m.footer()}, "\n")
+	if m.box.Mode() == omnibox.Jump {
+		// The palette REPLACES the list rather than floating over it. A jump
+		// searches everything, so leaving the current view visible underneath
+		// would suggest it is being searched, which is the confusion between
+		// the two modes that this substage exists to avoid.
+		body = m.jump.View()
+	}
+
+	parts := []string{m.header(), body}
+	if line := m.box.View(); line != "" {
+		parts = append(parts, line)
+	}
+	return strings.Join(append(parts, m.footer()), "\n")
 }
 
-// bodyHeight is the room left after the header and footer, both two lines.
+// bodyHeight is the room left after the header, the footer, and the input line
+// when there is one.
 func (m Model) bodyHeight() int {
-	if h := m.height - 4; h > 3 {
+	if h := m.height - 4 - m.box.Height(); h > 3 {
 		return h
 	}
 	return 3
+}
+
+// countPhrase says how many, and how many of how many when a filter is on.
+func (m Model) countPhrase() string {
+	noun := map[view]string{
+		viewHoldings: "holdings", viewItems: "items",
+		viewCategories: "categories", viewLocations: "locations",
+	}[m.view]
+	if noun == "" {
+		return ""
+	}
+	if shown, total, filtered := m.counts(); filtered {
+		return fmt.Sprintf("%d of %d %s", shown, total, noun)
+	}
+	total := len(m.rows)
+	if tabular(m.view) {
+		_, total = m.table.Counts()
+	}
+	if forest(m.view) {
+		_, total = m.tree.Counts()
+	}
+	return fmt.Sprintf("%d %s", total, noun)
+}
+
+// selectionCount is how many rows were explicitly picked on whichever surface
+// is showing.
+func (m Model) selectionCount() int {
+	if tabular(m.view) {
+		return m.table.SelectionCount()
+	}
+	if forest(m.view) {
+		return m.tree.SelectionCount()
+	}
+	return 0
+}
+
+// counts reports the filtered and total row counts of whichever surface is
+// showing, and whether a filter is in force at all.
+func (m Model) counts() (shown, total int, filtered bool) {
+	switch {
+	case tabular(m.view) && m.table.Filtered():
+		shown, total = m.table.Counts()
+		return shown, total, true
+	case forest(m.view) && m.tree.Filtered():
+		shown, total = m.tree.Counts()
+		return shown, total, true
+	}
+	return 0, 0, false
+}
+
+// land puts the cursor on what a jump chose, now that its view has loaded.
+func (m Model) land(target resolve.Candidate) Model {
+	if tabular(viewFor(target.Kind)) {
+		for i, row := range m.table.Rows() {
+			if row.Key == target.ID {
+				m.table = m.table.SetCursor(i)
+				return m
+			}
+		}
+	}
+	if forest(viewFor(target.Kind)) {
+		m.tree = m.tree.Focus(target.ID)
+	}
+	return m
 }
 
 func (m Model) header() string {
@@ -380,24 +542,31 @@ func (m Model) footer() string {
 	help := "j/k move - h/l column - s sort - space select - enter history - 1-5 views - q quit"
 	rule := dimStyle.Render(strings.Repeat("-", max(10, m.width)))
 
-	status := m.status
+	// Assembled as PARTS and joined once, rather than concatenated piece by
+	// piece. The first version glued them together with separators baked into
+	// each piece and produced "2 items - - sorted by item a-z" the moment one
+	// view had nothing to say -- which the golden frames caught.
+	//
+	// The count leads, and it is built in one place rather than by each view: a
+	// count assembled per view is a count that says "3 of 12" in only some of
+	// them.
+	var parts []string
+	if phrase := m.countPhrase(); phrase != "" {
+		parts = append(parts, phrase)
+	}
+	if m.status != "" {
+		parts = append(parts, m.status)
+	}
 	if tabular(m.view) {
-		// How the table is ordered, said in the one place that is always
-		// visible. The header arrow says it too, but a narrow terminal can drop
-		// the sorted column -- and then the table is ordered by something the
-		// person cannot see.
 		if sorted := m.table.SortDescription(); sorted != "" {
-			status = strings.TrimSpace(status + " - sorted " + sorted)
-		}
-		if n := m.table.SelectionCount(); n > 0 {
-			status += fmt.Sprintf(" - %d selected", n)
+			parts = append(parts, "sorted "+sorted)
 		}
 	}
-	if forest(m.view) {
-		if n := m.tree.SelectionCount(); n > 0 {
-			status += fmt.Sprintf(" - %d selected", n)
-		}
+	if n := m.selectionCount(); n > 0 {
+		parts = append(parts, fmt.Sprintf("%d selected", n))
 	}
+	status := strings.Join(parts, " - ")
+
 	if status != "" {
 		return rule + "\n" + status
 	}
@@ -577,7 +746,7 @@ func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, string, err
 			})
 			ids = append(ids, r.ID)
 		}
-		return cells, ids, fmt.Sprintf("%d holdings - enter for history", len(rows)), nil
+		return cells, ids, "enter for history", nil
 
 	case viewItems:
 		rows, err := m.ctrl.Items(m.ctx)
@@ -591,7 +760,7 @@ func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, string, err
 				Cells: []string{r.Name, r.OnHand, r.Category, r.Measure, r.Kind},
 			})
 		}
-		return cells, nil, fmt.Sprintf("%d items", len(rows)), nil
+		return cells, nil, "", nil
 	}
 	return nil, nil, "", fmt.Errorf("view %d is not a table", v)
 }
@@ -623,9 +792,162 @@ func (m Model) renderTree(v view) ([]tree.Node, string, error) {
 	for _, r := range rows {
 		nodes = append(nodes, tree.Node{ID: r.ID, Name: r.Name, Depth: r.Depth, Count: r.Count})
 	}
-	noun := "categories"
-	if v == viewLocations {
-		noun = "locations"
+	return nodes, "za fold - zR expand all - zM collapse all", nil
+}
+
+// ---------------------------------------------------------------------------
+// The omnibox: filter, and jump
+// ---------------------------------------------------------------------------
+
+// handleOmnibox takes the keystroke when the input line is open.
+//
+// It runs before everything else, because while the line is open a keystroke is
+// a CHARACTER. A `j` that moved the cursor while someone was typing "jar" would
+// make the input line unusable, and it is the classic way a modal interface
+// betrays the person using it.
+func (m Model) handleOmnibox(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if m.box.Mode() == omnibox.Closed {
+		return m, nil, false
 	}
-	return nodes, fmt.Sprintf("%d %s - za fold - zR expand all - zM collapse all", len(nodes), noun), nil
+	switch msg.Type {
+	case tea.KeyEsc:
+		m.box = m.box.Cancel()
+		return m, nil, true
+	case tea.KeyEnter:
+		if m.box.Mode() == omnibox.Jump {
+			return m.acceptJump()
+		}
+		m.box = m.box.Accept()
+		m = m.applyFilter()
+		return m, nil, true
+	}
+	if next, handled := m.box.Update(msg); handled {
+		m.box = next
+		if m.box.Mode() == omnibox.Jump {
+			m = m.refreshJump()
+		} else {
+			// Narrow as you type: the filter that would apply if accepted now.
+			m = m.applyLive()
+		}
+		return m, nil, true
+	}
+	// A key the input line does not want -- cursor motion through the results,
+	// which the palette owns.
+	if m.box.Mode() == omnibox.Jump {
+		if next, handled := m.jump.Update(msg); handled {
+			m.jump = next
+			return m, nil, true
+		}
+	}
+	return m, nil, true
+}
+
+// applyFilter puts the accepted filter onto whichever surface is showing.
+func (m Model) applyFilter() Model { return m.filterWith(m.box.Query()) }
+
+// applyLive puts the half-typed filter on, which is what makes rows narrow as
+// the line is typed rather than when it is accepted.
+func (m Model) applyLive() Model { return m.filterWith(m.box.Live()) }
+
+func (m Model) filterWith(q omnibox.Query) Model {
+	if tabular(m.view) {
+		m.table = m.table.SetFilter(table.Filter{
+			Facets: facetTests(m.view, q), Text: q.Text,
+		})
+	}
+	if forest(m.view) {
+		// A tree has no columns to restrict, so a facet on one is nothing to
+		// act on. Saying so beats silently ignoring it.
+		m.tree = m.tree.SetFilter(q.Text)
+	}
+	return m
+}
+
+// facetTests resolves facet names to columns, dropping the ones this view has
+// no field for.
+func facetTests(v view, q omnibox.Query) []table.FacetTest {
+	columns := facetColumns(v)
+	var out []table.FacetTest
+	for _, f := range q.Facets {
+		if column, ok := columns[f.Key]; ok && !f.Any() {
+			out = append(out, table.FacetTest{Column: column, Value: f.Value})
+		}
+	}
+	return out
+}
+
+// refreshJump re-runs the search across everything.
+//
+// It re-sizes as well as re-filters, because the palette replaces the body and
+// therefore has to fit the same space the list did -- a widget that is only
+// sized on a terminal resize is a widget that is the wrong size until one
+// happens.
+func (m Model) refreshJump() Model {
+	m.jump = m.jump.SetSize(m.width, m.bodyHeight())
+	rows := make([]table.Row, 0, len(m.candidates))
+	for i, c := range m.candidates {
+		if c.Archived {
+			continue
+		}
+		if !matchesJump(c, m.box.Input()) {
+			continue
+		}
+		rows = append(rows, table.Row{Key: int64(i), Cells: []string{string(c.Kind), c.Path}})
+		if len(rows) >= 12 {
+			break
+		}
+	}
+	m.jump = m.jump.SetRows(rows)
+	return m
+}
+
+func matchesJump(c resolve.Candidate, text string) bool {
+	if strings.TrimSpace(text) == "" {
+		return true
+	}
+	return fuzzyContains(strings.ToLower(c.Path), strings.ToLower(strings.TrimSpace(text)))
+}
+
+// fuzzyContains is subsequence matching: every character of the query, in
+// order. The same rule the resolver uses, so the palette and the `:` line agree
+// about what a name nearly is.
+func fuzzyContains(haystack, needle string) bool {
+	at := 0
+	for _, r := range needle {
+		if r == ' ' {
+			continue
+		}
+		i := strings.IndexRune(haystack[at:], r)
+		if i < 0 {
+			return false
+		}
+		at += i + 1
+	}
+	return true
+}
+
+// acceptJump goes to the chosen thing: the view it lives in, cursor on its row.
+func (m Model) acceptJump() (tea.Model, tea.Cmd, bool) {
+	row, ok := m.jump.Current()
+	if !ok || int(row.Key) >= len(m.candidates) {
+		m.box = m.box.Cancel()
+		return m, nil, true
+	}
+	target := m.candidates[row.Key]
+	m.box = m.box.Cancel()
+	m.pending = &target
+	return m, m.load(viewFor(target.Kind)), true
+}
+
+// viewFor is where a kind of thing lives.
+func viewFor(k resolve.Kind) view {
+	switch k {
+	case resolve.KindCategory:
+		return viewCategories
+	case resolve.KindLocation:
+		return viewLocations
+	case resolve.KindItem:
+		return viewItems
+	}
+	return viewHoldings
 }

@@ -489,3 +489,136 @@ func styleOf(line string) string {
 	}
 	return line[:end+1]
 }
+
+// ---------------------------------------------------------------------------
+// Filtering
+// ---------------------------------------------------------------------------
+
+func filterable() table.Model {
+	return table.New(columns()).SetSize(90, 14).SetRows([]table.Row{
+		{Key: 1, Cells: []string{"Ancho Chile", "120 g", "Shelf 2", ""}},
+		{Key: 2, Cells: []string{"Ancho Chile", "40 g", "Small Parts Tray", ""}},
+		{Key: 3, Cells: []string{"Basmati Rice", "800 g", "Shelf 1", ""}},
+		{Key: 4, Cells: []string{"Cumin", "90 g", "Shelf 2", "expiring"}},
+	})
+}
+
+func keys(m table.Model) []int64 {
+	var out []int64
+	for _, r := range m.Rows() {
+		out = append(out, r.Key)
+	}
+	return out
+}
+
+// A narrowed list that cannot say what it is narrowed FROM is a list that lies
+// about what you own, which is why the table keeps every row and shows a
+// subset rather than being handed a shorter list.
+func TestFilteringKeepsTheTotal(t *testing.T) {
+	m := filterable().SetFilter(table.Filter{Text: "ancho"})
+	shown, total := m.Counts()
+	if shown != 2 || total != 4 {
+		t.Errorf("counts = %d of %d, want 2 of 4", shown, total)
+	}
+	if !m.Filtered() {
+		t.Error("the table does not know it is filtered")
+	}
+	if got := keys(m); len(got) != 2 {
+		t.Errorf("rows = %v", got)
+	}
+	// And clearing brings everything back.
+	m = m.SetFilter(table.Filter{})
+	if shown, _ := m.Counts(); shown != 4 {
+		t.Errorf("clearing the filter left %d rows", shown)
+	}
+}
+
+// A field restriction is a statement about a field, so it is a substring test.
+// Fuzzy-matching it would make loc:garage quietly also mean the Great Room.
+func TestAFacetRestrictsOneColumnExactly(t *testing.T) {
+	m := filterable().SetFilter(table.Filter{
+		Facets: []table.FacetTest{{Column: 2, Value: "Shelf 2"}},
+	})
+	if got := keys(m); len(got) != 2 || got[0] != 1 || got[1] != 4 {
+		t.Errorf("loc:Shelf 2 matched %v, want the two on Shelf 2", got)
+	}
+	// The same text as free text reaches other columns; as a facet it does not.
+	m = filterable().SetFilter(table.Filter{
+		Facets: []table.FacetTest{{Column: 2, Value: "ancho"}},
+	})
+	if got := keys(m); len(got) != 0 {
+		t.Errorf("a location facet matched on the item name: %v", got)
+	}
+}
+
+func TestFacetsAndTextCompose(t *testing.T) {
+	m := filterable().SetFilter(table.Filter{
+		Facets: []table.FacetTest{{Column: 2, Value: "Shelf 2"}},
+		Text:   "cumin",
+	})
+	if got := keys(m); len(got) != 1 || got[0] != 4 {
+		t.Errorf("facet plus text matched %v, want just Cumin", got)
+	}
+}
+
+// A filter that moves the cursor makes you re-find your place every keystroke.
+func TestFilteringKeepsTheCursorOnItsRow(t *testing.T) {
+	m := press(filterable(), "j", "j", "j") // Cumin
+	before, _ := m.Current()
+
+	m = m.SetFilter(table.Filter{Text: "cumin"})
+	if after, ok := m.Current(); !ok || after.Key != before.Key {
+		t.Errorf("the cursor moved off its row: %v", after)
+	}
+}
+
+// n and N wrap, which is what makes them different from j and k rather than a
+// second name for them.
+func TestStepThroughMatchesWraps(t *testing.T) {
+	m := filterable().SetFilter(table.Filter{Text: "ancho"})
+	if got := m.Cursor(); got != 0 {
+		t.Fatalf("cursor = %d", got)
+	}
+	m = press(m, "n")
+	if got := m.Cursor(); got != 1 {
+		t.Errorf("n moved to %d, want 1", got)
+	}
+	m = press(m, "n")
+	if got := m.Cursor(); got != 0 {
+		t.Errorf("n at the last match moved to %d, want it to wrap to 0", got)
+	}
+	m = press(m, "N")
+	if got := m.Cursor(); got != 1 {
+		t.Errorf("N at the first match moved to %d, want it to wrap to the last", got)
+	}
+	// j and k do NOT wrap, or they would be the same key.
+	m = press(filterable(), "G", "j")
+	if got := m.Cursor(); got != 3 {
+		t.Errorf("j at the bottom moved to %d; it wrapped", got)
+	}
+}
+
+// "Nothing here" and "nothing matches what you typed" are different facts about
+// the house, and the second one is the half that is easy to forget.
+func TestTheEmptyStateSaysWhy(t *testing.T) {
+	empty := strip(table.New(columns()).SetSize(90, 14).View())
+	if !strings.Contains(empty, "nothing here") {
+		t.Errorf("an empty table says: %q", empty)
+	}
+	filtered := strip(filterable().SetFilter(table.Filter{Text: "zzzz"}).View())
+	if !strings.Contains(filtered, "nothing matches") {
+		t.Errorf("a filtered-to-nothing table says: %q", filtered)
+	}
+	if !strings.Contains(filtered, "esc") {
+		t.Errorf("it does not say how to get out of it: %q", filtered)
+	}
+}
+
+// V picks what is SHOWN. Selecting rows a filter is hiding would mean acting on
+// a set nobody has looked at.
+func TestSelectAllPicksOnlyWhatIsShown(t *testing.T) {
+	m := press(filterable().SetFilter(table.Filter{Text: "ancho"}), "V")
+	if got := m.SelectionCount(); got != 2 {
+		t.Errorf("V selected %d rows out of 4, want the 2 shown", got)
+	}
+}
