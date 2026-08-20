@@ -2,7 +2,8 @@
 //
 // With no flags it opens the read-only browser. --verify runs the integrity job
 // and --checkpoint records replay checkpoints; both are also what a scheduled
-// job would call.
+// job would call. --render replays a key script and prints the frames, which is
+// what a design review looks at.
 package main
 
 import (
@@ -29,6 +30,9 @@ func run() error {
 	verify := flag.Bool("verify", false, "run the integrity check and report discrepancies")
 	checkpoint := flag.Bool("checkpoint", false, "record a replay checkpoint for every holding")
 	info := flag.Bool("info", false, "print database details and exit")
+	render := flag.String("render", "", "replay a .keys script and print each frame (for design review)")
+	width := flag.Int("width", 100, "terminal width for --render")
+	height := flag.Int("height", 30, "terminal height for --render")
 	flag.Parse()
 
 	cfg := db.DefaultConfig()
@@ -79,8 +83,16 @@ func run() error {
 		return runVerify(ctx, proc)
 	}
 
-	// No flags: browse.
 	ctrl := app.Open(conn)
+
+	// --render replays a key script and prints each frame, so a design review
+	// is about a specific screen rather than a description of one. It is the
+	// Simulator with a main() around it: same model, same keys, same loop.
+	if *render != "" {
+		return tui.RenderFile(ctx, ctrl, *render, os.Stdout, *width, *height)
+	}
+
+	// No flags: browse.
 	return tui.Run(ctx, ctrl)
 }
 

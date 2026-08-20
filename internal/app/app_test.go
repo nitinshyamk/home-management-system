@@ -231,8 +231,10 @@ func TestHoldingStateReadsDifferentlyPerKind(t *testing.T) {
 	if got := byState[h.opened]; got != "800 g" {
 		t.Errorf("opened state = %q, want \"800 g\"", got)
 	}
-	if got := byState[h.cableHolding]; !strings.HasPrefix(got, "out at") {
-		t.Errorf("cable state = %q, want out at a location", got)
+	// The NAME, not the identifier the ledger records. "out at 6" is a number a
+	// person cannot act on, and it passed a HasPrefix check for months.
+	if got := byState[h.cableHolding]; got != "out at Garage" {
+		t.Errorf("cable state = %q, want \"out at Garage\"", got)
 	}
 }
 

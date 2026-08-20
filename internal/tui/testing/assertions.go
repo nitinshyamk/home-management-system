@@ -207,3 +207,14 @@ func names(nodes []query.Node) string {
 	}
 	return strings.Join(have, ", ")
 }
+
+// CountHoldings is how many Holdings exist, for the tests that assert browsing
+// changed nothing.
+func (s *Simulator) CountHoldings() int {
+	s.t.Helper()
+	holdings, err := s.r.Holdings(s.ctx)
+	if err != nil {
+		s.t.Fatalf("read holdings: %v", err)
+	}
+	return len(holdings)
+}

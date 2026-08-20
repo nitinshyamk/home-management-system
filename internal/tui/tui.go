@@ -17,6 +17,7 @@ import (
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/domain"
+	"home-management-system/internal/tui/table"
 )
 
 type view int
@@ -54,6 +55,11 @@ type Model struct {
 	view   view
 	cursor int
 	rows   []string
+
+	// table is the working surface for Holdings and Items. The tree and report
+	// views stay on plain rows in a viewport until 10b, because folding is a
+	// different problem and merging them early would settle it by accident.
+	table table.Model
 	// holdingIDs parallels rows in the Holdings view, so Enter knows what was
 	// selected without the rendering layer carrying domain types.
 	holdingIDs []domain.HoldingID
@@ -67,15 +73,47 @@ type Model struct {
 }
 
 func New(ctx context.Context, ctrl app.Controller) Model {
-	return Model{ctx: ctx, ctrl: ctrl, view: viewHoldings}
+	return Model{ctx: ctx, ctrl: ctrl, view: viewHoldings, table: table.New(columnsFor(viewHoldings))}
+}
+
+// tabular reports whether a view is a table. Holdings and Items are; hierarchy
+// is not something a table shows, so Categories and Locations are trees.
+func tabular(v view) bool { return v == viewHoldings || v == viewItems }
+
+// columnsFor declares each table's shape, and with it what a narrow terminal
+// loses. Drop order is a decision recorded here rather than an accident of
+// layout arithmetic.
+func columnsFor(v view) []table.Column {
+	switch v {
+	case viewHoldings:
+		return []table.Column{
+			{Title: "ITEM", Min: 10, Grow: true},
+			// Quantity is never dropped: a holdings table that does not say how
+			// much is a list of things you own, which you already knew.
+			{Title: "QTY", Min: 5, Align: table.Right},
+			{Title: "LOCATION", Min: 12, Drop: 2, Elide: table.ElideStart},
+			{Title: "FLAGS", Min: 6, Drop: 3},
+		}
+	case viewItems:
+		return []table.Column{
+			{Title: "ITEM", Min: 10, Grow: true},
+			{Title: "ON HAND", Min: 6, Align: table.Right},
+			{Title: "CATEGORY", Min: 8, Drop: 2},
+			{Title: "MEASURE", Min: 8, Drop: 3},
+			{Title: "KIND", Min: 6, Drop: 4},
+		}
+	}
+	return nil
 }
 
 func (m Model) Init() tea.Cmd { return m.load(m.view) }
 
-// loadedMsg carries a rendered view.
+// loadedMsg carries a rendered view. Exactly one of rows and cells is set: the
+// tree and report views render to lines, the table views to cells.
 type loadedMsg struct {
 	view       view
 	rows       []string
+	cells      []table.Row
 	holdingIDs []domain.HoldingID
 	status     string
 }
@@ -84,6 +122,13 @@ type errMsg struct{ err error }
 
 func (m Model) load(v view) tea.Cmd {
 	return func() tea.Msg {
+		if tabular(v) {
+			cells, ids, status, err := m.renderTable(v)
+			if err != nil {
+				return errMsg{err}
+			}
+			return loadedMsg{view: v, cells: cells, holdingIDs: ids, status: status}
+		}
 		rows, ids, status, err := m.render(v, 0)
 		if err != nil {
 			return errMsg{err}
@@ -117,12 +162,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.viewport.Width, m.viewport.Height = msg.Width, body
 		}
+		m.table = m.table.SetSize(msg.Width, m.bodyHeight())
 		m.viewport.SetContent(m.body())
 		return m, nil
 
 	case loadedMsg:
 		m.view, m.rows, m.holdingIDs, m.status = msg.view, msg.rows, msg.holdingIDs, msg.status
 		m.cursor = 0
+		if tabular(msg.view) {
+			// A fresh table per view: the columns differ, and carrying a
+			// selection across views would mean acting on rows a person picked
+			// while looking at something else.
+			m.table = table.New(columnsFor(msg.view)).SetRows(msg.cells).SetSize(m.width, m.bodyHeight())
+		}
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoTop()
 		return m, nil
@@ -140,6 +192,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleKey uses Emacs bindings, matching the previous system so muscle memory
 // carries over.
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// The table sees motion, selection, and sorting first. It reports what it
+	// did not use, so the keys that belong to the application -- views, quit,
+	// enter -- still reach it.
+	if tabular(m.view) {
+		if next, handled := m.table.Update(msg); handled {
+			m.table = next
+			m.cursor = max(0, m.table.Cursor())
+			return m, nil
+		}
+	}
+
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -163,10 +226,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoBottom()
 
-	case "ctrl+f", "enter", "right", "l":
-		if m.view == viewHoldings && m.cursor < len(m.holdingIDs) {
-			m.fromView = m.view
-			return m, m.loadHistory(m.holdingIDs[m.cursor])
+	case "ctrl+f", "enter", "right":
+		// In a table, h and l move between columns, so Enter is the only way
+		// down into a row -- which is also what it means everywhere else.
+		if m.view == viewHoldings {
+			if row, ok := m.table.Current(); ok {
+				m.fromView = m.view
+				return m, m.loadHistory(domain.HoldingID(row.Key))
+			}
 		}
 	case "ctrl+b", "esc", "left", "h":
 		if m.view == viewHistory {
@@ -193,7 +260,22 @@ func (m Model) View() string {
 	if !m.ready {
 		return "loading..."
 	}
-	return strings.Join([]string{m.header(), m.viewport.View(), m.footer()}, "\n")
+	body := m.viewport.View()
+	if tabular(m.view) {
+		// The table scrolls itself, so it renders straight rather than through
+		// the viewport. Two things scrolling one list is how a cursor ends up
+		// off screen with nothing obviously wrong.
+		body = m.table.View()
+	}
+	return strings.Join([]string{m.header(), body, m.footer()}, "\n")
+}
+
+// bodyHeight is the room left after the header and footer, both two lines.
+func (m Model) bodyHeight() int {
+	if h := m.height - 4; h > 3 {
+		return h
+	}
+	return 3
 }
 
 func (m Model) header() string {
@@ -264,7 +346,7 @@ func (m Model) tabLabels(withName bool) string {
 }
 
 func (m Model) footer() string {
-	help := "C-p/C-n move - C-f/enter history - C-b/esc back - 1-5 views - r reload - q quit"
+	help := "j/k move - h/l column - s sort - space select - enter history - 1-5 views - q quit"
 	if m.status != "" {
 		return dimStyle.Render(strings.Repeat("-", max(10, m.width))) + "\n" + m.status
 	}
@@ -421,4 +503,44 @@ func Run(ctx context.Context, ctrl app.Controller) error {
 	program := tea.NewProgram(New(ctx, ctrl), tea.WithAltScreen())
 	_, err := program.Run()
 	return err
+}
+
+// renderTable turns Controller rows into table cells.
+//
+// The Controller already returns flat, display-ready strings, so this is a
+// mapping and nothing more. Anything that had to decide something here would be
+// a decision the plan screen (11b) would have to make again, differently.
+func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, string, error) {
+	switch v {
+	case viewHoldings:
+		rows, err := m.ctrl.Holdings(m.ctx)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		cells := make([]table.Row, 0, len(rows))
+		ids := make([]domain.HoldingID, 0, len(rows))
+		for _, r := range rows {
+			cells = append(cells, table.Row{
+				Key:   int64(r.ID),
+				Cells: []string{r.Item, r.State, r.Location, r.Note},
+			})
+			ids = append(ids, r.ID)
+		}
+		return cells, ids, fmt.Sprintf("%d holdings - enter for history", len(rows)), nil
+
+	case viewItems:
+		rows, err := m.ctrl.Items(m.ctx)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		cells := make([]table.Row, 0, len(rows))
+		for _, r := range rows {
+			cells = append(cells, table.Row{
+				Key:   int64(r.ID),
+				Cells: []string{r.Name, r.OnHand, r.Category, r.Measure, r.Kind},
+			})
+		}
+		return cells, nil, fmt.Sprintf("%d items", len(rows)), nil
+	}
+	return nil, nil, "", fmt.Errorf("view %d is not a table", v)
 }
