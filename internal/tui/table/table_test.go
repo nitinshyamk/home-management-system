@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 
 	"home-management-system/internal/tui/table"
 )
@@ -139,16 +141,43 @@ func TestSortKeepsTheCursorOnItsRow(t *testing.T) {
 	if !ok || after.Key != before.Key {
 		t.Errorf("after sorting the cursor is on %v, want %v", after.Key, before.Key)
 	}
-	if !strings.Contains(m.View(), "^") {
-		t.Errorf("a sorted table does not say so:\n%s", m.View())
+	// Column 0 already IS the sort, so s reverses it.
+	if !strings.Contains(strip(m.View()), "v") {
+		t.Errorf("a reversed sort does not say so:\n%s", strip(m.View()))
 	}
-	// Sorting the same column again reverses, and says so.
 	m = press(m, "s")
-	if !strings.Contains(m.View(), "v") {
-		t.Errorf("a reversed sort does not say so:\n%s", m.View())
+	if !strings.Contains(strip(m.View()), "^") {
+		t.Errorf("sorting back does not say so:\n%s", strip(m.View()))
 	}
 	if again, _ := m.Current(); again.Key != before.Key {
 		t.Errorf("reversing moved the cursor off its row")
+	}
+}
+
+// A table always has an order, so the only question is whether it says what
+// that order is. It says so from the first frame, before anything is pressed.
+func TestTheOrderIsStatedBeforeAnythingIsPressed(t *testing.T) {
+	m := newTable(5)
+	view := strip(m.View())
+	if !strings.Contains(view, "ITEM ^") {
+		t.Errorf("the initial order is not stated in the header:\n%s", view)
+	}
+	if got := m.SortDescription(); got != "by item a-z" {
+		t.Errorf("SortDescription() = %q, want a plain statement of the order", got)
+	}
+	// And the rows really are in that order, rather than merely claiming to be.
+	rows := m.Rows()
+	for i := 1; i < len(rows); i++ {
+		if rows[i-1].Cells[0] > rows[i].Cells[0] {
+			t.Fatalf("the header says a-z and the rows are not: %q before %q",
+				rows[i-1].Cells[0], rows[i].Cells[0])
+		}
+	}
+	// A narrow terminal can drop the sorted column, and then the header cannot
+	// say it -- which is why the description exists separately.
+	narrow := m.SetSize(30, 12)
+	if narrow.SortDescription() == "" {
+		t.Error("a narrow table cannot say how it is ordered")
 	}
 }
 
@@ -158,7 +187,7 @@ func TestSortOrdersByTheFocusedColumn(t *testing.T) {
 		{Key: 2, Cells: []string{"Ancho", "200 g", "Shelf 2", ""}},
 		{Key: 3, Cells: []string{"Basmati", "800 g", "Pantry", ""}},
 	})
-	m = press(m, "s") // column 0, ascending
+	// Already sorted by column 0 ascending on arrival.
 	got := []int64{}
 	for _, r := range m.Rows() {
 		got = append(got, r.Key)
@@ -351,4 +380,81 @@ func strip(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// The styling tests assert that a DISTINCTION exists, not which escape codes
+// make it. Pinning the codes would make every visual adjustment a test failure,
+// which is how a test stops being a guard and becomes a tax.
+
+// Uniform rows are hard to read a whole screenful of at once -- the eye has
+// nothing to track along. Banding costs no vertical space, which is the other
+// thing a dense table cannot spare.
+func TestAdjacentRowsAreVisuallyDistinct(t *testing.T) {
+	defer withColour()()
+	// The cursor is parked on the last row, so the rows being compared carry
+	// only their banding. Leaving it on row 0 compares a bold row with a plain
+	// one and passes for the wrong reason.
+	lines := renderedRows(press(newTable(6), "G"))
+	if len(lines) < 4 {
+		t.Fatalf("got %d rows", len(lines))
+	}
+	first, second := styleOf(lines[0]), styleOf(lines[1])
+	if first == second {
+		t.Error("adjacent rows are styled identically; there is nothing for the eye to track along")
+	}
+	// Every other row, so the banding is regular rather than arbitrary.
+	if styleOf(lines[2]) != first || styleOf(lines[3]) != second {
+		t.Errorf("the banding is not every-other-row: %q %q %q %q",
+			first, second, styleOf(lines[2]), styleOf(lines[3]))
+	}
+}
+
+// Selection has to be legible as a SET, from anywhere on the screen, without
+// competing with the cursor for attention.
+func TestASelectedRowIsMarkedBeyondItsGutter(t *testing.T) {
+	defer withColour()()
+	// Select row 0, then move the cursor well clear of it, so what is compared
+	// is selection against nothing rather than selection against the cursor.
+	m := press(newTable(6), " ", "G")
+	lines := renderedRows(m)
+
+	if !strings.Contains(strip(lines[0]), "*") {
+		t.Errorf("a selected row has no gutter mark: %q", strip(lines[0]))
+	}
+	// And something beyond the mark, since one character among thirty rows is
+	// easy to lose.
+	if styleOf(lines[0]) == styleOf(lines[2]) {
+		t.Errorf("a selected row is styled exactly like an unselected one of the same band:\n"+
+			" selected %q\n unselected %q", lines[0], lines[2])
+	}
+}
+
+// withColour turns styling on for a test and restores the profile afterwards,
+// since the render path sets it globally.
+func withColour() func() {
+	previous := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	return func() { lipgloss.SetColorProfile(previous) }
+}
+
+// renderedRows returns the body lines, header excluded.
+func renderedRows(m table.Model) []string {
+	lines := strings.Split(m.View(), "\n")
+	if len(lines) <= 1 {
+		return nil
+	}
+	return lines[1:]
+}
+
+// styleOf is the escape sequence a line opens with, which is what makes two
+// rows look different without saying which difference it should be.
+func styleOf(line string) string {
+	if !strings.HasPrefix(line, "\x1b") {
+		return ""
+	}
+	end := strings.IndexByte(line, 'm')
+	if end < 0 {
+		return ""
+	}
+	return line[:end+1]
 }

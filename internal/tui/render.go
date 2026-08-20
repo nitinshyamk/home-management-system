@@ -24,15 +24,24 @@ import (
 //
 // Colour is stripped, so a frame is diffable plain text. A golden that only
 // differs by escape sequences is a golden nobody reads.
-func Render(ctx context.Context, ctrl app.Controller, script io.Reader, out io.Writer, width, height int) error {
+func Render(ctx context.Context, ctrl app.Controller, script io.Reader, out io.Writer, width, height int, colour bool) error {
 	steps, err := parseScript(script)
 	if err != nil {
 		return err
 	}
 
-	// termenv.Ascii for the model's own styling, and a plain lipgloss renderer
-	// so package-level styles do not smuggle colour back in.
-	lipgloss.SetColorProfile(termenv.Ascii)
+	// Plain text by default, so a frame is diffable and a golden that differs
+	// only by escape sequences is not a golden nobody reads.
+	//
+	// With colour, the same frames become the way to review the decisions that
+	// have no plain-text form at all -- row banding, the selection underline --
+	// which otherwise could only be judged by running the application and
+	// describing what you saw.
+	if !colour {
+		lipgloss.SetColorProfile(termenv.Ascii)
+	} else {
+		lipgloss.SetColorProfile(termenv.TrueColor)
+	}
 
 	m := New(ctx, ctrl)
 	var model tea.Model = m
@@ -141,11 +150,11 @@ func keyByName(name string) (tea.KeyMsg, bool) {
 }
 
 // RenderFile is Render over a script on disk.
-func RenderFile(ctx context.Context, ctrl app.Controller, path string, out io.Writer, width, height int) error {
+func RenderFile(ctx context.Context, ctrl app.Controller, path string, out io.Writer, width, height int, colour bool) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	return Render(ctx, ctrl, f, out, width, height)
+	return Render(ctx, ctrl, f, out, width, height, colour)
 }
