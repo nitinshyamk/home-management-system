@@ -1,0 +1,98 @@
+package app
+
+import (
+	"context"
+
+	"home-management-system/internal/command"
+	"home-management-system/internal/ops"
+)
+
+// The write surface the interface is allowed to see.
+//
+// archlint asserts that internal/tui imports none of origin, ledger, or
+// annotate. This is how it gets work done anyway: it hands over a Command and
+// receives a Plan it can render, and the Plan's Batch is UNEXPORTED so there is
+// no way for the interface to assemble a write of its own. The boundary is a
+// property of the types rather than a convention about who calls what.
+
+// Plan is a Command worked out, ready to be shown and then applied.
+type Plan struct {
+	// Summary is what will happen, one line per step, in the terms of the
+	// receipt rather than the ledger.
+	Summary []string
+
+	// Permanent lists what cannot be changed afterwards. Non-empty means the
+	// plan originates something, and creation is the one error this system
+	// cannot undo -- so a non-empty Permanent forces a confirmation, and the
+	// interface cannot fail to notice because the emptiness IS the signal.
+	Permanent []string
+
+	batch ops.Batch
+}
+
+// NeedsConfirmation reports whether anything permanent is about to happen.
+func (p Plan) NeedsConfirmation() bool { return len(p.Permanent) > 0 }
+
+// Empty reports a plan that would do nothing.
+func (p Plan) Empty() bool { return len(p.batch.Steps) == 0 }
+
+// PlanCommand works out what a Command implies without applying any of it.
+func (c *controller) PlanCommand(ctx context.Context, cmd command.Command) (Plan, error) {
+	batch, err := PlanFor(ctx, c.planner, cmd)
+	if err != nil {
+		return Plan{}, err
+	}
+	out := Plan{batch: batch}
+	for _, step := range batch.Steps {
+		out.Summary = append(out.Summary, step.Summary)
+		for _, origination := range step.Originates {
+			if origination.NeedsConfirmation() {
+				out.Permanent = append(out.Permanent, origination.Describe())
+			}
+		}
+	}
+	return out, nil
+}
+
+// ApplyPlan commits it, as one unit of work.
+func (c *controller) ApplyPlan(ctx context.Context, p Plan) error {
+	if p.Empty() {
+		return nil
+	}
+	_, err := c.executor.Execute(ctx, p.batch)
+	return err
+}
+
+// BindLine turns a typed line into a Command, filling the subject from the
+// selection when the line leaves it out.
+//
+// The work is in internal/command so that RawCommand never leaves it -- see
+// command.BindLine. This is the trip to the database for the vocabulary, and
+// nothing else.
+func (c *controller) BindLine(ctx context.Context, line string, subject command.Subject) (command.BindResult, error) {
+	vocabulary, err := command.LoadVocabulary(ctx, c.read)
+	if err != nil {
+		return command.BindResult{}, err
+	}
+	return command.BindLine(vocabulary, line, subject)
+}
+
+// Describe renders a Command for review, through the same index that resolved
+// it -- a Command holds only identifiers, so the names have to come back from
+// where they went.
+func (c *controller) Describe(ctx context.Context, cmd command.Command) string {
+	index, err := c.SearchIndex(ctx)
+	if err != nil {
+		return command.Summary(cmd, nil)
+	}
+	return command.Summary(cmd, index)
+}
+
+// Issues renders a BindResult's problems as sentences.
+func Issues(result command.BindResult) []string {
+	out := make([]string, 0, len(result.Issues))
+	for _, issue := range result.Issues {
+		out = append(out, issue.String())
+	}
+	return out
+}

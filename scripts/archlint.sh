@@ -254,12 +254,27 @@ echo "archlint: transaction ownership"
 
 # grep_go <description> <pattern> <allowed-dir>...
 # Fails if the pattern appears in any non-test Go file outside the allowed dirs.
+#
 # Tests are exempt: several of them exist precisely to exercise the arrangement
 # these rules forbid, so that the rules are known to be forbidding something.
+#
+# COMMENTS are exempt, and that is not a loophole. A rule that fires on a
+# comment is a rule that forbids explaining the boundary it protects, which is
+# exactly backwards here -- the comment saying "RawCommand never leaves this
+# package" is the reason the next person keeps it that way. The existing
+# probe-import rule solved the same problem by using go list instead of grep.
+#
+# Done by blanking `//...` from each hit and re-testing with the SAME grep, so
+# the pattern is the pattern. An earlier attempt re-tested in awk and choked on
+# the ERE escapes -- \( is a plain ( to awk, which then reads as an unmatched
+# group -- and awk failing left every one of these rules passing on nothing.
 grep_go() {
   local desc="$1" pattern="$2"; shift 2
   local hits
-  hits="$(grep -rnE --include='*.go' -- "$pattern" internal cmd tools 2>/dev/null | grep -v '_test\.go:')"
+  hits="$(grep -rnE --include='*.go' -- "$pattern" internal cmd tools 2>/dev/null \
+          | grep -v '_test\.go:' \
+          | sed 's|//.*||' \
+          | grep -E -- "$pattern" || true)"
   local dir
   for dir in "$@"; do
     hits="$(printf '%s\n' "$hits" | grep -v "^${dir}/" || true)"
@@ -272,6 +287,7 @@ grep_go() {
     ok "$desc"
   fi
 }
+
 
 # The single most important boundary in the write layer. Every other package
 # reaches a transaction through db.Scope.Run, which is the ONE place that

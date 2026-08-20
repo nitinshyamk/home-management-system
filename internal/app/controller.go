@@ -17,8 +17,10 @@ import (
 	"time"
 
 	"home-management-system/internal/annotate"
+	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ledger"
+	"home-management-system/internal/ops"
 	"home-management-system/internal/origin"
 	"home-management-system/internal/query"
 	"home-management-system/internal/resolve"
@@ -35,6 +37,14 @@ type Controller interface {
 	HoldingHistory(ctx context.Context, id domain.HoldingID) ([]EventRow, error)
 	Integrity(ctx context.Context) (IntegrityRow, error)
 	SearchIndex(ctx context.Context) (*resolve.Index, error)
+
+	// The write surface. A Plan holds an unexported Batch, so the interface can
+	// show what will happen and commit it without ever being able to assemble a
+	// write of its own.
+	BindLine(ctx context.Context, line string, subject command.Subject) (command.BindResult, error)
+	PlanCommand(ctx context.Context, cmd command.Command) (Plan, error)
+	ApplyPlan(ctx context.Context, plan Plan) error
+	Describe(ctx context.Context, cmd command.Command) string
 	Nudges(ctx context.Context) ([]NudgeRow, error)
 
 	CreateCategory(ctx context.Context, name string, parent *domain.CategoryID) (domain.CategoryID, error)
@@ -110,6 +120,12 @@ type controller struct {
 	proc     *ledger.Processor
 	origin   *origin.Originator
 	annotate *annotate.Annotator
+
+	// planner and executor are the write surface. They are held here rather
+	// than reached for, so there is exactly one place that can commit anything
+	// on the interface's behalf.
+	planner  *ops.Planner
+	executor *ops.Executor
 }
 
 // New wires the paths together.
@@ -125,7 +141,9 @@ func New(read *query.Reader, proc *ledger.Processor, o *origin.Originator, a *an
 // that internal/tui imports none of origin, ledger, or annotate, and before
 // this existed the only way to get a Controller was to import all three.
 func Open(conn *sql.DB) Controller {
-	return New(query.New(conn), ledger.New(conn), origin.New(conn), annotate.New(conn))
+	c := New(query.New(conn), ledger.New(conn), origin.New(conn), annotate.New(conn)).(*controller)
+	c.planner, c.executor = ops.NewPlanner(conn), ops.New(conn)
+	return c
 }
 
 func (c *controller) CategoryTree(ctx context.Context) ([]TreeRow, error) {

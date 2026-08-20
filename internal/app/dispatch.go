@@ -8,7 +8,7 @@ import (
 	"home-management-system/internal/ops"
 )
 
-// Plan turns a Command into a Batch.
+// PlanFor turns a Command into a Batch.
 //
 // This lives in app rather than in either neighbour, and the placement is the
 // architecture rather than a convenience. internal/command must not import
@@ -24,7 +24,7 @@ import (
 // Nothing here decides anything. Every judgement -- what is legal, what merges,
 // what a plan implies -- belongs to the Planner, and this function's only job is
 // to hand it the right request.
-func Plan(ctx context.Context, p *ops.Planner, c command.Command) (ops.Batch, error) {
+func PlanFor(ctx context.Context, p *ops.Planner, c command.Command) (ops.Batch, error) {
 	switch v := c.(type) {
 
 	// Origination
