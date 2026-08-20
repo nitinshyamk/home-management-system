@@ -14,6 +14,11 @@ import "strings"
 type Subject struct {
 	Kind string // "Item", "Location", "Category", "Holding", or "" for none
 	Name string
+	// At is where the row under the cursor keeps the thing, when the view has
+	// such a column. A holdings row is about an Item IN A PLACE, and leaving
+	// the place behind would make `:consume 100g` on a specific row ask which
+	// of the three shelves you meant -- while pointing at one of them.
+	At string
 }
 
 // BindLine parses a typed line, fills in the subject it omitted, and binds it.
@@ -28,37 +33,84 @@ func BindLine(v *Vocabulary, line string, subject Subject) (BindResult, error) {
 	if err != nil {
 		return BindResult{}, err
 	}
-	fillSubject(&raw, subject)
+
+	// Whether the line MEANT to leave the subject out is a counting question:
+	// a line that filled every positional slot named everything it wanted, and
+	// one that came up short left the front of the sentence to context.
+	//
+	// So `:consume 100g` re-parses with the item slot skipped and takes the
+	// subject from the cursor, while `:consume "Basmati Rice" 100g` is left
+	// alone -- and a person who names the item explicitly gets the item they
+	// named, even when the cursor is on something else.
+	if field, ok := subjectField(raw.Op, subject); ok && !allPositionalsGiven(raw) {
+		reparsed, err := parse(line, field)
+		if err != nil {
+			return BindResult{}, err
+		}
+		reparsed.Fields[field] = subject.Name
+		raw = reparsed
+	}
+	fillPlace(&raw, subject)
 	return Bind(v, raw)
 }
 
-// fillSubject supplies the first required name field the line left out and the
-// subject can answer for.
+// fillPlace supplies `at` from the row under the cursor.
 //
-// The FIRST one: a command's positional fields are declared in the order they
-// are written, so the earliest unfilled one is the one a person means when they
-// leave the subject off the front.
-func fillSubject(raw *RawCommand, subject Subject) {
-	if subject.Name == "" || raw.Fields == nil {
+// Only when the line left it out, so naming a different place still wins. `at`
+// is optional rather than required -- Bind infers it when an Item is kept in
+// exactly one place -- which is why it is filled here rather than by
+// subjectField.
+func fillPlace(raw *RawCommand, subject Subject) {
+	if subject.At == "" || raw.Fields == nil {
 		return
 	}
 	spec, ok := SpecOf(Op(raw.Op))
 	if !ok {
 		return
 	}
-	for _, field := range spec.Fields {
-		if !field.Required || field.Type != FieldName {
-			continue
-		}
-		if value, given := raw.Fields[field.Key]; given && strings.TrimSpace(value) != "" {
-			continue
-		}
-		if !acceptsKind(field, subject.Kind) {
-			continue
-		}
-		raw.Fields[field.Key] = subject.Name
+	field, has := spec.Field("at")
+	if !has || field.Type != FieldName {
 		return
 	}
+	if value, given := raw.Fields["at"]; given && strings.TrimSpace(value) != "" {
+		return
+	}
+	raw.Fields["at"] = subject.At
+}
+
+// subjectField is the first required name field the subject could answer for.
+//
+// The FIRST: a command's positional fields are declared in the order they are
+// written, so the earliest one is what a person means by leaving the front of
+// the line off.
+func subjectField(op string, subject Subject) (string, bool) {
+	if subject.Name == "" {
+		return "", false
+	}
+	spec, ok := SpecOf(Op(op))
+	if !ok {
+		return "", false
+	}
+	for _, field := range spec.Fields {
+		if field.Required && field.Type == FieldName && acceptsKind(field, subject.Kind) {
+			return field.Key, true
+		}
+	}
+	return "", false
+}
+
+// allPositionalsGiven reports whether the line filled every positional slot.
+func allPositionalsGiven(raw RawCommand) bool {
+	spec, ok := SpecOf(Op(raw.Op))
+	if !ok {
+		return true
+	}
+	for _, field := range spec.Positional() {
+		if strings.TrimSpace(raw.Fields[field.Key]) == "" {
+			return false
+		}
+	}
+	return true
 }
 
 func acceptsKind(field Field, kind string) bool {

@@ -100,6 +100,20 @@ func indentOf(lines []string, name string) int {
 	return -1
 }
 
+// nameOn reads the node name out of a rendered tree row: past the gutter, past
+// the indentation and the fold marker, and stopping before the count column.
+func nameOn(line string) string {
+	if len(line) < 2 {
+		return ""
+	}
+	body := strings.TrimLeft(line[2:], " ")
+	body = strings.TrimLeft(body, "\u25be\u25b8 ")
+	if cut := strings.Index(body, "  "); cut > 0 {
+		body = body[:cut]
+	}
+	return strings.TrimSpace(body)
+}
+
 func cursorLine(s *sim.Simulator) string {
 	for _, line := range strings.Split(s.PlainView(), "\n") {
 		if strings.HasPrefix(line, ">") {

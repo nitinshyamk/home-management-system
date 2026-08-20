@@ -52,9 +52,19 @@ func Press(s string) Key {
 
 // Type is a run of printable keystrokes, one event each, exactly as a person
 // typing into a field would produce.
+//
+// A space is sent as KeySpace, not as a rune. Bubbletea distinguishes them and
+// a real terminal only ever sends the former -- so a harness that sent runes
+// for spaces was testing a keystroke nobody can produce. It hid a bug where
+// typing a space into the command line did nothing, and every test was green
+// while `:consume 100g` arrived as "consume100g".
 func Type(s string) []Key {
 	keys := make([]Key, 0, len(s))
 	for _, r := range s {
+		if r == ' ' {
+			keys = append(keys, Space)
+			continue
+		}
 		keys = append(keys, Key{tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}}})
 	}
 	return keys

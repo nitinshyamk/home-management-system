@@ -21,17 +21,24 @@ type Plan struct {
 	// receipt rather than the ledger.
 	Summary []string
 
-	// Permanent lists what cannot be changed afterwards. Non-empty means the
-	// plan originates something, and creation is the one error this system
-	// cannot undo -- so a non-empty Permanent forces a confirmation, and the
-	// interface cannot fail to notice because the emptiness IS the signal.
+	// Confirm lists what will be created. Non-empty means the plan originates
+	// something, and the interface cannot fail to notice because the emptiness
+	// IS the signal.
+	//
+	// Everything named is confirmed, and the reason is duplication rather than
+	// permanence: a receipt that quietly creates a second "Turmeric" is worse
+	// than one that stops and asks.
+	Confirm []string
+
+	// Permanent is the subset that can never be changed afterwards, as facts.
+	// A Category is confirmed and has none.
 	Permanent []string
 
 	batch ops.Batch
 }
 
 // NeedsConfirmation reports whether anything permanent is about to happen.
-func (p Plan) NeedsConfirmation() bool { return len(p.Permanent) > 0 }
+func (p Plan) NeedsConfirmation() bool { return len(p.Confirm) > 0 }
 
 // Empty reports a plan that would do nothing.
 func (p Plan) Empty() bool { return len(p.batch.Steps) == 0 }
@@ -46,8 +53,16 @@ func (c *controller) PlanCommand(ctx context.Context, cmd command.Command) (Plan
 	for _, step := range batch.Steps {
 		out.Summary = append(out.Summary, step.Summary)
 		for _, origination := range step.Originates {
-			if origination.NeedsConfirmation() {
-				out.Permanent = append(out.Permanent, origination.Describe())
+			if !origination.NeedsConfirmation() {
+				continue
+			}
+			// Confirmed either way; the facts are what a panel lays out, and
+			// some originations have none -- a Category is confirmed because
+			// creating a second one by accident is the hazard, not because
+			// anything about it is permanent.
+			out.Confirm = append(out.Confirm, origination.Describe())
+			if facts := origination.Permanent(); facts != "" {
+				out.Permanent = append(out.Permanent, facts)
 			}
 		}
 	}
