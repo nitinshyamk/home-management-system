@@ -180,7 +180,12 @@ type MarkedLost struct {
 	Holding HoldingID
 }
 
-// Found reverses MarkedLost, and may re-home.
+// Found reverses MarkedLost.
+//
+// No location, deliberately: Moved is already the one way to say "it is here
+// now", and a second way would let two replays of the same history differ by
+// which spelling was used. Finding something somewhere else is Found plus
+// Moved, composed by ops.PlanFound -- one intent, two events.
 type Found struct {
 	EventBase
 	Holding HoldingID

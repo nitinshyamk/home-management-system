@@ -63,6 +63,9 @@ func Summary(c Command, names Namer) string {
 	case MarkLost:
 		return "give up on finding " + n.holding(v.Holding)
 	case Found:
+		if v.At != nil {
+			return fmt.Sprintf("found %s in %s", n.holding(v.Holding), n.location(*v.At))
+		}
 		return "found " + n.holding(v.Holding)
 	case Verify:
 		if v.Present {

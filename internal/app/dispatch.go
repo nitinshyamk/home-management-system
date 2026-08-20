@@ -76,7 +76,7 @@ func Plan(ctx context.Context, p *ops.Planner, c command.Command) (ops.Batch, er
 	case command.MarkLost:
 		return p.MarkLost(ctx, ops.MarkLostRequest{Holding: v.Holding})
 	case command.Found:
-		return p.Found(ctx, ops.FoundRequest{Holding: v.Holding})
+		return p.Found(ctx, ops.FoundRequest{Holding: v.Holding, At: v.At})
 	case command.Verify:
 		return p.Verify(ctx, ops.VerifyRequest{Holding: v.Holding, Present: v.Present})
 	case command.Retire:

@@ -192,6 +192,7 @@ var specs = []Spec{
 	}},
 	{Op: OpFound, What: "it turned up after all", Fields: []Field{
 		name("holding", "which one", true, true, domain.EntityHolding),
+		name("at", "where it turned up, if not where it belongs", false, false, domain.EntityLocation),
 	}},
 	{Op: OpVerify, What: "look for something and record what you saw", Fields: []Field{
 		name("holding", "which one", true, true, domain.EntityHolding),

@@ -77,8 +77,27 @@ func PlanMarkLost(s Snapshot, req MarkLostRequest) ([]domain.Event, error) {
 }
 
 // FoundRequest reverses a conclusion that something was lost.
-type FoundRequest struct{ Holding domain.HoldingID }
+//
+// At is where it turned up, and it is the common case rather than the exotic
+// one: things are rarely lost and then found exactly where they were supposed
+// to be. Omitted, the Holding is simply no longer lost.
+type FoundRequest struct {
+	Holding domain.HoldingID
+	At      *domain.LocationID
+}
 
+// PlanFound is one intent and, when the thing turned up somewhere else, two
+// events.
+//
+// That is not a compromise. The ledger has exactly ONE way to say "it is here
+// now" -- Moved -- and putting a location on Found as well would give it two,
+// which is how a replay ends up depending on which spelling was used. The event
+// vocabulary stays minimal; the OPERATION composes. Consume already emits three
+// events for one keystroke, for the same reason.
+//
+// Moved rather than Rehomed: the system believed the thing was at its stowed
+// location and it is not, so it moved. Rehomed would claim the object stayed
+// put and only its address changed, which is the opposite of what happened.
 func PlanFound(s Snapshot, req FoundRequest) ([]domain.Event, error) {
 	h, err := s.UniqueHolding(req.Holding)
 	if err != nil {
@@ -87,7 +106,17 @@ func PlanFound(s Snapshot, req FoundRequest) ([]domain.Event, error) {
 	if h.Custody != domain.CustodyLost {
 		return nil, fmt.Errorf("%w: holding %d is %s, not Lost", ErrCustody, req.Holding, h.Custody)
 	}
-	return []domain.Event{domain.Found{EventBase: s.base(), Holding: req.Holding}}, nil
+
+	events := []domain.Event{domain.Found{EventBase: s.base(), Holding: req.Holding}}
+	// Found first: it stopped being lost, and then it is somewhere. The reverse
+	// order would record a Lost thing moving, which is a claim about a location
+	// the system had just admitted it did not know.
+	if req.At != nil && *req.At != h.StowedLocation {
+		events = append(events, domain.Moved{
+			EventBase: s.base(), Holding: req.Holding, From: h.StowedLocation, To: *req.At,
+		})
+	}
+	return events, nil
 }
 
 // VerifyRequest records looking for a Unique holding and reports what was seen.
