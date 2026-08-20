@@ -145,6 +145,37 @@ func (s *seeder) build() error {
 		return err
 	}
 
+	// --- the awkward cases, on purpose --------------------------------------
+	//
+	// A layout is only judged against what is on screen, so the cases that
+	// break layouts have to be in the sample house rather than in someone's
+	// imagination. Every one of these is here to be looked at:
+	//
+	//   a five-deep path, which no breadcrumb fits
+	//   a name long enough to truncate in a column
+	//   an Item held in three places at once
+	//   a Unique thing checked out (the cable, below)
+	//   an empty Category (Electronics, below)
+	//
+	// If a screen reads well with this house in it, it reads well.
+	shelving, err := s.location("Metal Shelving Unit", &garage)
+	if err != nil {
+		return err
+	}
+	bay, err := s.location("Bay 3", &shelving)
+	if err != nil {
+		return err
+	}
+	// Five deep: Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts
+	crate, err := s.location("Blue Crate", &bay)
+	if err != nil {
+		return err
+	}
+	smallParts, err := s.location("Small Parts Tray", &crate)
+	if err != nil {
+		return err
+	}
+
 	// --- the classification tree -------------------------------------------
 	spices, err := s.category("Spices", nil)
 	if err != nil {
@@ -195,6 +226,13 @@ func (s *seeder) build() error {
 		return err
 	}
 	stamps, err := s.bulkItem("Forever Stamp", stationery, "count", nil)
+	if err != nil {
+		return err
+	}
+	// Long enough to truncate in any sensible column width, which is the point:
+	// a name that fits is a name that proves nothing about the layout.
+	adapter, err := s.uniqueItem(
+		"Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space Grey, 0.8m)", cables)
 	if err != nil {
 		return err
 	}
@@ -280,6 +318,17 @@ func (s *seeder) build() error {
 	}); err != nil {
 		return err
 	}
+	// And a third, five levels down, so that "where is my ancho chile" is a
+	// question the interface has to answer well rather than incidentally.
+	anchoDeep, err := s.bulk(ancho, smallParts, domain.BasisContent)
+	if err != nil {
+		return err
+	}
+	if err := s.apply(domain.Acquired{
+		EventBase: s.at(), Holding: anchoDeep, Delta: domain.FromMilli(40_000), Source: "bulk order",
+	}); err != nil {
+		return err
+	}
 
 	cuminHolding, err := s.bulk(cumin, shelf2, domain.BasisContent)
 	if err != nil {
@@ -352,6 +401,14 @@ func (s *seeder) build() error {
 	}); err != nil {
 		return err
 	}
+
+	// The long-named adapter lives five levels down, so the widest name and the
+	// deepest path appear on the same row.
+	adapterHolding, err := s.unique(adapter, smallParts, "boxed, unopened")
+	if err != nil {
+		return err
+	}
+	_ = adapterHolding
 
 	// --- the empty computer box: a possession that holds nothing ------------
 	if _, err := s.unique(box, attic, ""); err != nil {
