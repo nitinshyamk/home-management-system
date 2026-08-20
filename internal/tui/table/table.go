@@ -103,23 +103,37 @@ var (
 	// too. It costs no vertical space, which is the other thing a dense table
 	// cannot spare.
 	stripe = lipgloss.AdaptiveColor{Light: "254", Dark: "236"}
+
+	// picked is the selection, and it differs from the banding in HUE rather
+	// than in lightness.
+	//
+	// That is the whole reason it works. Banding and selection are two
+	// independent things a row can be saying, and saying both with the same
+	// dimension -- a bit darker, a bit darker still -- makes them compete: four
+	// greys where the eye can reliably tell two apart. A tint is categorically
+	// different from a grey step, so "which band am I on" and "is this picked"
+	// never have to be distinguished by degree.
+	picked = lipgloss.AdaptiveColor{Light: "189", Dark: "17"}
 )
 
-// rowStyle composes the three things a row can be saying at once.
+// rowStyle composes what a row is saying.
 //
-// One style rather than three spans, so they layer predictably: a selected row
-// under the cursor on a striped line is banded, underlined, and bold, and reads
-// as all three rather than as whichever was applied last.
+// Three background states, not four: a selected row is TINTED and does not
+// band. Banding on top of the tint would give four shades where the eye can
+// reliably separate two, and it would earn nothing -- the tint already gives
+// the eye something to track along, which is banding's only job. The gain is
+// that a run of selected rows reads as one solid block, which is exactly what
+// makes a selection countable at a glance.
+//
+// One style rather than nested spans, so a selected row under the cursor reads
+// as both rather than as whichever was applied last.
 func rowStyle(striped, selected, cursor bool) lipgloss.Style {
 	s := lipgloss.NewStyle()
-	if striped {
+	switch {
+	case selected:
+		s = s.Background(picked)
+	case striped:
 		s = s.Background(stripe)
-	}
-	if selected {
-		// Underline rather than more weight or more colour. The gutter mark
-		// says WHICH rows are picked; the underline makes the set legible as a
-		// set without competing with the cursor for attention.
-		s = s.Underline(true)
 	}
 	if cursor {
 		s = s.Bold(true)

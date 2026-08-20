@@ -413,19 +413,50 @@ func TestAdjacentRowsAreVisuallyDistinct(t *testing.T) {
 // competing with the cursor for attention.
 func TestASelectedRowIsMarkedBeyondItsGutter(t *testing.T) {
 	defer withColour()()
-	// Select row 0, then move the cursor well clear of it, so what is compared
-	// is selection against nothing rather than selection against the cursor.
-	m := press(newTable(6), " ", "G")
+	// Select rows 0 and 1 -- one on each band -- then park the cursor clear of
+	// both, so what is compared is selection against nothing rather than
+	// selection against the cursor.
+	m := press(newTable(8), " ", " ", "G")
 	lines := renderedRows(m)
 
 	if !strings.Contains(strip(lines[0]), "*") {
 		t.Errorf("a selected row has no gutter mark: %q", strip(lines[0]))
 	}
 	// And something beyond the mark, since one character among thirty rows is
-	// easy to lose.
-	if styleOf(lines[0]) == styleOf(lines[2]) {
-		t.Errorf("a selected row is styled exactly like an unselected one of the same band:\n"+
-			" selected %q\n unselected %q", lines[0], lines[2])
+	// easy to lose. Checked on BOTH bands: a selection that is only visible on
+	// the unbanded half is a selection you can miss half the time.
+	for _, tc := range []struct{ selected, unselected int }{{0, 2}, {1, 3}} {
+		if styleOf(lines[tc.selected]) == styleOf(lines[tc.unselected]) {
+			t.Errorf("a selected row is styled exactly like an unselected one on the same band:\n"+
+				" selected   %q\n unselected %q", lines[tc.selected], lines[tc.unselected])
+		}
+	}
+
+	// A run of selected rows is one solid block rather than a banded one. That
+	// is what makes a selection countable at a glance, and it is the reason
+	// selection suppresses the banding rather than layering on top of it.
+	if styleOf(lines[0]) != styleOf(lines[1]) {
+		t.Errorf("consecutive selected rows are banded, so the selection does not read as a block:\n"+
+			" %q\n %q", lines[0], lines[1])
+	}
+}
+
+// Selection differs from banding in HUE, not in degree. Saying both with the
+// same dimension -- a bit darker, a bit darker still -- gives four shades where
+// the eye can reliably separate two.
+func TestSelectionIsNotJustAnotherShadeOfTheBanding(t *testing.T) {
+	defer withColour()()
+	m := press(newTable(8), " ", "G")
+	lines := renderedRows(m)
+
+	selected := styleOf(lines[0])
+	banded := styleOf(lines[1])
+	if selected == banded {
+		t.Errorf("a selected row and a banded row are the same colour:\n %q\n %q",
+			lines[0], lines[1])
+	}
+	if selected == "" {
+		t.Errorf("a selected row on the unbanded half carries no colour at all: %q", lines[0])
 	}
 }
 
