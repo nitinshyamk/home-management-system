@@ -104,6 +104,20 @@ func text(key, what string) Field {
 	return Field{Key: key, Type: FieldText, What: what}
 }
 
+// basisField narrows to one of the two Holdings an Item routinely has in one
+// place: the sealed packages and the loose contents.
+//
+// It sits on the commands that act on ONE Holding -- discard, count, move --
+// and not on consume or open, which name an Item and a place and let the
+// operation work out which Holding that implies (opening a package if it has
+// to). The difference is not an inconsistency: throwing away from the sealed
+// bag and from the open one are different acts, and only a person can say
+// which, whereas consuming is one act however the stock is arranged.
+var basisField = Field{
+	Key: "basis", Type: FieldChoice, What: "sealed packages or loose contents",
+	Choices: []string{"sealed", "loose"},
+}
+
 // specs is the whole vocabulary. A missing entry is a test failure, not a
 // runtime surprise: TestEveryCommandHasASpec walks the generated registry.
 var specs = []Spec{
@@ -159,6 +173,7 @@ var specs = []Spec{
 		name("item", "what was thrown away", true, true, domain.EntityItem),
 		{Key: "qty", Type: FieldQuantity, What: "how much", Required: true, Positional: true},
 		name("at", "which one, if it is kept in several places", false, false, domain.EntityLocation),
+		basisField,
 		text("reason", "why"),
 	}},
 	{Op: OpOpen, What: "open a sealed package", Fields: []Field{
@@ -169,11 +184,13 @@ var specs = []Spec{
 		name("item", "what was counted", true, true, domain.EntityItem),
 		{Key: "observed", Type: FieldQuantity, What: "how much was found", Required: true, Positional: true},
 		name("at", "which one, if it is kept in several places", false, false, domain.EntityLocation),
+		basisField,
 	}},
 	{Op: OpMove, What: "stock went somewhere else", Fields: []Field{
 		name("item", "what moved", true, true, domain.EntityItem),
 		name("to", "where it went", true, false, domain.EntityLocation),
 		name("at", "which one, if it is kept in several places", false, false, domain.EntityLocation),
+		basisField,
 		{Key: "qty", Type: FieldQuantity, What: "how much, if not all of it"},
 	}},
 

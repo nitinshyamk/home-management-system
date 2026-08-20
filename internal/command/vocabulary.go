@@ -32,7 +32,24 @@ type HoldingFacts struct {
 	ID       domain.HoldingID
 	Item     domain.ItemID
 	Location domain.LocationID
-	Retired  bool
+	// Basis is what a measured Holding counts in, and "" for a Unique one. It
+	// is here because one Item in one place is routinely TWO Holdings -- a
+	// sealed bag and an opened one -- and a message that cannot say which is
+	// which is a message nobody can act on.
+	Basis   domain.UnitBasis
+	Retired bool
+}
+
+// describe names a Holding the way a person would distinguish it from its
+// sibling in the same place.
+func (h HoldingFacts) describe() string {
+	switch h.Basis {
+	case domain.BasisPackage:
+		return "the sealed packages"
+	case domain.BasisContent:
+		return "the opened one"
+	}
+	return fmt.Sprintf("holding %d", h.ID)
 }
 
 // LoadVocabulary reads the whole vocabulary through the query path.
@@ -70,10 +87,14 @@ func LoadVocabulary(ctx context.Context, r *query.Reader) (*Vocabulary, error) {
 	}
 	for _, h := range holdings {
 		base := h.Holding.Base()
-		v.holdings[base.Item] = append(v.holdings[base.Item], HoldingFacts{
+		facts := HoldingFacts{
 			ID: base.ID, Item: base.Item, Location: base.StowedLocation,
 			Retired: base.RetiredAt != nil,
-		})
+		}
+		if bulk, ok := h.Holding.(domain.BulkHolding); ok {
+			facts.Basis = bulk.UnitBasis
+		}
+		v.holdings[base.Item] = append(v.holdings[base.Item], facts)
 	}
 	return v, nil
 }
