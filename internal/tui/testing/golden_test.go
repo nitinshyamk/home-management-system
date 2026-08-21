@@ -90,3 +90,39 @@ func TestGoldenFilterAndJumpDoNotLookAlike(t *testing.T) {
 	s.Send(sim.Type("shelf"))
 	s.AssertFrame("10c-jump")
 }
+
+// 10d, accepted 2026-08-20 after one round of rework.
+//
+// The editor frame is the one most worth guarding: "inline" is a claim about
+// WHERE lines are, and a plain-text frame is exactly the thing that can hold
+// that claim still.
+
+func TestGoldenInlineEditor(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(84, 20)
+	s.Send(sim.Press("2"))
+	s.Send(sim.Press("j"), sim.Press("j"))
+	s.Send(sim.Press("e"))
+	s.AssertFrame("10d-editor-inline")
+}
+
+func TestGoldenTheConfirmation(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(92, 18)
+	s.Send(sim.Press("4"), sim.Press(":"))
+	s.Send(sim.Type("new item Turmeric counting measured unit g package 2000 category Spices"))
+	s.Send(sim.Enter)
+	s.AssertFrame("10d-confirmation")
+}
+
+func TestGoldenARefusal(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(64, 18)
+	s.Send(sim.Press("4"), sim.Press(":"))
+	s.Send(sim.Type("consume 5kg"))
+	s.Send(sim.Enter)
+	s.AssertFrame("10d-refusal-wrapped")
+}
