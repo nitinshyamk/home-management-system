@@ -102,7 +102,7 @@ func parseScript(r io.Reader) ([]step, error) {
 	scanner := bufio.NewScanner(r)
 	for line := 1; scanner.Scan(); line++ {
 		text := strings.TrimSpace(scanner.Text())
-		if text == "" || strings.HasPrefix(text, "#") {
+		if text == "" || isComment(text) {
 			continue
 		}
 		// Split on COLON-SPACE, not on a bare colon. `:` is itself a key -- it
@@ -122,6 +122,24 @@ func parseScript(r io.Reader) ([]step, error) {
 		steps = append(steps, step{key: key, label: label})
 	}
 	return steps, scanner.Err()
+}
+
+// isComment distinguishes a note from a keystroke.
+//
+// `#` is a key -- it counts -- and it was also the comment marker, so the count
+// step of a review script was silently skipped and the digits after it went to
+// the application as view switches. That is the second key this format could
+// not express, after `:`, and both failed the same way: quietly, producing a
+// frame of something else.
+//
+// A comment is a hash followed by a SPACE or another hash. A bare `#`, and `#`
+// with a label, are keys.
+func isComment(line string) bool {
+	if !strings.HasPrefix(line, "#") {
+		return false
+	}
+	rest := line[1:]
+	return strings.HasPrefix(rest, " ") || strings.HasPrefix(rest, "#")
 }
 
 func keyByName(name string) (tea.KeyMsg, bool) {

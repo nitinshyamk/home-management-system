@@ -335,8 +335,7 @@ func creatorKind(v view) (creator.Kind, bool) {
 func (m Model) openCreator() Model {
 	kind, ok := creatorKind(m.view)
 	if !ok {
-		m.problem = []string{"stock arrives by acquiring it -- try :acquire"}
-		return m
+		return m.refuse("stock arrives by acquiring it -- try :acquire")
 	}
 	parent := ""
 	if node, ok := m.tree.Current(); ok && forest(m.view) {
@@ -406,8 +405,7 @@ func (m Model) handleCreator(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	case tea.KeyEnter:
 		if name := m.creator.Value("name"); name == "" {
-			m.problem = []string{"a name is required"}
-			return m, nil, true
+			return m.refuse("a name is required"), nil, true
 		}
 		// Through the `:` line's own path -- the same Parse, the same Bind, the
 		// same confirmation. A panel that took a shortcut would be a second way

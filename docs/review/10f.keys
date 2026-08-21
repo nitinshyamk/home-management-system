@@ -1,4 +1,4 @@
-# 10f — keystroke actions.
+# 10f -- keystroke actions.
 #
 #   ./bin/hms --db-path=hms.db --render docs/review/10f.keys --width 92 --height 20
 
@@ -7,6 +7,10 @@ c: consume -- a quantity field, at the row
 1
 0: ten
 enter: it happens
+#: count -- the same shape of prompt
+5
+0: fifty
+enter: recorded, and corrected
 m: move -- a destination, with autocomplete
 g
 a
@@ -20,12 +24,8 @@ b
 l
 e
 enter: down to the cable
+c: refused, in terms of the thing
 t: toggle custody -- one key, the state decides
 t: and back
-esc: filter cleared
-#: count
-5
-0
-enter: recorded, and corrected
 d: the first d of dd -- nothing yet
 d: retire
