@@ -8,6 +8,7 @@ import (
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
+	"home-management-system/internal/tui/creator"
 )
 
 // The first place the interface writes anything.
@@ -305,4 +306,68 @@ func (m Model) confirmView() string {
 	}
 	lines = append(lines, "", dimStyle.Render("  [enter] create    [esc] back"))
 	return strings.Join(lines, "\n")
+}
+
+// ---------------------------------------------------------------------------
+// Creation
+// ---------------------------------------------------------------------------
+
+// creatorKind is what a view creates. Holdings are absent on purpose: stock
+// arrives by acquiring it, and a Holding is a placement rather than a name.
+func creatorKind(v view) (creator.Kind, bool) {
+	switch v {
+	case viewItems:
+		return creator.KindItem, true
+	case viewCategories:
+		return creator.KindCategory, true
+	case viewLocations:
+		return creator.KindLocation, true
+	}
+	return "", false
+}
+
+// openCreator starts a panel, defaulted to create inside what the cursor is on.
+func (m Model) openCreator() Model {
+	kind, ok := creatorKind(m.view)
+	if !ok {
+		m.problem = []string{"stock arrives by acquiring it -- try :acquire"}
+		return m
+	}
+	parent := ""
+	if node, ok := m.tree.Current(); ok && forest(m.view) {
+		parent = node.Name
+	}
+	m.problem = nil
+	m.creator = m.creator.Open(kind, parent).SetWidth(m.width)
+	return m
+}
+
+// handleCreator takes the keystroke while the panel is open.
+//
+// Before the omnibox and the list, for the same reason the editor does: while a
+// field is open a keystroke is a character.
+func (m Model) handleCreator(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if !m.creator.IsOpen() {
+		return m, nil, false
+	}
+	switch msg.Type {
+	case tea.KeyEsc:
+		m.creator = m.creator.Close()
+		m.status = "nothing was created"
+		return m, nil, true
+	case tea.KeyEnter:
+		if name := m.creator.Value("name"); name == "" {
+			m.problem = []string{"a name is required"}
+			return m, nil, true
+		}
+		// Through the `:` line's own path -- the same Parse, the same Bind, the
+		// same confirmation. A panel that took a shortcut would be a second way
+		// to create things, validating differently from the first.
+		return m, m.runLine(m.creator.Line()), true
+	}
+	if next, handled := m.creator.Update(msg); handled {
+		m.creator = next
+		return m, nil, true
+	}
+	return m, nil, true
 }

@@ -1,0 +1,46 @@
+# 10e — creation and confirmation.
+#
+#   ./bin/hms --db-path=hms.db --render docs/review/10e.keys --width 92 --height 22
+
+3: the items view
+o: the creation panel
+T
+u
+r
+m
+e
+r
+i
+c
+tab: onto the counting choice
+h: a pile I count
+h: one of a kind -- the measured fields go
+l
+l: something I measure -- they come back
+tab
+g
+tab
+2
+0
+0
+0
+tab
+S
+p
+i
+c
+e
+s
+enter: the permanent-fields confirmation
+esc: back to the panel, still filled in
+esc: back to the list, nothing created
+2: the locations tree
+j
+o: a location, fewer fields, no counting
+C
+e
+l
+l
+a
+r
+esc
