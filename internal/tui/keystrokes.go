@@ -95,7 +95,9 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case "#":
 		return m.promptFor("count", "how much is actually there", ""), nil, true
 	case "m":
-		return m.promptFor("move", "where to", ""), nil, true
+		// The vocabulary is loaded alongside the prompt, so the first
+		// keystroke into it already has something to complete against.
+		return m.promptFor("move", "where to", ""), m.loadCandidates(), true
 	case "t":
 		return m.toggleCustody()
 	case "y":

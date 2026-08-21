@@ -264,6 +264,12 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	}
 	if next, handled := m.editor.Update(msg); handled {
 		m.editor = next
+		// Recomputed after every keystroke, because a suggestion that lags the
+		// input is a suggestion for something else.
+		m = m.suggestForPrompt()
+		if len(m.candidates) == 0 {
+			return m, m.loadCandidates(), true
+		}
 		return m, nil, true
 	}
 	return m, nil, true
@@ -346,19 +352,25 @@ func (m Model) openCreator() Model {
 	return m.suggest()
 }
 
-// suggest offers completions for whatever field the panel has focused.
-//
-// Through the resolve index, which is the same index behind the jump palette,
-// the `:` line, and the bulk importer. One index, four consumers: if the panel
-// completed names differently from the command line, the two would disagree
-// about what a name nearly is -- and the panel would be teaching a vocabulary
-// the rest of the application does not speak.
+// suggest offers completions for whatever field the creation panel has focused.
 func (m Model) suggest() Model {
 	kind, typed := m.creator.Resolving()
-	if kind == "" || len(m.candidates) == 0 {
-		return m.withSuggestions(nil)
-	}
+	return m.withSuggestions(m.completions(kind, typed))
+}
 
+// completions are the names of a KIND that a typed fragment could become.
+//
+// One function for every field that resolves a name -- the creation panel's
+// parent and category, and the move prompt's destination -- because a second
+// completer would be a second opinion about what a name nearly is. It goes
+// through the resolve index, which is the same index behind the jump palette,
+// the `:` line, and the bulk importer.
+func (m Model) completions(kind, typed string) []string {
+	if kind == "" || typed == "" || len(m.candidates) == 0 {
+		// Everything matches an empty field, and a list of everything is not a
+		// suggestion -- it is the tree, which is one keystroke away already.
+		return nil
+	}
 	var out []string
 	for _, candidate := range m.candidates {
 		if string(candidate.Kind) != kind || candidate.Archived {
@@ -367,9 +379,9 @@ func (m Model) suggest() Model {
 		// Already exactly a name: there is nothing to suggest, and a list that
 		// says "tab to take it" when tab will move on is a list that lies.
 		if strings.EqualFold(candidate.Path, typed) {
-			return m.withSuggestions(nil)
+			return nil
 		}
-		if typed != "" && !fuzzyContains(strings.ToLower(candidate.Path), strings.ToLower(typed)) {
+		if !fuzzyContains(strings.ToLower(candidate.Path), strings.ToLower(typed)) {
 			continue
 		}
 		out = append(out, candidate.Path)
@@ -377,12 +389,29 @@ func (m Model) suggest() Model {
 			break
 		}
 	}
-	// Everything matches an empty field, and a list of everything is not a
-	// suggestion -- it is the tree, which is one keystroke away already.
-	if typed == "" {
-		return m.withSuggestions(nil)
+	return out
+}
+
+// suggestForPrompt offers completions for the inline field a keystroke opened.
+//
+// Only the prompts that name something get them: a quantity has nothing to
+// complete against, and offering it a list would be answering a question nobody
+// asked.
+func (m Model) suggestForPrompt() Model {
+	kind, ok := promptResolves(m.editor.Purpose())
+	if !ok {
+		return m
 	}
-	return m.withSuggestions(out)
+	m.editor = m.editor.SetSuggestions(m.completions(kind, strings.TrimSpace(m.editor.Value())))
+	return m
+}
+
+// promptResolves says what kind of thing a prompt is asking for a name of.
+func promptResolves(purpose string) (string, bool) {
+	if purpose == "move" {
+		return "Location", true
+	}
+	return "", false
 }
 
 func (m Model) withSuggestions(suggestions []string) Model {

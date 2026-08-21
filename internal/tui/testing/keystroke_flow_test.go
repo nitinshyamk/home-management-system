@@ -346,3 +346,92 @@ func TestARefusalClearsTheLastSuccess(t *testing.T) {
 	s.ShowsText("one of a kind")
 	s.HidesText("use 100")
 }
+
+// TestMovePromptCompletes is what the 10f review found missing: the machinery
+// was there and nothing was wired to it.
+//
+// It goes through the same completer the creation panel uses, which goes
+// through the same resolve index as the jump palette, the `:` line, and the
+// bulk importer. A second completer would be a second opinion about what a name
+// nearly is.
+func TestMovePromptCompletes(t *testing.T) {
+	s := sim.New(t)
+	rice, _ := stocked(t, s)
+	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Type("rice"))
+	s.Send(sim.Enter)
+
+	s.Send(sim.Press("m"))
+	s.Send(sim.Type("gar"))
+
+	s.ShowsText("Garage")
+	s.ShowsText("tab to take it")
+	s.ShowsText("gar") // offered, not applied
+
+	s.Send(sim.Tab)
+	s.HidesText("tab to take it")
+	s.Send(sim.Enter)
+
+	s.Send(sim.Press("4"))
+	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
+	if !strings.Contains(s.PlainView(), "Garage") {
+		t.Errorf("the rice did not move:\n%s", s.PlainView())
+	}
+}
+
+// A destination completes against PLACES. Completing it against classifications
+// would offer names that cannot possibly be right.
+func TestTheMovePromptCompletesOnlyPlaces(t *testing.T) {
+	s := sim.New(t)
+	stocked(t, s)
+	s.Send(sim.Press("4"))
+	s.Send(sim.Press("m"))
+	s.Send(sim.Type("grain")) // the Grains CATEGORY, and no location
+
+	s.HidesText("tab to take it")
+	if strings.Contains(s.PlainView(), "Grains") {
+		t.Errorf("a destination field offered a classification:\n%s", s.PlainView())
+	}
+}
+
+// A quantity has nothing to complete against, and offering it a list would be
+// answering a question nobody asked.
+func TestTheQuantityPromptOffersNothing(t *testing.T) {
+	s := sim.New(t)
+	stocked(t, s)
+	s.Send(sim.Press("4"))
+	s.Send(sim.Press("c"))
+	// Deliberately something that WOULD match a place. Typing "1" proves
+	// nothing: no location in this house contains a 1, so the prompt stays
+	// silent whether it is filtering by kind or not filtering at all.
+	s.Send(sim.Type("gar"))
+	s.HidesText("tab to take it")
+	s.HidesText("Garage")
+}
+
+// Not taking the suggestion is still a refusal rather than a guess -- the
+// resolver reports, and the interface asks.
+func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
+	s := sim.New(t)
+	rice, _ := stocked(t, s)
+	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Type("rice"))
+	s.Send(sim.Enter)
+
+	s.Send(sim.Press("m"))
+	s.Send(sim.Type("gar"))
+	s.Send(sim.Enter) // without tab
+
+	s.ShowsText("did you mean")
+	s.Send(sim.Esc)
+	s.Send(sim.Press("4"))
+	s.OnHand(rice, 500*domain.Scale)
+
+	// On the ROW, not anywhere on the screen: "Garage" is in the refusal
+	// itself, so a whole-screen check would fail whatever the move did.
+	for _, line := range strings.Split(s.PlainView(), "\n") {
+		if strings.Contains(line, "Basmati Rice") && strings.Contains(line, "Garage") {
+			t.Errorf("a suggestion was applied without being taken: %q", line)
+		}
+	}
+}
