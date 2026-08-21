@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
+
 	"home-management-system/internal/domain"
 	sim "home-management-system/internal/tui/testing"
 )
@@ -192,7 +195,7 @@ func TestARefusalIsASentence(t *testing.T) {
 	}
 	// It names the thing and the numbers, which is what makes a refusal
 	// actionable rather than merely polite.
-	for _, want := range []string{"Ancho Chile", "have 100", "need 5000"} {
+	for _, want := range []string{"Ancho Chile", "only 100 g", "5000 g was asked for"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("the refusal does not mention %q:\n%s", want, view)
 		}
@@ -319,4 +322,197 @@ func TestBrowsingStillWritesNothing(t *testing.T) {
 		t.Errorf("browsing changed the holdings from %d to %d", before, after)
 	}
 	s.OnHand(rice, 300*domain.Scale)
+}
+
+// ---------------------------------------------------------------------------
+// From the 10d review
+// ---------------------------------------------------------------------------
+
+// TestACommandActsOnEverySelectedRow is the worst of the five problems the
+// review found: three rows selected, and the command acted on the cursor row.
+// It did something, it did not do what was asked, and it said nothing about the
+// difference.
+func TestACommandActsOnEverySelectedRow(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	ancho := s.HasItem("Ancho Chile")
+	s.OnHand(ancho, 300*domain.Scale)
+
+	s.Send(sim.Press("4"))
+	s.Send(sim.Press("/"))
+	s.Send(sim.Type("ancho"))
+	s.Send(sim.Enter)
+	// From the top, explicitly. The cursor tracks its row through a filter --
+	// deliberately, so you do not lose your place while typing -- so where it
+	// ends up is not something a test should assume.
+	s.Send(sim.Press("g"), sim.Press("g"))
+	s.Send(sim.Space, sim.Space, sim.Space) // all three
+	s.ShowsText("3 selected")
+
+	s.Send(sim.Press(":"))
+	s.Send(sim.Type("consume 10"))
+	s.Send(sim.Enter)
+
+	// Thirty, not ten: three rows, each by ten.
+	s.OnHand(ancho, 270*domain.Scale)
+	s.ShowsText("3 rows")
+}
+
+// One transaction across the whole selection: three rows either all move or
+// none do. Applying them one at a time would leave a half-done batch on any
+// refusal, and the half would be silent.
+func TestASelectionIsOneUnitOfWork(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	ancho := s.HasItem("Ancho Chile")
+
+	s.Send(sim.Press("4"))
+	s.Send(sim.Press("/"))
+	s.Send(sim.Type("ancho"))
+	s.Send(sim.Enter)
+	s.Send(sim.Press("g"), sim.Press("g"))
+	s.Send(sim.Space, sim.Space, sim.Space)
+
+	// More than one of them holds: two have 100, one has 100 -- ask for 150 and
+	// every row refuses, but the point is that the FIRST would have succeeded
+	// if they were applied one by one.
+	s.Send(sim.Press(":"))
+	s.Send(sim.Type("consume 150"))
+	s.Send(sim.Enter)
+
+	s.OnHand(ancho, 300*domain.Scale)
+	s.ShowsText("not enough")
+}
+
+// The summary collapses identical lines. A summary that repeats itself is one
+// nobody finishes reading, and the end is where the differences would be.
+func TestABatchSummaryDoesNotRepeatItself(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("4"))
+	s.Send(sim.Press("/"))
+	s.Send(sim.Type("ancho"))
+	s.Send(sim.Enter)
+	s.Send(sim.Press("g"), sim.Press("g"))
+	s.Send(sim.Space, sim.Space, sim.Space)
+	s.Send(sim.Press(":"))
+	s.Send(sim.Type("consume 10"))
+	s.Send(sim.Enter)
+
+	if got := strings.Count(s.PlainView(), "use 10 of"); got != 1 {
+		t.Errorf("the summary says the same thing %d times", got)
+	}
+}
+
+// Truly inline: the field opens AT the row, and the rows below move down rather
+// than the field appearing under the whole list.
+func TestTheEditorOpensAtTheRow(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("2"))
+	s.Send(sim.Press("j"), sim.Press("j"))
+
+	before := strings.Split(s.PlainView(), "\n")
+	cursorAt := indexOfCursor(before)
+	if cursorAt < 0 {
+		t.Fatal("no cursor")
+	}
+
+	s.Send(sim.Press("e"))
+	after := strings.Split(s.PlainView(), "\n")
+
+	// The row under the cursor has not moved.
+	if indexOfCursor(after) != cursorAt {
+		t.Errorf("the edited row moved from line %d to %d", cursorAt, indexOfCursor(after))
+	}
+	// And the field is immediately after it, not at the bottom of the screen.
+	if !strings.Contains(after[cursorAt+1], "rename") {
+		t.Errorf("the field is not at the row; line %d is %q", cursorAt+1, after[cursorAt+1])
+	}
+	// The rows that were below are still below, pushed down.
+	if !strings.Contains(strings.Join(after, "\n"), nameOn(before[cursorAt+1])) {
+		t.Errorf("the row below the edit disappeared instead of moving down")
+	}
+}
+
+// A refusal wraps rather than being cut off. The part that says what to do
+// about it is at the end, so a truncated error reports a problem and withholds
+// the answer.
+func TestARefusalWrapsRatherThanTruncating(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(64, 24)
+	s.Send(sim.Press("4"))
+	s.Send(sim.Press("/"))
+	s.Send(sim.Type("loc:garage"))
+	s.Send(sim.Enter)
+	s.Send(sim.Press(":"))
+	s.Send(sim.Type("consume 5kg"))
+	s.Send(sim.Enter)
+
+	s.FitsWidth(64)
+	// The whole sentence survived, across however many lines it took.
+	flat := strings.Join(strings.Fields(s.PlainView()), " ")
+	for _, want := range []string{"only 100 g", "5000 g was asked for", "packages to open"} {
+		if !strings.Contains(flat, want) {
+			t.Errorf("the refusal lost %q at 64 columns:\n%s", want, s.PlainView())
+		}
+	}
+}
+
+// And it is loud. Everything else here is deliberately quiet, which is exactly
+// what makes one loud thing readable.
+func TestARefusalIsNotQuiet(t *testing.T) {
+	previous := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	defer lipgloss.SetColorProfile(previous)
+
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("4"))
+	s.Send(sim.Press("/"))
+	s.Send(sim.Type("loc:garage"))
+	s.Send(sim.Enter)
+	calm := s.View()
+
+	s.Send(sim.Press(":"))
+	s.Send(sim.Type("consume 5kg"))
+	s.Send(sim.Enter)
+	angry := s.View()
+
+	// A FOREGROUND colour, which nothing else on this screen uses -- banding
+	// and selection are backgrounds, and everything else is weight.
+	if !strings.Contains(angry, "38;5;") {
+		t.Errorf("the refusal carries no colour:\n%q", angry)
+	}
+	if strings.Contains(calm, "38;5;") {
+		t.Error("the calm screen already uses a foreground colour, so the refusal does not stand out")
+	}
+}
+
+// A message wearing a call stack is a message a person has to decode. The
+// layers are useful in a log and are noise on a screen.
+func TestARefusalDoesNotWearACallStack(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("4"))
+	s.Send(sim.Press(":"))
+	s.Send(sim.Type("consume 5kg"))
+	s.Send(sim.Enter)
+
+	view := s.PlainView()
+	for _, noise := range []string{"ops:", "command:", "invalid request:", "sql:", "constraint"} {
+		if strings.Contains(view, noise) {
+			t.Errorf("the refusal shows %q:\n%s", noise, view)
+		}
+	}
+}
+
+func indexOfCursor(lines []string) int {
+	for i, line := range lines {
+		if strings.HasPrefix(line, ">") {
+			return i
+		}
+	}
+	return -1
 }

@@ -31,6 +31,9 @@ var (
 	labelStyle = lipgloss.NewStyle().Faint(true)
 	valueStyle = lipgloss.NewStyle().Bold(true)
 	hintStyle  = lipgloss.NewStyle().Faint(true)
+	// A block cursor, so the field looks like somewhere text goes rather than
+	// like a line of output that happens to be bold.
+	cursorStyle = lipgloss.NewStyle().Reverse(true)
 )
 
 func New() Model { return Model{width: 80} }
@@ -83,21 +86,29 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	return m, false
 }
 
-// View renders the field as a small frame that sits inside the list.
-func (m Model) View() string {
+// Lines renders the field as the lines that sit in the list, immediately after
+// the row being edited.
+//
+// Lines rather than a block, because the table splices them in between rows --
+// which is what "inline" has to mean for it to be worth anything. Under the
+// whole list is not inline; it is a second place to look.
+func (m Model) Lines() []string {
 	if !m.open {
-		return ""
+		return nil
 	}
-	head := "- " + m.label + " "
-	if pad := m.width - len(head) - 2; pad > 0 {
-		head += strings.Repeat("-", pad)
+	head := "  " + m.label + " "
+	if pad := m.width - len([]rune(head)) - 2; pad > 0 {
+		head += strings.Repeat("─", pad)
 	}
-	return strings.Join([]string{
+	return []string{
 		labelStyle.Render(head),
-		"  " + valueStyle.Render(m.value) + "_",
+		"  " + valueStyle.Render(m.value) + cursorStyle.Render(" "),
 		hintStyle.Render("  enter save   esc discard"),
-	}, "\n")
+	}
 }
+
+// View is Lines joined, for callers that want a block.
+func (m Model) View() string { return strings.Join(m.Lines(), "\n") }
 
 // Height is how many lines the editor occupies, which the layout needs before
 // it knows what the editor will draw.

@@ -118,6 +118,13 @@ func (m Model) Counts() (shown, total int) {
 	return rows, len(m.nodes)
 }
 
+// SetOverlay draws lines after the cursor's row, which is how the editor opens
+// inside the tree rather than beneath it.
+func (m Model) SetOverlay(lines []string) Model {
+	m.tbl = m.tbl.SetOverlay(lines)
+	return m
+}
+
 // SetSize passes the terminal on to the table.
 func (m Model) SetSize(width, height int) Model {
 	m.tbl = m.tbl.SetSize(width, height)
@@ -138,6 +145,10 @@ func (m Model) Current() (Node, bool) {
 
 // Selected returns the keys of the picked nodes.
 func (m Model) Selected() []int64 { return m.tbl.Selected() }
+
+// Nodes returns the whole forest, so a caller can map picked keys back to what
+// they name.
+func (m Model) Nodes() []Node { return m.nodes }
 
 // SelectionCount is how many nodes were explicitly picked.
 func (m Model) SelectionCount() int { return m.tbl.SelectionCount() }

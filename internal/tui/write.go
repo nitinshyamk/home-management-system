@@ -43,23 +43,69 @@ type issuesMsg struct{ issues []string }
 // appliedMsg reports that something happened, in the terms of the receipt.
 type appliedMsg struct{ summary string }
 
-// runLine binds a typed line and plans it, without applying anything.
+// runLine binds a typed line against every selected row and plans them as ONE
+// unit of work.
+//
+// Multi-select plus a command IS a batch. Acting on the cursor row while three
+// rows are selected is the worst available outcome: it does something, it does
+// not do what was asked, and it says nothing about the difference.
+//
+// With nothing selected there is exactly one subject -- the row under the
+// cursor -- so the two cases are the same code and cannot drift.
 func (m Model) runLine(line string) tea.Cmd {
-	subject := m.subject()
+	subjects := m.subjects()
 	return func() tea.Msg {
-		result, err := m.ctrl.BindLine(m.ctx, line, subject)
-		if err != nil {
-			return issuesMsg{issues: []string{err.Error()}}
+		var combined app.Plan
+		var summaries []string
+
+		for _, subject := range subjects {
+			result, err := m.ctrl.BindLine(m.ctx, line, subject)
+			if err != nil {
+				return issuesMsg{issues: []string{err.Error()}}
+			}
+			if !result.Ready() {
+				return issuesMsg{issues: app.Issues(result)}
+			}
+			plan, err := m.ctrl.PlanCommand(m.ctx, result.Command)
+			if err != nil {
+				return issuesMsg{issues: []string{err.Error()}}
+			}
+			combined = combined.Merge(plan)
+			summaries = append(summaries, m.ctrl.Describe(m.ctx, result.Command))
 		}
-		if !result.Ready() {
-			return issuesMsg{issues: app.Issues(result)}
-		}
-		plan, err := m.ctrl.PlanCommand(m.ctx, result.Command)
-		if err != nil {
-			return issuesMsg{issues: []string{err.Error()}}
-		}
-		return planMsg{plan: plan, summary: m.ctrl.Describe(m.ctx, result.Command)}
+		return planMsg{plan: combined, summary: summarise(summaries)}
 	}
+}
+
+// summarise says what happened, and how many times when it was more than once.
+//
+// The count leads for a batch, because "3 rows" is the fact a person needs to
+// check before approving and the fact they most need afterwards.
+//
+// Identical lines collapse. Three rows of one item read as "3 rows - use 10 of
+// Ancho Chile", not as that sentence three times: a summary that repeats itself
+// is one nobody finishes reading, and the end is where the differences would
+// have been.
+func summarise(summaries []string) string {
+	switch len(summaries) {
+	case 0:
+		return "nothing to do"
+	case 1:
+		return summaries[0]
+	}
+
+	var distinct []string
+	seen := map[string]bool{}
+	for _, s := range summaries {
+		if !seen[s] {
+			seen[s] = true
+			distinct = append(distinct, s)
+		}
+	}
+	if len(distinct) > 3 {
+		distinct = append(distinct[:3:3], fmt.Sprintf("and %d more", len(distinct)-3))
+	}
+	return fmt.Sprintf("%d rows - %s", len(summaries), strings.Join(distinct, "; "))
 }
 
 // apply commits a plan and reports what happened.
@@ -70,6 +116,54 @@ func (m Model) apply(plan app.Plan, summary string) tea.Cmd {
 		}
 		return appliedMsg{summary: summary}
 	}
+}
+
+// subjects is everything a command should act on: the explicit selection, or
+// the row under the cursor when nothing is picked.
+//
+// Selected() already falls back to the cursor row, but the fallback is not
+// enough on its own -- the subject needs the row's cells, not just its key.
+func (m Model) subjects() []command.Subject {
+	if m.selectionCount() == 0 {
+		if one := m.subject(); one.Name != "" {
+			return []command.Subject{one}
+		}
+		return nil
+	}
+
+	picked := map[int64]bool{}
+	if tabular(m.view) {
+		for _, key := range m.table.Selected() {
+			picked[key] = true
+		}
+		var out []command.Subject
+		for _, row := range m.table.Rows() {
+			if !picked[row.Key] {
+				continue
+			}
+			subject := command.Subject{Kind: "Item", Name: row.Cells[0]}
+			if m.view == viewHoldings && len(row.Cells) > 2 {
+				subject.At = row.Cells[2]
+			}
+			out = append(out, subject)
+		}
+		return out
+	}
+
+	kind := "Category"
+	if m.view == viewLocations {
+		kind = "Location"
+	}
+	for _, key := range m.tree.Selected() {
+		picked[key] = true
+	}
+	var out []command.Subject
+	for _, node := range m.tree.Nodes() {
+		if picked[node.ID] {
+			out = append(out, command.Subject{Kind: kind, Name: node.Name})
+		}
+	}
+	return out
 }
 
 // subject is what the cursor is on, so a contextual line can leave it out.

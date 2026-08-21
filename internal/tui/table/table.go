@@ -91,6 +91,12 @@ type Model struct {
 	// exists to show -- so a fixed table offers no sort and claims none.
 	fixed bool
 
+	// overlay is drawn immediately after the cursor's row, pushing the rows
+	// below it down. It is how an inline editor is inline: the field opens
+	// AT the row it belongs to rather than under the whole list, so the row
+	// being edited and the rows around it stay where the eye left them.
+	overlay []string
+
 	// pending holds the first key of a two-key sequence (g, z), because gg and
 	// zz are one gesture each and the widget has to remember it saw the first.
 	pending rune
@@ -221,6 +227,18 @@ func (m Model) Cursor() int {
 		return -1
 	}
 	return m.cursor
+}
+
+// SetOverlay draws lines immediately after the cursor's row.
+//
+// They come out of the page budget rather than being added to it, so the table
+// occupies the same space and the rows below simply move down -- which is what
+// makes an editor feel like it opened in the list rather than replacing part
+// of it.
+func (m Model) SetOverlay(lines []string) Model {
+	m.overlay = lines
+	m.clampScroll()
+	return m
 }
 
 // SetCursor puts the cursor on a row by index, scrolling if it has to.
@@ -437,7 +455,10 @@ func (m *Model) move(n int) {
 }
 
 // page is how many rows are visible, which is what C-d and C-u move by.
-func (m Model) page() int { return max(1, m.height-2) }
+//
+// The overlay eats into it, because it occupies lines the rows would otherwise
+// have had.
+func (m Model) page() int { return max(1, m.height-2-len(m.overlay)) }
 
 func (m *Model) centre() {
 	m.top = clamp(m.cursor-m.page()/2, 0, max(0, len(m.visible)-m.page()))

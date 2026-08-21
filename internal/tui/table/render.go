@@ -33,6 +33,14 @@ func (m Model) View() string {
 	page := m.page()
 	for i := m.top; i < len(m.visible) && i < m.top+page; i++ {
 		b.WriteString(m.line(m.visible[i], i, i == m.cursor, widths, visible))
+		if i == m.cursor && len(m.overlay) > 0 {
+			// Immediately after the row it belongs to, so the field is where
+			// the eye already is.
+			for _, line := range m.overlay {
+				b.WriteByte('\n')
+				b.WriteString(line)
+			}
+		}
 		if i < len(m.visible)-1 && i < m.top+page-1 {
 			b.WriteByte('\n')
 		}

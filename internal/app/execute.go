@@ -69,6 +69,20 @@ func (c *controller) PlanCommand(ctx context.Context, cmd command.Command) (Plan
 	return out, nil
 }
 
+// Merge folds another plan into this one, so several commands commit together.
+//
+// One transaction across the whole selection, which is what "multi-select plus
+// a command is a batch" has to mean: three rows either all move or none do.
+// Applying them one at a time would leave a half-done batch on any refusal, and
+// the half would be silent.
+func (p Plan) Merge(other Plan) Plan {
+	p.Summary = append(p.Summary, other.Summary...)
+	p.Confirm = append(p.Confirm, other.Confirm...)
+	p.Permanent = append(p.Permanent, other.Permanent...)
+	p.batch.Steps = append(p.batch.Steps, other.batch.Steps...)
+	return p
+}
+
 // ApplyPlan commits it, as one unit of work.
 func (c *controller) ApplyPlan(ctx context.Context, p Plan) error {
 	if p.Empty() {
