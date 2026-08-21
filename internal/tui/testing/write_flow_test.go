@@ -516,3 +516,152 @@ func indexOfCursor(lines []string) int {
 	}
 	return -1
 }
+
+// ---------------------------------------------------------------------------
+// 10e: the creation panel
+// ---------------------------------------------------------------------------
+
+// The panel is in the LIST, like the editor. A creation form that replaces the
+// view costs you the context that tells you whether the thing already exists.
+func TestTheCreationPanelOpensInTheList(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("3"))
+
+	before := strings.Split(s.PlainView(), "\n")
+	cursorAt := indexOfCursor(before)
+
+	s.Send(sim.Press("o"))
+	after := strings.Split(s.PlainView(), "\n")
+
+	if indexOfCursor(after) != cursorAt {
+		t.Errorf("opening the panel moved the row from line %d to %d", cursorAt, indexOfCursor(after))
+	}
+	if !strings.Contains(after[cursorAt+1], "new item") {
+		t.Errorf("the panel is not at the row; line %d is %q", cursorAt+1, after[cursorAt+1])
+	}
+	// The rows the panel pushed down are still there.
+	s.ShowsText("Ancho Chile")
+}
+
+// All three kinds create, through the same panel and the same confirmation.
+func TestAllThreeKindsCreate(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	s.Send(sim.Press("1"), sim.Press("o"))
+	s.Send(sim.Type("Preserves"))
+	s.Send(sim.Enter, sim.Enter)
+	s.HasCategory("Preserves")
+
+	s.Send(sim.Press("2"), sim.Press("o"))
+	s.Send(sim.Type("Cellar"))
+	s.Send(sim.Enter, sim.Enter)
+	s.HasLocation("Cellar")
+
+	s.Send(sim.Press("3"), sim.Press("o"))
+	s.Send(sim.Type("Turmeric"))
+	s.Send(sim.Tab, sim.Tab) // past counting, onto unit
+	s.Send(sim.Type("g"))
+	s.Send(sim.Tab, sim.Tab) // past package, onto category
+	s.Send(sim.Type("Spices"))
+	s.Send(sim.Enter)
+	s.ShowsText("permanent")
+	s.Send(sim.Enter)
+	s.HasItem("Turmeric")
+}
+
+// esc leaves exactly one mode: the confirmation returns to the PANEL with what
+// was typed still in it, and only the next esc reaches the list.
+func TestEscapeFromTheConfirmationReturnsToThePanel(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	s.Send(sim.Press("3"), sim.Press("o"))
+	s.Send(sim.Type("Turmeric"))
+	s.Send(sim.Tab, sim.Tab)
+	s.Send(sim.Type("g"))
+	s.Send(sim.Tab, sim.Tab)
+	s.Send(sim.Type("Spices"))
+	s.Send(sim.Enter)
+	s.ShowsText("permanent")
+
+	s.Send(sim.Esc)
+	s.HidesText("permanent")
+	s.ShowsText("new item")
+	s.ShowsText("Turmeric") // still typed
+	s.HasNoItem("Turmeric")
+
+	s.Send(sim.Esc)
+	s.HidesText("new item")
+	s.HasNoItem("Turmeric")
+}
+
+// A panel that remembers an abandoned attempt will eventually create it.
+func TestASecondPanelStartsClean(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	s.Send(sim.Press("3"), sim.Press("o"))
+	s.Send(sim.Type("Abandoned"))
+	s.Send(sim.Esc)
+
+	s.Send(sim.Press("o"))
+	s.HidesText("Abandoned")
+}
+
+// The panel goes through the `:` line's own path, so a name it cannot use is
+// refused the same way and in the same words.
+func TestThePanelIsRefusedLikeTheLine(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	s.Send(sim.Press("3"), sim.Press("o"))
+	s.Send(sim.Enter) // no name
+	s.ShowsText("name is required")
+	s.ShowsText("new item") // still open
+
+	s.Send(sim.Type("Turmeric"))
+	s.Send(sim.Tab, sim.Tab)
+	s.Send(sim.Type("g"))
+	s.Send(sim.Tab, sim.Tab)
+	s.Send(sim.Type("Nowhere"))
+	s.Send(sim.Enter)
+	s.ShowsText("category")
+	s.HasNoItem("Turmeric")
+}
+
+// Stock arrives by acquiring it. A Holding is a placement rather than a name,
+// so there is no panel for one -- and saying so beats a panel that cannot work.
+func TestThereIsNoPanelForAHolding(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("4"), sim.Press("o"))
+	s.ShowsText("acquire")
+	s.HidesText("new holding")
+}
+
+// Creating inside what you are looking at is what o means.
+func TestCreatingInsideTheCursorsNode(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Send(sim.Press("2"))
+	// onto the Garage
+	for !strings.Contains(cursorLine(s), "Garage") {
+		s.Send(sim.Press("j"))
+	}
+	s.Send(sim.Press("o"))
+	s.ShowsText("Garage") // offered as the parent
+
+	s.Send(sim.Type("Workbench"))
+	s.Send(sim.Enter, sim.Enter)
+
+	id := s.HasLocation("Workbench")
+	path, err := s.Reader().LocationPath(s.Context(), id)
+	if err != nil {
+		t.Fatalf("read path: %v", err)
+	}
+	if len(path) < 2 || path[len(path)-2].Name != "Garage" {
+		t.Errorf("Workbench was created at the top level, not inside the Garage")
+	}
+}

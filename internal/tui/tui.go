@@ -18,6 +18,7 @@ import (
 	"home-management-system/internal/app"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
+	"home-management-system/internal/tui/creator"
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/omnibox"
 	"home-management-system/internal/tui/table"
@@ -137,6 +138,7 @@ type Model struct {
 	// editor is the in-place field. confirm is the one thing that stands
 	// between a person and a permanent change.
 	editor  editor.Model
+	creator creator.Model
 	confirm *pendingPlan
 	// problem is what went wrong, held apart from status so it can be rendered
 	// loudly and wrapped rather than squeezed into a one-line summary.
@@ -156,10 +158,11 @@ type Model struct {
 func New(ctx context.Context, ctrl app.Controller) Model {
 	return Model{
 		ctx: ctx, ctrl: ctrl, view: viewHoldings,
-		table:  table.New(columnsFor(viewHoldings)),
-		box:    omnibox.New(),
-		editor: editor.New(),
-		jump:   table.New(jumpColumns).Fixed(),
+		table:   table.New(columnsFor(viewHoldings)),
+		box:     omnibox.New(),
+		editor:  editor.New(),
+		creator: creator.New(),
+		jump:    table.New(jumpColumns).Fixed(),
 	}
 }
 
@@ -343,6 +346,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case appliedMsg:
 		m.problem = nil
+		// The panel closes only once something was actually created. Escaping
+		// the confirmation returns to the panel with what was typed still in
+		// it, which is what makes the confirmation a step rather than a
+		// dead end.
+		m.creator = m.creator.Close()
 		// Reload, because something changed. The list a person is looking at
 		// must not disagree with the house.
 		m.status = msg.summary
@@ -366,6 +374,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return next, cmd
 		}
 		if next, cmd, handled := m.handleEditor(msg); handled {
+			return next, cmd
+		}
+		if next, cmd, handled := m.handleCreator(msg); handled {
 			return next, cmd
 		}
 		if next, cmd, handled := m.handleOmnibox(msg); handled {
@@ -420,6 +431,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// e renames whatever the cursor is on, in place.
 	case "e":
 		return m.openEditor(), nil
+
+	// o creates a new one of whatever this view holds, inside what the cursor
+	// is on. Creating inside what you are looking at is what o means.
+	case "o":
+		return m.openCreator(), nil
 
 	// The Emacs aliases v01 carried are gone: C-p is the jump leader now, and
 	// two motion idioms in one application is one too many.
@@ -486,6 +502,9 @@ func (m Model) View() string {
 	// to, rather than under the whole list. Under the list is not inline; it is
 	// a second place to look.
 	overlay := m.editor.SetWidth(m.width).Lines()
+	if m.creator.IsOpen() {
+		overlay = m.creator.SetWidth(m.width).Lines()
+	}
 
 	body := m.viewport.View()
 	if forest(m.view) {
