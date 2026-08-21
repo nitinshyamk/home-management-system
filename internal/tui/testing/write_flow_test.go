@@ -665,3 +665,81 @@ func TestCreatingInsideTheCursorsNode(t *testing.T) {
 		t.Errorf("Workbench was created at the top level, not inside the Garage")
 	}
 }
+
+// TestAutocompleteInThePanel is step 7 of the 10e walkthrough, which the review
+// found had a criterion and no implementation behind it.
+//
+// It goes through the resolve index -- the same index behind the jump palette,
+// the `:` line, and the bulk importer. A panel that completed names differently
+// would be teaching a vocabulary the rest of the application does not speak.
+func TestAutocompleteInThePanel(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	s.Send(sim.Press("3"), sim.Press("o"))
+	s.Send(sim.Type("Turmeric"))
+	s.Send(sim.Tab, sim.Tab) // unit
+	s.Send(sim.Type("g"))
+	s.Send(sim.Tab, sim.Tab) // category
+	s.Send(sim.Type("spic"))
+
+	// Offered, and named in full so a person can tell which one it is.
+	s.ShowsText("Spices")
+	s.ShowsText("tab to take it")
+	// And not applied.
+	s.ShowsText("spic")
+
+	s.Send(sim.Tab)
+	s.HidesText("tab to take it")
+	s.Send(sim.Enter)
+	s.ShowsText("permanent")
+	s.Send(sim.Enter)
+	s.HasItem("Turmeric")
+}
+
+// Completing a place against classifications would offer names that cannot
+// possibly be right.
+func TestThePanelCompletesTheRightKind(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	s.Send(sim.Press("2"))
+	s.Send(sim.Press("o"))
+	s.Send(sim.Type("Cellar"))
+	s.Send(sim.Tab)   // under, pre-filled with the cursor's node
+	s.Send(sim.CtrlU) // which would otherwise be typed into
+	s.Send(sim.Type("spic"))
+
+	// No LOCATION in this house matches "spic" -- but the Spices CATEGORY
+	// does, so an unfiltered completer would offer it here. Nothing on offer is
+	// the right answer, and it is the only assertion that can tell the two
+	// apart.
+	s.HidesText("tab to take it")
+	if strings.Contains(s.PlainView(), "Spices") {
+		t.Errorf("a location's parent field offered a category:\n%s", s.PlainView())
+	}
+
+	// And it does complete a Location.
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("gar"))
+	s.ShowsText("Garage")
+	s.ShowsText("tab to take it")
+}
+
+// Autocomplete is only ever a suggestion, so a name it does not know still
+// reaches Bind and is refused there in the usual words.
+func TestAnUnknownNameStillRefuses(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	s.Send(sim.Press("3"), sim.Press("o"))
+	s.Send(sim.Type("Turmeric"))
+	s.Send(sim.Tab, sim.Tab)
+	s.Send(sim.Type("g"))
+	s.Send(sim.Tab, sim.Tab)
+	s.Send(sim.Type("Nowhere At All"))
+	s.Send(sim.Enter)
+
+	s.ShowsText("category")
+	s.HasNoItem("Turmeric")
+}

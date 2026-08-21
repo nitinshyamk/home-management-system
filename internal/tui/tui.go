@@ -359,6 +359,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case candidatesMsg:
 		m.candidates = msg.candidates
 		m = m.refreshJump()
+		if m.creator.IsOpen() {
+			m = m.suggest()
+		}
 		return m, nil
 
 	case errMsg:
@@ -435,7 +438,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// o creates a new one of whatever this view holds, inside what the cursor
 	// is on. Creating inside what you are looking at is what o means.
 	case "o":
-		return m.openCreator(), nil
+		return m.openCreator(), m.loadCandidates()
 
 	// The Emacs aliases v01 carried are gone: C-p is the jump leader now, and
 	// two motion idioms in one application is one too many.

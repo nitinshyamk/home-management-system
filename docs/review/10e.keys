@@ -25,12 +25,16 @@ tab
 0
 0
 tab
-S
+s
 p
 i
-c
-e
+c: autocomplete offers, and does not apply
+tab: tab takes it
 s
+p
+i
+c: autocomplete offers, and does not apply
+tab: tab takes it
 enter: the permanent-fields confirmation
 esc: back to the panel, still filled in
 esc: back to the list, nothing created

@@ -339,6 +339,50 @@ func (m Model) openCreator() Model {
 	}
 	m.problem = nil
 	m.creator = m.creator.Open(kind, parent).SetWidth(m.width)
+	return m.suggest()
+}
+
+// suggest offers completions for whatever field the panel has focused.
+//
+// Through the resolve index, which is the same index behind the jump palette,
+// the `:` line, and the bulk importer. One index, four consumers: if the panel
+// completed names differently from the command line, the two would disagree
+// about what a name nearly is -- and the panel would be teaching a vocabulary
+// the rest of the application does not speak.
+func (m Model) suggest() Model {
+	kind, typed := m.creator.Resolving()
+	if kind == "" || len(m.candidates) == 0 {
+		return m.withSuggestions(nil)
+	}
+
+	var out []string
+	for _, candidate := range m.candidates {
+		if string(candidate.Kind) != kind || candidate.Archived {
+			continue
+		}
+		// Already exactly a name: there is nothing to suggest, and a list that
+		// says "tab to take it" when tab will move on is a list that lies.
+		if strings.EqualFold(candidate.Path, typed) {
+			return m.withSuggestions(nil)
+		}
+		if typed != "" && !fuzzyContains(strings.ToLower(candidate.Path), strings.ToLower(typed)) {
+			continue
+		}
+		out = append(out, candidate.Path)
+		if len(out) == 3 {
+			break
+		}
+	}
+	// Everything matches an empty field, and a list of everything is not a
+	// suggestion -- it is the tree, which is one keystroke away already.
+	if typed == "" {
+		return m.withSuggestions(nil)
+	}
+	return m.withSuggestions(out)
+}
+
+func (m Model) withSuggestions(suggestions []string) Model {
+	m.creator = m.creator.SetSuggestions(suggestions)
 	return m
 }
 
@@ -367,6 +411,14 @@ func (m Model) handleCreator(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	}
 	if next, handled := m.creator.Update(msg); handled {
 		m.creator = next
+		// Recomputed after every keystroke, because a suggestion that lags the
+		// input is a suggestion for something else.
+		m = m.suggest()
+		if len(m.candidates) == 0 {
+			// The vocabulary has not been loaded yet, so load it once and the
+			// next keystroke will have it.
+			return m, m.loadCandidates(), true
+		}
 		return m, nil, true
 	}
 	return m, nil, true

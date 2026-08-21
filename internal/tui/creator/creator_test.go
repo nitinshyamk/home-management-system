@@ -190,3 +190,114 @@ func strip(s string) string {
 }
 
 var _ = right
+
+// ---------------------------------------------------------------------------
+// Autocomplete
+// ---------------------------------------------------------------------------
+
+// The panel says what it WANTS and the caller answers from the resolve index.
+// It does not match names itself, so the panel and the command line cannot
+// disagree about what a name nearly is.
+func TestThePanelSaysWhichFieldNeedsAName(t *testing.T) {
+	m := creator.New().Open(creator.KindItem, "")
+	if kind, _ := m.Resolving(); kind != "" {
+		t.Errorf("the name field asked to resolve a %q", kind)
+	}
+
+	m = press(m, tab, tab, tab, tab) // counting, unit, package, category
+	kind, typed := m.Resolving()
+	if kind != "Category" {
+		t.Errorf("the category field resolves %q, want Category", kind)
+	}
+	if typed != "" {
+		t.Errorf("typed = %q", typed)
+	}
+	m = press(m, typed2("spic")...)
+	if _, got := m.Resolving(); got != "spic" {
+		t.Errorf("typed = %q", got)
+	}
+}
+
+// A Location's parent resolves Locations, a Category's resolves Categories.
+// Completing a place against classifications would offer names that cannot
+// possibly be right.
+func TestEachParentFieldResolvesItsOwnKind(t *testing.T) {
+	for _, tc := range []struct {
+		kind creator.Kind
+		want string
+	}{
+		{creator.KindCategory, "Category"},
+		{creator.KindLocation, "Location"},
+	} {
+		m := press(creator.New().Open(tc.kind, ""), tab)
+		if got, _ := m.Resolving(); got != tc.want {
+			t.Errorf("a %s parent resolves %q, want %q", tc.kind, got, tc.want)
+		}
+	}
+}
+
+// Offered, never applied. A completion that filled itself in would be the
+// resolver deciding, which is the one thing it must never do.
+func TestASuggestionIsOfferedNotApplied(t *testing.T) {
+	m := press(creator.New().Open(creator.KindLocation, ""), tab)
+	m = press(m, typed2("gar")...)
+	m = m.SetSuggestions([]string{"Garage", "Garage > Tool Bench"})
+
+	if got := m.Value("under"); got != "gar" {
+		t.Errorf("the suggestion applied itself: %q", got)
+	}
+	view := strip(m.View())
+	if !strings.Contains(view, "Garage > Tool Bench") {
+		t.Errorf("the alternatives are not shown:\n%s", view)
+	}
+	if !strings.Contains(view, "tab to take it") {
+		t.Errorf("nothing says how to take it:\n%s", view)
+	}
+}
+
+// Tab completes before it moves, which is what a terminal has always done.
+// Moving first would mean the only way to take a suggestion is a key nobody
+// would guess.
+func TestTabTakesTheSuggestionThenMovesOn(t *testing.T) {
+	m := press(creator.New().Open(creator.KindLocation, ""), tab)
+	m = press(m, typed2("gar")...)
+	m = m.SetSuggestions([]string{"Garage"})
+
+	m = press(m, tab)
+	if got := m.Value("under"); got != "Garage" {
+		t.Errorf("tab did not take the suggestion: %q", got)
+	}
+	// Focus did not move, because tab was spent taking it.
+	if kind, _ := m.Resolving(); kind != "Location" {
+		t.Error("tab both took the suggestion and moved on")
+	}
+	// A second tab moves, because there is nothing left to take.
+	m = press(m, tab)
+	if kind, _ := m.Resolving(); kind != "" {
+		t.Errorf("the second tab did not move on; still on a %q field", kind)
+	}
+}
+
+// With nothing on offer, tab is just tab.
+func TestTabMovesWhenThereIsNothingToTake(t *testing.T) {
+	m := press(creator.New().Open(creator.KindLocation, ""), tab)
+	m = press(m, typed2("gar")...)
+	before, _ := m.Resolving()
+	m = press(m, tab)
+	if after, _ := m.Resolving(); after == before {
+		t.Error("tab did not move with no suggestions")
+	}
+}
+
+// Moving fields drops the suggestions, or they would be answers to a question
+// nobody is asking any more.
+func TestSuggestionsDoNotOutliveTheirField(t *testing.T) {
+	m := press(creator.New().Open(creator.KindLocation, ""), tab)
+	m = m.SetSuggestions([]string{"Garage"})
+	m = press(m, tea.KeyMsg{Type: tea.KeyDown})
+	if got := m.Suggestions(); len(got) != 0 {
+		t.Errorf("suggestions survived a move: %v", got)
+	}
+}
+
+func typed2(s string) []tea.KeyMsg { return typed(s) }
