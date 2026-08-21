@@ -551,7 +551,7 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
 --------------------------------------------------------------------------------------------
 9 items - sorted by item a-z
 
-===== S  (92x22) =========================================================================
+===== s  (92x22) =========================================================================
  1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
@@ -561,16 +561,16 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
   unit        g
   per package 2000
-  category    S 
-              where to file it
+  category    s 
+              Electronics   tab to take it
+              Electronics > Cables
+              Spices
   tab next   enter continue   esc discard
   Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
   Brass Thumbtack                       82 count  Stationery     count                Bulk  
   Cumin                                     90 g  Spices         g                    Bulk  
   Empty Computer Box                      1 held  Storage        one of a kind        Unique
   Forever Stamp                          3 count  Stationery     count                Bulk  
-  Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
-  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
 --------------------------------------------------------------------------------------------
 9 items - sorted by item a-z
 
@@ -584,8 +584,9 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
   unit        g
   per package 2000
-  category    Sp 
-              where to file it
+  category    sp 
+              Spices   tab to take it
+              Spices > Dried Peppers
   tab next   enter continue   esc discard
   Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
   Brass Thumbtack                       82 count  Stationery     count                Bulk  
@@ -593,7 +594,6 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   Empty Computer Box                      1 held  Storage        one of a kind        Unique
   Forever Stamp                          3 count  Stationery     count                Bulk  
   Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
-  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
 --------------------------------------------------------------------------------------------
 9 items - sorted by item a-z
 
@@ -607,8 +607,9 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
   unit        g
   per package 2000
-  category    Spi 
-              where to file it
+  category    spi 
+              Spices   tab to take it
+              Spices > Dried Peppers
   tab next   enter continue   esc discard
   Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
   Brass Thumbtack                       82 count  Stationery     count                Bulk  
@@ -616,11 +617,10 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   Empty Computer Box                      1 held  Storage        one of a kind        Unique
   Forever Stamp                          3 count  Stationery     count                Bulk  
   Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
-  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
 --------------------------------------------------------------------------------------------
 9 items - sorted by item a-z
 
-===== c  (92x22) =========================================================================
+===== autocomplete offers, and does not apply  (92x22) ===================================
  1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
@@ -630,8 +630,9 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
   unit        g
   per package 2000
-  category    Spic 
-              where to file it
+  category    spic 
+              Spices   tab to take it
+              Spices > Dried Peppers
   tab next   enter continue   esc discard
   Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
   Brass Thumbtack                       82 count  Stationery     count                Bulk  
@@ -639,11 +640,10 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   Empty Computer Box                      1 held  Storage        one of a kind        Unique
   Forever Stamp                          3 count  Stationery     count                Bulk  
   Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
-  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
 --------------------------------------------------------------------------------------------
 9 items - sorted by item a-z
 
-===== e  (92x22) =========================================================================
+===== tab takes it  (92x22) ==============================================================
  1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
@@ -653,7 +653,7 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
   unit        g
   per package 2000
-  category    Spice 
+  category    Spices 
               where to file it
   tab next   enter continue   esc discard
   Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
@@ -676,8 +676,100 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
   unit        g
   per package 2000
-  category    Spices 
+  category    Spicess 
+              Spices > Dried Peppers   tab to take it
+  tab next   enter continue   esc discard
+  Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
+  Brass Thumbtack                       82 count  Stationery     count                Bulk  
+  Cumin                                     90 g  Spices         g                    Bulk  
+  Empty Computer Box                      1 held  Storage        one of a kind        Unique
+  Forever Stamp                          3 count  Stationery     count                Bulk  
+  Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
+  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
+--------------------------------------------------------------------------------------------
+9 items - sorted by item a-z
+
+===== p  (92x22) =========================================================================
+ 1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
+> Ancho Chile                              280 g  Dried Peppers  g                    Bulk  
+  new item ───────────────────────────────────────────────────────────────────────────────
+  name        Turmeric
+  counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
+  unit        g
+  per package 2000
+  category    Spicessp 
               where to file it
+  tab next   enter continue   esc discard
+  Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
+  Brass Thumbtack                       82 count  Stationery     count                Bulk  
+  Cumin                                     90 g  Spices         g                    Bulk  
+  Empty Computer Box                      1 held  Storage        one of a kind        Unique
+  Forever Stamp                          3 count  Stationery     count                Bulk  
+  Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
+  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
+--------------------------------------------------------------------------------------------
+9 items - sorted by item a-z
+
+===== i  (92x22) =========================================================================
+ 1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
+> Ancho Chile                              280 g  Dried Peppers  g                    Bulk  
+  new item ───────────────────────────────────────────────────────────────────────────────
+  name        Turmeric
+  counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
+  unit        g
+  per package 2000
+  category    Spicesspi 
+              where to file it
+  tab next   enter continue   esc discard
+  Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
+  Brass Thumbtack                       82 count  Stationery     count                Bulk  
+  Cumin                                     90 g  Spices         g                    Bulk  
+  Empty Computer Box                      1 held  Storage        one of a kind        Unique
+  Forever Stamp                          3 count  Stationery     count                Bulk  
+  Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
+  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
+--------------------------------------------------------------------------------------------
+9 items - sorted by item a-z
+
+===== autocomplete offers, and does not apply  (92x22) ===================================
+ 1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
+> Ancho Chile                              280 g  Dried Peppers  g                    Bulk  
+  new item ───────────────────────────────────────────────────────────────────────────────
+  name        Turmeric
+  counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
+  unit        g
+  per package 2000
+  category    Spicesspic 
+              where to file it
+  tab next   enter continue   esc discard
+  Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
+  Brass Thumbtack                       82 count  Stationery     count                Bulk  
+  Cumin                                     90 g  Spices         g                    Bulk  
+  Empty Computer Box                      1 held  Storage        one of a kind        Unique
+  Forever Stamp                          3 count  Stationery     count                Bulk  
+  Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
+  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
+--------------------------------------------------------------------------------------------
+9 items - sorted by item a-z
+
+===== tab takes it  (92x22) ==============================================================
+ 1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
+> Ancho Chile                              280 g  Dried Peppers  g                    Bulk  
+  new item ───────────────────────────────────────────────────────────────────────────────
+  name        Turmeric 
+  counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
+  unit        g
+  per package 2000
+  category    Spicesspic
+              what it is called
   tab next   enter continue   esc discard
   Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
   Brass Thumbtack                       82 count  Stationery     count                Bulk  
@@ -692,27 +784,15 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
 ===== the permanent-fields confirmation  (92x22) =========================================
  1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
-  create "Turmeric" as measured in g, 2000 per package in Spices?
-
-  permanent   kind = Bulk   unit = g   package = 2000
-              changing these later replaces every holding
-
-  [enter] create    [esc] back
---------------------------------------------------------------------------------------------
-9 items - sorted by item a-z
-
-===== back to the panel, still filled in  (92x22) ========================================
- 1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
---------------------------------------------------------------------------------------------
   ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
 > Ancho Chile                              280 g  Dried Peppers  g                    Bulk  
   new item ───────────────────────────────────────────────────────────────────────────────
-  name        Turmeric
+  name        Turmeric 
   counting    ( ) one of a kind  ( ) a pile I count  (o) something I measure
   unit        g
   per package 2000
-  category    Spices 
-              where to file it
+  category    Spicesspic
+              what it is called
   tab next   enter continue   esc discard
   Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
   Brass Thumbtack                       82 count  Stationery     count                Bulk  
@@ -721,6 +801,24 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   Forever Stamp                          3 count  Stationery     count                Bulk  
   Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
   USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
+  category: nothing called "Spicesspic"
+--------------------------------------------------------------------------------------------
+9 items - sorted by item a-z
+
+===== back to the panel, still filled in  (92x22) ========================================
+ 1 Categories   2 Locations  [3 Items]  4 Holdings   5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                 ON HAND  CATEGORY       MEASURE              KIND  
+> Ancho Chile                              280 g  Dried Peppers  g                    Bulk  
+  Basmati Rice                            6800 g  Pantry         g, 2000 per package  Bulk  
+  Brass Thumbtack                       82 count  Stationery     count                Bulk  
+  Cumin                                     90 g  Spices         g                    Bulk  
+  Empty Computer Box                      1 held  Storage        one of a kind        Unique
+  Forever Stamp                          3 count  Stationery     count                Bulk  
+  Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
+  USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
+  Winter Coat                             0 held  Storage        one of a kind        Unique
+  category: nothing called "Spicesspic"
 --------------------------------------------------------------------------------------------
 9 items - nothing was created - sorted by item a-z
 
@@ -737,6 +835,7 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   Thunderbolt 4 to Dual DisplayPort 1…    1 held  Cables         one of a kind        Unique
   USB-C to HDMI Cable 2m                  1 held  Cables         one of a kind        Unique
   Winter Coat                             0 held  Storage        one of a kind        Unique
+  category: nothing called "Spicesspic"
 --------------------------------------------------------------------------------------------
 9 items - nothing was created - sorted by item a-z
 
@@ -757,6 +856,7 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
         Shelf 1                                                                            2
   ▾ Office                                                                                 3
       Desk Drawer 2                                                                        3
+  category: nothing called "Spicesspic"
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 
@@ -777,6 +877,7 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
         Shelf 1                                                                            2
   ▾ Office                                                                                 3
       Desk Drawer 2                                                                        3
+  category: nothing called "Spicesspic"
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 
@@ -799,7 +900,6 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   ▾ Kitchen                                                                                4
     ▾ Spice Cabinet                                                                        2
         Shelf 2                                                                            2
-    ▾ Left Pantry                                                                          2
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 
@@ -822,7 +922,6 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   ▾ Kitchen                                                                                4
     ▾ Spice Cabinet                                                                        2
         Shelf 2                                                                            2
-    ▾ Left Pantry                                                                          2
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 
@@ -845,7 +944,6 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   ▾ Kitchen                                                                                4
     ▾ Spice Cabinet                                                                        2
         Shelf 2                                                                            2
-    ▾ Left Pantry                                                                          2
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 
@@ -868,7 +966,6 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   ▾ Kitchen                                                                                4
     ▾ Spice Cabinet                                                                        2
         Shelf 2                                                                            2
-    ▾ Left Pantry                                                                          2
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 
@@ -891,7 +988,6 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   ▾ Kitchen                                                                                4
     ▾ Spice Cabinet                                                                        2
         Shelf 2                                                                            2
-    ▾ Left Pantry                                                                          2
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 
@@ -914,7 +1010,6 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   ▾ Kitchen                                                                                4
     ▾ Spice Cabinet                                                                        2
         Shelf 2                                                                            2
-    ▾ Left Pantry                                                                          2
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 
@@ -937,7 +1032,6 @@ weight are flatter here than in a terminal. Add `--color` and pipe to
   ▾ Kitchen                                                                                4
     ▾ Spice Cabinet                                                                        2
         Shelf 2                                                                            2
-    ▾ Left Pantry                                                                          2
 --------------------------------------------------------------------------------------------
 13 locations - za fold - zR expand all - zM collapse all
 

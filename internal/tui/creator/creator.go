@@ -54,6 +54,12 @@ type field struct {
 	// visible and sometimes meaningless is the nullable-column muddle this
 	// project spent months eliminating, drawn on a screen.
 	measured bool
+
+	// resolves names the kind of thing this field refers to, or "" for free
+	// text. The panel does not do the matching itself -- it says what it wants
+	// and the caller answers from the resolve index, so the panel and the
+	// command line agree about what a name nearly is.
+	resolves string
 }
 
 // Model is the panel.
@@ -64,6 +70,11 @@ type Model struct {
 	focus    int
 	counting int
 	width    int
+	// suggestions are what the focused field could be completed to, best
+	// first. They are offered and never applied: a completion that filled
+	// itself in would be the resolver deciding, which is the one thing it must
+	// never do.
+	suggestions []string
 	// parent is the thing the cursor was on when the panel opened, offered as
 	// the default parent or category. Creating inside what you are looking at
 	// is what o means.
@@ -97,18 +108,18 @@ func (m Model) Open(kind Kind, parent string) Model {
 			{key: "counting", label: "counting", hint: "how it is counted -- PERMANENT"},
 			{key: "unit", label: "unit", hint: "what it is measured in -- PERMANENT", measured: true},
 			{key: "package", label: "per package", hint: "how much is in one package", measured: true},
-			{key: "category", label: "category", value: parent, hint: "where to file it"},
+			{key: "category", label: "category", value: parent, hint: "where to file it", resolves: "Category"},
 		}
 	case KindCategory:
 		m.fields = []field{
 			{key: "name", label: "name", hint: "what it is called"},
-			{key: "under", label: "under", value: parent, hint: "the classification it belongs to"},
+			{key: "under", label: "under", value: parent, hint: "the classification it belongs to", resolves: "Category"},
 			{key: "describe", label: "describe", hint: "what belongs in it"},
 		}
 	case KindLocation:
 		m.fields = []field{
 			{key: "name", label: "name", hint: "what it is called"},
-			{key: "under", label: "under", value: parent, hint: "the place it is inside"},
+			{key: "under", label: "under", value: parent, hint: "the place it is inside", resolves: "Location"},
 			{key: "describe", label: "describe", hint: "what it is"},
 		}
 	}
@@ -128,6 +139,30 @@ func (m Model) Value(key string) string {
 	}
 	return ""
 }
+
+// Resolving reports what kind of thing the focused field refers to, and what
+// has been typed into it, so the caller can offer completions. Empty when the
+// field is free text.
+func (m Model) Resolving() (kind, typed string) {
+	if !m.open {
+		return "", ""
+	}
+	visible := m.visible()
+	if len(visible) == 0 {
+		return "", ""
+	}
+	f := m.fields[visible[m.focus]]
+	return f.resolves, strings.TrimSpace(f.value)
+}
+
+// SetSuggestions offers completions for the focused field.
+func (m Model) SetSuggestions(suggestions []string) Model {
+	m.suggestions = suggestions
+	return m
+}
+
+// Suggestions are what is currently on offer.
+func (m Model) Suggestions() []string { return m.suggestions }
 
 // Counting is the chosen preset.
 func (m Model) Counting() string { return countings[m.counting].Value }
@@ -192,11 +227,25 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	onCounting := m.fields[visible[m.focus]].key == "counting"
 
 	switch msg.Type {
-	case tea.KeyTab, tea.KeyDown:
+	case tea.KeyTab:
+		// Tab completes before it moves, which is what a terminal has always
+		// done. Moving first would mean the only way to take a suggestion is a
+		// key nobody would guess.
+		if suggestion, ok := m.completion(); ok {
+			m.fields[visible[m.focus]].value = suggestion
+			m.suggestions = nil
+			return m, true
+		}
 		m.focus = (m.focus + 1) % len(visible)
+		m.suggestions = nil
+		return m, true
+	case tea.KeyDown:
+		m.focus = (m.focus + 1) % len(visible)
+		m.suggestions = nil
 		return m, true
 	case tea.KeyShiftTab, tea.KeyUp:
 		m.focus = (m.focus - 1 + len(visible)) % len(visible)
+		m.suggestions = nil
 		return m, true
 	case tea.KeyLeft:
 		if onCounting {
@@ -208,6 +257,14 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 		if onCounting {
 			m.counting = (m.counting + 1) % len(countings)
 			m.focus = m.clampFocus()
+		}
+		return m, true
+	case tea.KeyCtrlU:
+		// Clear the field. The parent fields arrive pre-filled with whatever
+		// the cursor was on, which is right far more often than not -- but
+		// "far more often" needs a way out that is not fifteen backspaces.
+		if !onCounting {
+			m.fields[visible[m.focus]].value = ""
 		}
 		return m, true
 	case tea.KeyBackspace:
@@ -240,6 +297,23 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 		return m, true
 	}
 	return m, false
+}
+
+// completion is the suggestion Tab would take, if taking one would change
+// anything.
+//
+// Nothing to take when the field already holds the suggestion, so a second Tab
+// moves on -- which is what makes Tab one key rather than two behaviours a
+// person has to keep track of.
+func (m Model) completion() (string, bool) {
+	if len(m.suggestions) == 0 {
+		return "", false
+	}
+	_, typed := m.Resolving()
+	if m.suggestions[0] == typed {
+		return "", false
+	}
+	return m.suggestions[0], true
 }
 
 // clampFocus keeps the focus in range after a choice changes which fields exist.
@@ -277,8 +351,19 @@ func (m Model) Lines() []string {
 		out = append(out, label+value)
 	}
 
-	if hint := m.fields[visible[m.focus]].hint; hint != "" {
-		out = append(out, hintStyle.Render("  "+strings.Repeat(" ", 11)+" "+hint))
+	// Suggestions sit under the field they belong to, offered and never
+	// applied. The resolver reports; it does not decide.
+	gutter := "  " + strings.Repeat(" ", 11) + " "
+	if len(m.suggestions) > 0 {
+		for i, suggestion := range m.suggestions {
+			if i == 0 {
+				out = append(out, gutter+chosenStyle.Render(suggestion)+hintStyle.Render("   tab to take it"))
+				continue
+			}
+			out = append(out, gutter+unchosenStyl.Render(suggestion))
+		}
+	} else if hint := m.fields[visible[m.focus]].hint; hint != "" {
+		out = append(out, hintStyle.Render(gutter+hint))
 	}
 	out = append(out, hintStyle.Render("  tab next   enter continue   esc discard"))
 	return out

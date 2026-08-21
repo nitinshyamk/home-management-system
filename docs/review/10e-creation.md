@@ -56,7 +56,8 @@ make reseed && ./bin/hms
 | 4 | `l` / `h` or arrows | Choose between the three presets. Is the choice legible without reading all three? |
 | 5 | pick *something I measure*, `tab` | The unit and package fields appear. Do they appear *because* of the choice? |
 | 6 | type `g`, `tab`, `2000`, `tab` | Onto `category`. |
-| 7 | type `spic` | Autocomplete from the resolve index. Does it suggest without applying? |
+| 7 | type `spic` | Autocomplete from the resolve index. Does it suggest without applying? `tab` takes the top one; a second `tab` moves on |
+| 7a | `ctrl+u` on a parent field | Clears it. The parent arrives pre-filled with the cursor's node, which needs a way out that is not fifteen backspaces |
 | 8 | `enter` | The permanent-fields confirmation. Same one 10d produced? |
 | 9 | `esc` | Back to the panel, with what you typed still there. **Not back to the list.** |
 | 10 | `esc` again | Back to the list, nothing created. |
@@ -89,7 +90,12 @@ make reseed && ./bin/hms
 6. **A second `o` starts clean.** Step 11. A panel that remembers an abandoned
    attempt will eventually create it.
 
-7. **Fewer fields for simpler things.** Steps 12–13. A Location has a name, a
+7. **A suggestion is offered, never applied.** Step 7. The resolver reports;
+   it does not decide. And it completes only the *kind* the field wants — a
+   place completed against classifications would offer names that cannot
+   possibly be right.
+
+8. **Fewer fields for simpler things.** Steps 12–13. A Location has a name, a
    parent, and a description. If the panel shows `counting` greyed out, it is
    one panel pretending rather than one panel adapting.
 
