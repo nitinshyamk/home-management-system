@@ -143,6 +143,14 @@ type Model struct {
 	// problem is what went wrong, held apart from status so it can be rendered
 	// loudly and wrapped rather than squeezed into a one-line summary.
 	problem []string
+
+	// holdingRows is what is on screen, by identifier. A keystroke reaches the
+	// identifiers behind its row through this rather than through the display
+	// strings, which is what lets it build a Command without resolving a name.
+	holdingRows map[int64]app.HoldingRow
+	// yanked is a row waiting for a p. pendingD is the first d of a dd.
+	yanked   *app.HoldingRow
+	pendingD bool
 	// holdingIDs parallels rows in the Holdings view, so Enter knows what was
 	// selected without the rendering layer carrying domain types.
 	holdingIDs []domain.HoldingID
@@ -225,12 +233,13 @@ func (m Model) Init() tea.Cmd { return m.load(m.view) }
 // loadedMsg carries a rendered view. Exactly one of rows and cells is set: the
 // tree and report views render to lines, the table views to cells.
 type loadedMsg struct {
-	view       view
-	rows       []string
-	cells      []table.Row
-	nodes      []tree.Node
-	holdingIDs []domain.HoldingID
-	status     string
+	view        view
+	rows        []string
+	cells       []table.Row
+	nodes       []tree.Node
+	holdingIDs  []domain.HoldingID
+	holdingRows map[int64]app.HoldingRow
+	status      string
 }
 
 type errMsg struct{ err error }
@@ -258,11 +267,11 @@ func (m Model) load(v view) tea.Cmd {
 			return loadedMsg{view: v, nodes: nodes, status: status}
 		}
 		if tabular(v) {
-			cells, ids, status, err := m.renderTable(v)
+			cells, ids, byKey, status, err := m.renderTable(v)
 			if err != nil {
 				return errMsg{err}
 			}
-			return loadedMsg{view: v, cells: cells, holdingIDs: ids, status: status}
+			return loadedMsg{view: v, cells: cells, holdingIDs: ids, holdingRows: byKey, status: status}
 		}
 		rows, ids, status, err := m.render(v, 0)
 		if err != nil {
@@ -304,8 +313,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case loadedMsg:
+		was := m.view
 		m.view, m.rows, m.holdingIDs, m.status = msg.view, msg.rows, msg.holdingIDs, msg.status
+		m.holdingRows = msg.holdingRows
 		m.cursor = 0
+		// Where the cursor was, so a RELOAD can put it back. Reloading happens
+		// after every write, and a cursor that jumped to the top each time
+		// would make acting twice on one row impossible -- the second t of a
+		// checkout-and-return would land on whatever had sorted first.
+		//
+		// Only within the same view: carrying a cursor across views would
+		// restore a position nobody was in.
+		// A filter belongs to the VIEW it narrowed. `/rice` means nothing in
+		// the Locations tree, and carrying it there filtered the whole house
+		// down to nothing while the line still claimed to be showing rice.
+		if was != msg.view {
+			m.box = m.box.Clear()
+		}
+
+		var wasOn int64 = -1
+		if was == msg.view {
+			if row, ok := m.table.Current(); ok && tabular(msg.view) {
+				wasOn = row.Key
+			}
+			if node, ok := m.tree.Current(); ok && forest(msg.view) {
+				wasOn = node.ID
+			}
+		}
+
 		if tabular(msg.view) {
 			// A fresh table per view: the columns differ, and carrying a
 			// selection across views would mean acting on rows a person picked
@@ -315,6 +350,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if forest(msg.view) {
 			m.tree = tree.New(unitFor(msg.view)).
 				SetNodes(msg.nodes).SetSize(m.width, m.bodyHeight())
+		}
+		// And the filter, which lives on the omnibox rather than on the
+		// surface -- so a fresh surface arrives unfiltered while the line still
+		// says it is filtered. Re-applying is what keeps the two agreeing.
+		m = m.applyFilter()
+		if wasOn >= 0 {
+			m = m.restoreCursor(wasOn)
 		}
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoTop()
@@ -408,6 +450,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.tree = next
 			return m, nil
 		}
+	}
+
+	// The single-key actions come before the generic keys, so that c, m, t, and
+	// # mean what the plan says rather than falling through to motion. Each one
+	// decides for itself which views it applies to.
+	if next, cmd, handled := m.handleAction(msg); handled {
+		return next, cmd
 	}
 
 	switch msg.String() {
@@ -612,6 +661,22 @@ func (m Model) counts() (shown, total int, filtered bool) {
 		return shown, total, true
 	}
 	return 0, 0, false
+}
+
+// restoreCursor puts the cursor back on a row by identity after a reload.
+func (m Model) restoreCursor(key int64) Model {
+	if tabular(m.view) {
+		for i, row := range m.table.Rows() {
+			if row.Key == key {
+				m.table = m.table.SetCursor(i)
+				return m
+			}
+		}
+	}
+	if forest(m.view) {
+		m.tree = m.tree.Focus(key)
+	}
+	return m
 }
 
 // land puts the cursor on what a jump chose, now that its view has loaded.
@@ -898,28 +963,30 @@ func Run(ctx context.Context, ctrl app.Controller) error {
 // The Controller already returns flat, display-ready strings, so this is a
 // mapping and nothing more. Anything that had to decide something here would be
 // a decision the plan screen (11b) would have to make again, differently.
-func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, string, error) {
+func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, map[int64]app.HoldingRow, string, error) {
 	switch v {
 	case viewHoldings:
 		rows, err := m.ctrl.Holdings(m.ctx)
 		if err != nil {
-			return nil, nil, "", err
+			return nil, nil, nil, "", err
 		}
 		cells := make([]table.Row, 0, len(rows))
 		ids := make([]domain.HoldingID, 0, len(rows))
+		byKey := make(map[int64]app.HoldingRow, len(rows))
 		for _, r := range rows {
 			cells = append(cells, table.Row{
 				Key:   int64(r.ID),
 				Cells: []string{r.Item, r.State, r.Location, r.Note},
 			})
 			ids = append(ids, r.ID)
+			byKey[int64(r.ID)] = r
 		}
-		return cells, ids, "enter for history", nil
+		return cells, ids, byKey, "enter for history", nil
 
 	case viewItems:
 		rows, err := m.ctrl.Items(m.ctx)
 		if err != nil {
-			return nil, nil, "", err
+			return nil, nil, nil, "", err
 		}
 		cells := make([]table.Row, 0, len(rows))
 		for _, r := range rows {
@@ -928,9 +995,9 @@ func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, string, err
 				Cells: []string{r.Name, r.OnHand, r.Category, r.Measure, r.Kind},
 			})
 		}
-		return cells, nil, "", nil
+		return cells, nil, nil, "", nil
 	}
-	return nil, nil, "", fmt.Errorf("view %d is not a table", v)
+	return nil, nil, nil, "", fmt.Errorf("view %d is not a table", v)
 }
 
 // unitFor names what a tree's rollup counts, which is also the count column's

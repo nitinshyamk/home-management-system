@@ -77,13 +77,30 @@ type ItemRow struct {
 }
 
 // HoldingRow is one Holding.
+//
+// It carries both the NAMES and the IDENTIFIERS, and the identifiers are the
+// point: a keystroke on this row builds a Command directly rather than
+// serialising to a name and fuzzy-matching it back. That round trip is lossy in
+// the worst way -- an ambiguous name could resolve to a different row than the
+// one under the cursor, so `c` on the second of three Ancho Chiles would
+// consume from the first.
 type HoldingRow struct {
 	ID       domain.HoldingID
 	Item     string
+	ItemID   domain.ItemID
 	Kind     string
 	Location string
-	State    string // "1.8 kg" or "Out (garage)"
-	Note     string // expiry, retirement, and other flags
+	// LocationID is where it is STOWED, which is what the stock commands mean
+	// by a place -- not where a checked-out thing happens to be.
+	LocationID domain.LocationID
+	State      string // "1.8 kg" or "Out (garage)"
+	Note       string // expiry, retirement, and other flags
+	// Custody is "AtRest", "Out", "Lost", or "" for a measured Holding. It is
+	// what lets one key toggle rather than two keys remember.
+	Custody string
+	// Retired marks a Holding that is done with, so an action can refuse it
+	// before the ledger has to.
+	Retired bool
 }
 
 // EventRow is one ledger entry, rendered.
@@ -223,14 +240,22 @@ func (c *controller) Holdings(ctx context.Context) ([]HoldingRow, error) {
 	}
 	out := make([]HoldingRow, 0, len(details))
 	for _, d := range details {
-		out = append(out, HoldingRow{
-			ID:       d.Holding.Base().ID,
-			Item:     d.ItemName,
-			Kind:     string(d.Holding.Kind()),
-			Location: d.LocationName,
-			State:    describeState(d, where),
-			Note:     describeFlags(d),
-		})
+		base := d.Holding.Base()
+		row := HoldingRow{
+			ID:         base.ID,
+			Item:       d.ItemName,
+			ItemID:     base.Item,
+			Kind:       string(d.Holding.Kind()),
+			Location:   d.LocationName,
+			LocationID: base.StowedLocation,
+			State:      describeState(d, where),
+			Note:       describeFlags(d),
+			Retired:    base.RetiredAt != nil,
+		}
+		if u, ok := d.Holding.(domain.UniqueHolding); ok {
+			row.Custody = string(u.Custody)
+		}
+		out = append(out, row)
 	}
 	return out, nil
 }

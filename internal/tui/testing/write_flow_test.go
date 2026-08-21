@@ -647,9 +647,7 @@ func TestCreatingInsideTheCursorsNode(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Send(sim.Press("2"))
 	// onto the Garage
-	for !strings.Contains(cursorLine(s), "Garage") {
-		s.Send(sim.Press("j"))
-	}
+	moveTo(t, s, "Garage")
 	s.Send(sim.Press("o"))
 	s.ShowsText("Garage") // offered as the parent
 

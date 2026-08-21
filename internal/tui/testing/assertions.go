@@ -218,3 +218,13 @@ func (s *Simulator) CountHoldings() int {
 	}
 	return len(holdings)
 }
+
+// EventTypes is what was recorded against a Holding, in sequence order.
+func (s *Simulator) EventTypes(id domain.HoldingID) []string {
+	s.t.Helper()
+	rows, err := s.ctrlHistory(id)
+	if err != nil {
+		s.t.Fatalf("read history: %v", err)
+	}
+	return rows
+}
