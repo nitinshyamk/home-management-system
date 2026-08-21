@@ -1,6 +1,6 @@
 # 10e — Creation and confirmation
 
-**Status:** not built
+**Status:** built; autocomplete added after review; awaiting sign-off
 **Gate:** human.
 
 Written before the substage is built.
