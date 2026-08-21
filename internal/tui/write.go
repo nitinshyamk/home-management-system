@@ -243,6 +243,11 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		m.status = "unchanged"
 		return m, nil, true
 	case tea.KeyEnter:
+		// A field opened for an ACTION answers to that action; only a rename
+		// goes back through the command line, because only a rename is text.
+		if m.editor.Purpose() != "rename" {
+			return m.actOnPrompt()
+		}
 		value := strings.TrimSpace(m.editor.Value())
 		changed, kind := m.editor.Changed(), m.editor.Kind()
 		name := m.subject().Name
@@ -422,4 +427,28 @@ func (m Model) handleCreator(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	return m, nil, true
+}
+
+// runCommands plans already-built Commands and merges them into one unit of
+// work.
+//
+// The keystroke path's equivalent of runLine, and it joins the same pipeline
+// one step later: runLine ends by producing Commands, and this begins with
+// them. Everything after -- planning, the confirmation, the transaction, the
+// feedback -- is shared, which is what makes "a keystroke and the equivalent
+// line do the same thing" a property of the code rather than a promise.
+func (m Model) runCommands(commands []command.Command) tea.Cmd {
+	return func() tea.Msg {
+		var combined app.Plan
+		var summaries []string
+		for _, cmd := range commands {
+			plan, err := m.ctrl.PlanCommand(m.ctx, cmd)
+			if err != nil {
+				return issuesMsg{issues: []string{err.Error()}}
+			}
+			combined = combined.Merge(plan)
+			summaries = append(summaries, m.ctrl.Describe(m.ctx, cmd))
+		}
+		return planMsg{plan: combined, summary: summarise(summaries)}
+	}
 }

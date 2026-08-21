@@ -24,7 +24,15 @@ type Model struct {
 	// command from the editor rather than from parallel state that could drift.
 	subject int64
 	kind    string
-	width   int
+	// purpose says what pressing enter will do. The field is the same widget
+	// whether it is collecting a name, a quantity, or a destination -- what
+	// differs is only what the caller does with the answer, so that is what is
+	// carried rather than three near-identical widgets.
+	purpose string
+	// suggestions complete a destination, offered and never applied. Empty for
+	// the fields that are free text.
+	suggestions []string
+	width       int
 }
 
 var (
@@ -46,8 +54,41 @@ func (m Model) SetWidth(w int) Model { m.width = w; return m }
 // name rather than a replacement of one, and blanking it makes the common case
 // the expensive one.
 func (m Model) Open(kind string, subject int64, label, current string) Model {
-	m.open, m.kind, m.subject = true, kind, subject
+	return m.OpenFor("rename", kind, subject, label, current)
+}
+
+// OpenFor starts a field whose answer the caller will use for something
+// particular.
+func (m Model) OpenFor(purpose, kind string, subject int64, label, current string) Model {
+	m.open, m.purpose, m.kind, m.subject = true, purpose, kind, subject
 	m.label, m.value, m.initial = label, current, current
+	m.suggestions = nil
+	return m
+}
+
+// Purpose is what enter will do with the answer.
+func (m Model) Purpose() string { return m.purpose }
+
+// SetSuggestions offers completions. Offered, never applied.
+func (m Model) SetSuggestions(s []string) Model { m.suggestions = s; return m }
+
+// Suggestions are what is on offer.
+func (m Model) Suggestions() []string { return m.suggestions }
+
+// Completion is what tab would take, if taking one would change anything.
+func (m Model) Completion() (string, bool) {
+	if len(m.suggestions) == 0 || m.suggestions[0] == strings.TrimSpace(m.value) {
+		return "", false
+	}
+	return m.suggestions[0], true
+}
+
+// Take fills the field with the top suggestion.
+func (m Model) Take() Model {
+	if suggestion, ok := m.Completion(); ok {
+		m.value = suggestion
+		m.suggestions = nil
+	}
 	return m
 }
 
@@ -82,6 +123,11 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	case tea.KeyCtrlU:
 		m.value = ""
 		return m, true
+	case tea.KeyTab:
+		if _, ok := m.Completion(); ok {
+			return m.Take(), true
+		}
+		return m, true
 	}
 	return m, false
 }
@@ -100,11 +146,30 @@ func (m Model) Lines() []string {
 	if pad := m.width - len([]rune(head)) - 2; pad > 0 {
 		head += strings.Repeat("─", pad)
 	}
-	return []string{
+	out := []string{
 		labelStyle.Render(head),
 		"  " + valueStyle.Render(m.value) + cursorStyle.Render(" "),
-		hintStyle.Render("  enter save   esc discard"),
 	}
+	for i, suggestion := range m.suggestions {
+		if i == 0 {
+			out = append(out, "  "+valueStyle.Render(suggestion)+hintStyle.Render("   tab to take it"))
+			continue
+		}
+		out = append(out, hintStyle.Render("  "+suggestion))
+	}
+	return append(out, hintStyle.Render("  enter "+m.verb()+"   esc discard"))
+}
+
+// verb says what enter will do, in the words of the thing being done. "enter
+// save" on a quantity prompt would be describing the wrong act.
+func (m Model) verb() string {
+	switch m.purpose {
+	case "rename":
+		return "save"
+	case "":
+		return "confirm"
+	}
+	return m.purpose
 }
 
 // View is Lines joined, for callers that want a block.
@@ -112,9 +177,4 @@ func (m Model) View() string { return strings.Join(m.Lines(), "\n") }
 
 // Height is how many lines the editor occupies, which the layout needs before
 // it knows what the editor will draw.
-func (m Model) Height() int {
-	if !m.open {
-		return 0
-	}
-	return 3
-}
+func (m Model) Height() int { return len(m.Lines()) }

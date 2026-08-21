@@ -33,9 +33,7 @@ func TestFoldingHidesASubtreeInTheRealTree(t *testing.T) {
 	s.Send(sim.Press("2"))
 
 	// Down to Garage, then fold it.
-	for !strings.Contains(cursorLine(s), "Garage") {
-		s.Send(sim.Press("j"))
-	}
+	moveTo(t, s, "Garage")
 	s.Send(sim.Press("z"), sim.Press("a"))
 
 	s.HidesText("Small Parts Tray")
@@ -121,4 +119,20 @@ func cursorLine(s *sim.Simulator) string {
 		}
 	}
 	return ""
+}
+
+// moveTo walks the cursor down to a named row, and gives up rather than
+// looping forever when it is not there.
+//
+// An unbounded search in a test is a test that hangs instead of failing, and a
+// hang says nothing about what went wrong.
+func moveTo(t *testing.T, s *sim.Simulator, name string) {
+	t.Helper()
+	for i := 0; i < 200; i++ {
+		if strings.Contains(cursorLine(s), name) {
+			return
+		}
+		s.Send(sim.Press("j"))
+	}
+	t.Fatalf("never reached a row containing %q; the screen is:\n%s", name, s.PlainView())
 }
