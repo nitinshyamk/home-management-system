@@ -1,6 +1,6 @@
 # 10f — Keystroke actions and batches
 
-**Status:** not built
+**Status:** built; awaiting sign-off
 **Gate:** human.
 
 Written before the substage is built.
