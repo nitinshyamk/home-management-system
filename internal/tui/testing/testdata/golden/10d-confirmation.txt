@@ -1,0 +1,10 @@
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+--------------------------------------------------------------------------------------------
+  create "Turmeric" as measured in g, 2000 per package in Spices?
+
+  permanent   kind = Bulk   unit = g   package = 2000
+              changing these later replaces every holding
+
+  [enter] create    [esc] back
+--------------------------------------------------------------------------------------------
+4 holdings - sorted by item a-z

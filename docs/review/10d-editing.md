@@ -1,6 +1,6 @@
 # 10d — Inline editing and the command line
 
-**Status:** not built
+**Status:** accepted (2026-08-20) after one round of rework. Goldens captured.
 **Gate:** human.
 
 Written before the substage is built.
@@ -108,9 +108,26 @@ make reseed && ./bin/hms
 - **Creation panel layout.** 10e — here the confirmation is only what `:new`
   produces.
 
+## Review — verdict
+
+Reworked, then accepted: *"this looks better now."*
+
+Five problems found, and the two that mattered most were not visual:
+
+| Problem | Fix |
+|---|---|
+| Editing was not really inline — the field opened under the whole list | The table splices the field in after the cursor's row, from the page budget |
+| A refusal was too subtle | Red, and the only foreground colour on the screen |
+| A refusal was cut off rather than wrapped | Wrapped; the part that says what to do is at the end |
+| A refusal read like a stack trace | Package prefixes stripped at the presentation boundary |
+| **Step 8** — a category was required and the step did not give one | The walkthrough was stale, not the requirement. Both steps now present |
+| **Step 11** — three rows selected, and the command acted on one | A line binds against every selected row; the plans merge into one unit of work |
+
+Step 11 was the serious one: it did something, it did not do what was asked, and
+it said nothing about the difference. That is worse than a refusal.
+
 ## Sign-off
 
-- [ ] Reviewed by:
-- [ ] Date:
-- [ ] Verdict: accept / rework
+- [x] Date: 08/20/26
+- [x] Verdict: accept 
 - [ ] Notes:

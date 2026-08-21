@@ -1,0 +1,11 @@
+ 1   2   3  [4]  5 
+----------------------------------------------------------------
+  ITEM ^                            QTY  LOCATION          FLAGS
+> Ancho Chile                     100 g  Left Pantry            
+  Ancho Chile                     100 g  Garage                 
+  Ancho Chile                     100 g  Small Parts Tray       
+  Thunderbolt 4 to Dual Displ…  at rest  Small Parts Tray       
+  not enough on hand: only 100 g of "Ancho Chile" here, and 5000
+  g was asked for -- it does not come in packages to open
+----------------------------------------------------------------
+4 holdings - sorted by item a-z
