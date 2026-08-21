@@ -26,6 +26,17 @@ import (
 // because `100` and `100g` and `2bag` must mean the same thing wherever they
 // are written.
 
+// refuse reports why something did not happen, and clears whatever the last
+// thing that DID happen said.
+//
+// Leaving the old status underneath a refusal reads as though both were true --
+// the screen saying "counted 50" while also saying the action was impossible.
+func (m Model) refuse(format string, args ...any) Model {
+	m.problem = []string{fmt.Sprintf(format, args...)}
+	m.status = ""
+	return m
+}
+
 // rowsByKey is the holdings currently on screen, by identifier, so a keystroke
 // can reach the identifiers behind the row it is on.
 func (m Model) holding(key int64) (app.HoldingRow, bool) {
@@ -111,15 +122,13 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 func (m Model) promptFor(purpose, label, initial string) Model {
 	rows := m.selectedHoldings()
 	if len(rows) == 0 {
-		m.problem = []string{"nothing to " + purpose + " here"}
-		return m
+		return m.refuse("nothing to %s here", purpose)
 	}
 	// Refused before the field opens rather than after it is filled in, because
 	// answering a question that was never going to be used is worse than not
 	// being asked.
 	if why, ok := refuses(purpose, rows); !ok {
-		m.problem = []string{why}
-		return m
+		return m.refuse("%s", why)
 	}
 	m.problem = nil
 	m.editor = m.editor.OpenFor(purpose, "Holding", int64(rows[0].ID), label, initial).SetWidth(m.width)
@@ -160,8 +169,7 @@ func (m Model) actOnPrompt() (tea.Model, tea.Cmd, bool) {
 	for _, row := range rows {
 		built, err := m.build(purpose, row, answer)
 		if err != nil {
-			m.problem = []string{err.Error()}
-			return m, nil, true
+			return m.refuse("%v", err), nil, true
 		}
 		commands = append(commands, built)
 	}
@@ -243,8 +251,7 @@ func (m Model) toggleCustody() (tea.Model, tea.Cmd, bool) {
 	for _, row := range rows {
 		switch row.Custody {
 		case "":
-			m.problem = []string{fmt.Sprintf("%q is measured, so there is no custody to change", row.Item)}
-			return m, nil, true
+			return m.refuse("%q is measured, so there is no custody to change", row.Item), nil, true
 		case "Out", "Lost":
 			commands = append(commands, command.Return{Holding: row.ID})
 		default:
@@ -275,8 +282,7 @@ func (m Model) retire() (tea.Model, tea.Cmd, bool) {
 func (m Model) yank() Model {
 	row, ok := m.currentHolding()
 	if !ok {
-		m.problem = []string{"nothing to yank here"}
-		return m
+		return m.refuse("nothing to yank here")
 	}
 	m.yanked = &row
 	m.status = fmt.Sprintf("yanked %s -- p puts it where you are", row.Item)
@@ -286,13 +292,11 @@ func (m Model) yank() Model {
 // put moves what was yanked to wherever the cursor is now.
 func (m Model) put() (tea.Model, tea.Cmd, bool) {
 	if m.yanked == nil {
-		m.problem = []string{"nothing yanked"}
-		return m, nil, true
+		return m.refuse("nothing yanked"), nil, true
 	}
 	to, ok := m.destination()
 	if !ok {
-		m.problem = []string{"put somewhere that is a place -- try the Locations view"}
-		return m, nil, true
+		return m.refuse("put somewhere that is a place -- try the Locations view"), nil, true
 	}
 	yanked := *m.yanked
 	m.yanked = nil

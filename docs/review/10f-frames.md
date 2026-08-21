@@ -14,7 +14,7 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -24,8 +24,29 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
   Winter Coat                                     at rest  Garage            gone 2026-05-30
+--------------------------------------------------------------------------------------------
+12 holdings - enter for history - sorted by item a-z
+
+===== #  (92x20) =========================================================================
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                              QTY  LOCATION          FLAGS          
+> Ancho Chile                                        50 g  Shelf 2                          
+  how much is actually there ─────────────────────────────────────────────────────────────
+   
+  enter count   esc discard
+  Ancho Chile                                       120 g  Garage                           
+  Ancho Chile                                        40 g  Small Parts Tray                 
+  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
+  Basmati Rice                                      800 g  Shelf 1                          
+  Brass Thumbtack                                82 count  Desk Drawer 2                    
+  Cumin                                              90 g  Shelf 2                          
+  Empty Computer Box                              at rest  Attic                            
+  Forever Stamp                                   3 count  Desk Drawer 2                    
+  Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -33,7 +54,10 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
+  how much is actually there ─────────────────────────────────────────────────────────────
+  4 
+  enter count   esc discard
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -43,8 +67,7 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -52,10 +75,10 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
-  how much ───────────────────────────────────────────────────────────────────────────────
-   
-  enter consume   esc discard
+> Ancho Chile                                        50 g  Shelf 2                          
+  how much is actually there ─────────────────────────────────────────────────────────────
+  4c 
+  enter count   esc discard
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -65,7 +88,7 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -73,10 +96,10 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
-  how much ───────────────────────────────────────────────────────────────────────────────
-  1 
-  enter consume   esc discard
+> Ancho Chile                                        50 g  Shelf 2                          
+  how much is actually there ─────────────────────────────────────────────────────────────
+  4c1 
+  enter count   esc discard
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -86,7 +109,7 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -94,10 +117,10 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
-  how much ───────────────────────────────────────────────────────────────────────────────
-  10 
-  enter consume   esc discard
+> Ancho Chile                                        50 g  Shelf 2                          
+  how much is actually there ─────────────────────────────────────────────────────────────
+  4c10 
+  enter count   esc discard
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -107,7 +130,7 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -115,7 +138,7 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -125,16 +148,99 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
+  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  a unit needs the command line, which knows how to convert it: try :consume 4c10
+--------------------------------------------------------------------------------------------
+12 holdings - sorted by item a-z
+
+===== count -- the same shape of prompt  (92x20) =========================================
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                              QTY  LOCATION          FLAGS          
+> Ancho Chile                                        50 g  Shelf 2                          
+  how much is actually there ─────────────────────────────────────────────────────────────
+   
+  enter count   esc discard
+  Ancho Chile                                       120 g  Garage                           
+  Ancho Chile                                        40 g  Small Parts Tray                 
+  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
+  Basmati Rice                                      800 g  Shelf 1                          
+  Brass Thumbtack                                82 count  Desk Drawer 2                    
+  Cumin                                              90 g  Shelf 2                          
+  Empty Computer Box                              at rest  Attic                            
+  Forever Stamp                                   3 count  Desk Drawer 2                    
+  Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
+--------------------------------------------------------------------------------------------
+12 holdings - sorted by item a-z
+
+===== 5  (92x20) =========================================================================
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                              QTY  LOCATION          FLAGS          
+> Ancho Chile                                        50 g  Shelf 2                          
+  how much is actually there ─────────────────────────────────────────────────────────────
+  5 
+  enter count   esc discard
+  Ancho Chile                                       120 g  Garage                           
+  Ancho Chile                                        40 g  Small Parts Tray                 
+  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
+  Basmati Rice                                      800 g  Shelf 1                          
+  Brass Thumbtack                                82 count  Desk Drawer 2                    
+  Cumin                                              90 g  Shelf 2                          
+  Empty Computer Box                              at rest  Attic                            
+  Forever Stamp                                   3 count  Desk Drawer 2                    
+  Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
+--------------------------------------------------------------------------------------------
+12 holdings - sorted by item a-z
+
+===== fifty  (92x20) =====================================================================
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                              QTY  LOCATION          FLAGS          
+> Ancho Chile                                        50 g  Shelf 2                          
+  how much is actually there ─────────────────────────────────────────────────────────────
+  50 
+  enter count   esc discard
+  Ancho Chile                                       120 g  Garage                           
+  Ancho Chile                                        40 g  Small Parts Tray                 
+  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
+  Basmati Rice                                      800 g  Shelf 1                          
+  Brass Thumbtack                                82 count  Desk Drawer 2                    
+  Cumin                                              90 g  Shelf 2                          
+  Empty Computer Box                              at rest  Attic                            
+  Forever Stamp                                   3 count  Desk Drawer 2                    
+  Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
+--------------------------------------------------------------------------------------------
+12 holdings - sorted by item a-z
+
+===== recorded, and corrected  (92x20) ===================================================
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                              QTY  LOCATION          FLAGS          
+> Ancho Chile                                        50 g  Shelf 2                          
+  Ancho Chile                                       120 g  Garage                           
+  Ancho Chile                                        40 g  Small Parts Tray                 
+  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
+  Basmati Rice                                      800 g  Shelf 1                          
+  Brass Thumbtack                                82 count  Desk Drawer 2                    
+  Cumin                                              90 g  Shelf 2                          
+  Empty Computer Box                              at rest  Attic                            
+  Forever Stamp                                   3 count  Desk Drawer 2                    
+  Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
   Winter Coat                                     at rest  Garage            gone 2026-05-30
 --------------------------------------------------------------------------------------------
-12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
 ===== move -- a destination, with autocomplete  (92x20) ==================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
    
   enter move   esc discard
@@ -147,15 +253,15 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
-12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
 ===== g  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
   g 
   enter move   esc discard
@@ -168,15 +274,15 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
-12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
 ===== a  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
   ga 
   enter move   esc discard
@@ -189,15 +295,15 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
-12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
 ===== r  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
   gar 
   enter move   esc discard
@@ -210,15 +316,15 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
-12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
 ===== take the suggestion  (92x20) =======================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
   gar 
   enter move   esc discard
@@ -231,15 +337,15 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 --------------------------------------------------------------------------------------------
-12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
 ===== it moves  (92x20) ==================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -249,17 +355,17 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
   Winter Coat                                     at rest  Garage            gone 2026-05-30
   nowhere called "gar"
 --------------------------------------------------------------------------------------------
-12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 holdings - sorted by item a-z
 
 ===== /  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -269,11 +375,11 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
   Winter Coat                                     at rest  Garage            gone 2026-05-30
 /_  enter apply   esc cancel
 --------------------------------------------------------------------------------------------
-12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 holdings - sorted by item a-z
 
 ===== c  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
@@ -281,19 +387,19 @@ the selection tint, and the red on a refusal.
   ITEM ^                                              QTY  LOCATION          FLAGS          
   Cumin                                              90 g  Shelf 2                          
   Ancho Chile                                       120 g  Garage                           
-> Ancho Chile                                       110 g  Shelf 2                          
+> Ancho Chile                                        50 g  Shelf 2                          
   Empty Computer Box                              at rest  Attic                            
   Ancho Chile                                        40 g  Small Parts Tray                 
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Brass Thumbtack                                82 count  Desk Drawer 2                    
   Winter Coat                                     at rest  Garage            gone 2026-05-30
   Basmati Rice                                      800 g  Shelf 1                          
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
 /c_  enter apply   esc cancel
 --------------------------------------------------------------------------------------------
-12 of 12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+12 of 12 holdings - sorted by item a-z
 
 ===== a  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
@@ -304,196 +410,99 @@ the selection tint, and the red on a refusal.
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Forever Stamp                                   3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
   Brass Thumbtack                                82 count  Desk Drawer 2                    
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
+  USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
 /ca_  enter apply   esc cancel
 --------------------------------------------------------------------------------------------
-9 of 12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+9 of 12 holdings - sorted by item a-z
 
 ===== b  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
 /cab_  enter apply   esc cancel
 --------------------------------------------------------------------------------------------
-2 of 12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+2 of 12 holdings - sorted by item a-z
 
 ===== l  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
 /cabl_  enter apply   esc cancel
 --------------------------------------------------------------------------------------------
-2 of 12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+2 of 12 holdings - sorted by item a-z
 
 ===== e  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 /cable_  enter apply   esc cancel
 --------------------------------------------------------------------------------------------
-1 of 12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+1 of 12 holdings - sorted by item a-z
 
 ===== down to the cable  (92x20) =========================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 filtered /cable   esc clear
 --------------------------------------------------------------------------------------------
-1 of 12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
+1 of 12 holdings - sorted by item a-z
+
+===== refused, in terms of the thing  (92x20) ============================================
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+--------------------------------------------------------------------------------------------
+  ITEM ^                                              QTY  LOCATION          FLAGS          
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
+filtered /cable   esc clear
+  "USB-C to HDMI Cable 2m" is done with, so there is nothing to consume
+--------------------------------------------------------------------------------------------
+1 of 12 holdings - sorted by item a-z
 
 ===== toggle custody -- one key, the state decides  (92x20) ==============================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m       at rest: the good 100W one  Desk Drawer 2                    
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 filtered /cable   esc clear
+  holding is retired: holding 9
 --------------------------------------------------------------------------------------------
-1 of 12 holdings - put USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one) back - sorted by item a-z
+1 of 12 holdings - sorted by item a-z
 
 ===== and back  (92x20) ==================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2                    
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
 filtered /cable   esc clear
+  holding is retired: holding 9
 --------------------------------------------------------------------------------------------
-1 of 12 holdings - take USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one) out - sorted by item a-z
+1 of 12 holdings - sorted by item a-z
 
-===== filter cleared  (92x20) ============================================================
+===== the first d of dd -- nothing yet  (92x20) ==========================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-  Ancho Chile                                       110 g  Shelf 2                          
-  Ancho Chile                                       120 g  Garage                           
-  Ancho Chile                                        40 g  Small Parts Tray                 
-  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
-  Basmati Rice                                      800 g  Shelf 1                          
-  Brass Thumbtack                                82 count  Desk Drawer 2                    
-  Cumin                                              90 g  Shelf 2                          
-  Empty Computer Box                              at rest  Attic                            
-  Forever Stamp                                   3 count  Desk Drawer 2                    
-  Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2                    
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
+filtered /cable   esc clear
+  holding is retired: holding 9
 --------------------------------------------------------------------------------------------
-12 holdings - take USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one) out - sorted by item a-z
-
-===== 5  (92x20) =========================================================================
- 1 Categories   2 Locations   3 Items   4 Holdings  [5 Integrity]
---------------------------------------------------------------------------------------------
-> 12 holdings checked against the ledger                                                    
-                                                                                            
-  no discrepancies                                                                          
-                                                                                            
-  Classification                                                                            
-    Cumin sits at "Spices", which has 1 subcategories                                       
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
---------------------------------------------------------------------------------------------
-clean
-
-===== 0  (92x20) =========================================================================
- 1 Categories   2 Locations   3 Items   4 Holdings  [5 Integrity]
---------------------------------------------------------------------------------------------
-> 12 holdings checked against the ledger                                                    
-                                                                                            
-  no discrepancies                                                                          
-                                                                                            
-  Classification                                                                            
-    Cumin sits at "Spices", which has 1 subcategories                                       
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
---------------------------------------------------------------------------------------------
-clean
-
-===== recorded, and corrected  (92x20) ===================================================
- 1 Categories   2 Locations   3 Items   4 Holdings  [5 Integrity]
---------------------------------------------------------------------------------------------
-> 12 holdings checked against the ledger                                                    
-                                                                                            
-  no discrepancies                                                                          
-                                                                                            
-  Classification                                                                            
-    Cumin sits at "Spices", which has 1 subcategories                                       
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
---------------------------------------------------------------------------------------------
-clean
-
-===== the first d of dd -- nothing yet  (92x20) ==========================================
- 1 Categories   2 Locations   3 Items   4 Holdings  [5 Integrity]
---------------------------------------------------------------------------------------------
-> 12 holdings checked against the ledger                                                    
-                                                                                            
-  no discrepancies                                                                          
-                                                                                            
-  Classification                                                                            
-    Cumin sits at "Spices", which has 1 subcategories                                       
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
---------------------------------------------------------------------------------------------
-clean
+1 of 12 holdings - sorted by item a-z
 
 ===== retire  (92x20) ====================================================================
- 1 Categories   2 Locations   3 Items   4 Holdings  [5 Integrity]
+ 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
-> 12 holdings checked against the ledger                                                    
-                                                                                            
-  no discrepancies                                                                          
-                                                                                            
-  Classification                                                                            
-    Cumin sits at "Spices", which has 1 subcategories                                       
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
-                                                                                            
+  ITEM ^                                              QTY  LOCATION          FLAGS          
+> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
+filtered /cable   esc clear
+  holding is retired: holding 9
 --------------------------------------------------------------------------------------------
-clean
+1 of 12 holdings - sorted by item a-z
 ```

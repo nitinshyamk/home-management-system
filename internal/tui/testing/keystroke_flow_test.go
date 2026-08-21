@@ -325,3 +325,24 @@ func equalStrings(a, b []string) bool {
 	}
 	return true
 }
+
+// A refusal replaces what the last successful thing said. Leaving the old
+// status underneath reads as though both were true -- the screen saying
+// "counted 50" while also saying the action was impossible.
+func TestARefusalClearsTheLastSuccess(t *testing.T) {
+	s := sim.New(t)
+	stocked(t, s)
+	s.Send(sim.Press("4"))
+
+	// Something that works, on the rice.
+	s.Send(sim.Press("c"))
+	s.Send(sim.Type("100"))
+	s.Send(sim.Enter)
+	s.ShowsText("use 100")
+
+	// Then something that cannot, on the cable.
+	s.Send(sim.Press("j"))
+	s.Send(sim.Press("c"))
+	s.ShowsText("one of a kind")
+	s.HidesText("use 100")
+}
