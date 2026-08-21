@@ -404,6 +404,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.creator.IsOpen() {
 			m = m.suggest()
 		}
+		if m.editor.IsOpen() {
+			m = m.suggestForPrompt()
+		}
 		return m, nil
 
 	case errMsg:
