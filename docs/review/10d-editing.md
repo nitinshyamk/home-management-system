@@ -56,10 +56,11 @@ make reseed && ./bin/hms
 | 5 | type `consume 100g` | Acting on the selected row without naming it. Does it say what it will do? |
 | 6 | `enter` | It runs. **Does the feedback say what actually happened**, in the terms of the receipt? |
 | 7 | `:` `consume 1kg` on an item with less than that | A refusal. Is it a sentence, or a stack trace? |
-| 8 | `:new item Turmeric counting measured unit g` | Creation. The permanent-fields confirmation appears. |
+| 8 | `:new item Turmeric counting measured unit g category Spices` | Creation. The permanent-fields confirmation appears. |
+| 8a | `:new item Cardamom counting measured unit g` | Now leave the category off. Does it name the missing *field*, or report a constraint? |
 | 9 | read it | Does it say what cannot be changed later, in words worth reading? |
 | 10 | `esc` | Nothing was created. |
-| 11 | `space` `space` `space`, `:consume 10g` | Three rows selected. Does it say it will act on three? |
+| 11 | `space` `space` `space`, `:consume 10` | Three rows selected. Does it act on **three**, and say so? |
 | 12 | From every state above, mash `esc` | You reach the plain list, one mode at a time, always. |
 
 ---
@@ -87,8 +88,15 @@ make reseed && ./bin/hms
    these; the question is whether the interface passes them through or buries
    them.
 
-6. **A batch says how many.** Step 11. Acting on three rows when you meant one
-   is the multi-select failure, and it is silent.
+6. **A batch says how many, and acts on that many.** Step 11. Acting on the
+   cursor row while three are selected is the worst available outcome: it does
+   something, it does not do what was asked, and it says nothing about the
+   difference.
+
+7. **A refusal is red, and wraps.** Steps 7 and 8a. Everything else here is
+   deliberately quiet, which is what makes one loud thing readable — and
+   truncating an error is the worst thing to truncate, because the part that
+   says what to do about it is at the end.
 
 ---
 

@@ -103,7 +103,5 @@ on — was answered yes.
 
 ## Sign-off
 
-- [ ] Reviewed by:
-- [ ] Date:
-- [ ] Verdict: accept / rework
-- [ ] Notes:
+- [x] Reviewed by: Nitin
+- [x] Date:08/20/26

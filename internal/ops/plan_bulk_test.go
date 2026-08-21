@@ -2,6 +2,7 @@ package ops_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -204,13 +205,22 @@ func TestConsumeWithNothingThereIsRefused(t *testing.T) {
 
 // TestConsumeFromAnUnpackagedItemCannotOpenAnything: loose flour from a bin has
 // no package to break into, so a shortfall is simply a shortfall.
+//
+// ErrInsufficient, not ErrInvalidRequest. Asking for more than there is is not
+// a malformed request -- it is a request the house cannot satisfy -- and the
+// sentinel decides which half of that the message leads with.
 func TestConsumeFromAnUnpackagedItemCannotOpenAnything(t *testing.T) {
 	s := riceSnap(noPackageItem(), holdingAt(opened, pantry, domain.BasisContent, 50*domain.Scale))
 	_, err := ops.PlanConsume(s, ops.ConsumeRequest{
 		Item: riceID, Location: pantry, Amount: domain.FromMilli(100 * domain.Scale),
 	})
-	if !errors.Is(err, ops.ErrInvalidRequest) {
-		t.Errorf("error = %v, want ErrInvalidRequest", err)
+	if !errors.Is(err, ops.ErrInsufficient) {
+		t.Errorf("error = %v, want ErrInsufficient", err)
+	}
+	// The shortfall leads. A message that opens with its own reason reads as a
+	// diagnostic rather than as an answer to what was asked.
+	if !strings.HasPrefix(err.Error(), "ops: not enough on hand: only 50 g") {
+		t.Errorf("the message does not lead with the shortfall: %v", err)
 	}
 }
 

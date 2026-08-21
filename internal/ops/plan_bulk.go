@@ -255,10 +255,24 @@ func PlanConsume(s Snapshot, req ConsumeRequest) (Plan, error) {
 	// needs, rather than one and then giving up, is what makes "use 3 kg" work
 	// when packages hold 2 kg.
 	for available < req.Amount.Milli() {
+		// The shortfall leads, because the shortfall is the problem. Whether a
+		// package could have been opened to cover it is the REASON, and a
+		// message that opens with its own reason reads as a diagnostic rather
+		// than an answer to what was asked.
+		// Both numbers, with the unit, because either alone leaves the person
+		// doing arithmetic: "only 100 g" does not say how short, and "need
+		// 5000 g" does not say how much there is.
+		if !item.HasPackage() {
+			return Plan{}, fmt.Errorf(
+				"%w: only %s %s of %q here, and %s %s was asked for -- it does not come in packages to open",
+				ErrInsufficient, domain.FromMilli(available), item.ContentUnit, item.Name,
+				req.Amount, item.ContentUnit)
+		}
 		opened, err := openOnePackage(s, &p, item, req.Location, req.ExpiresOn)
 		if err != nil {
-			return Plan{}, fmt.Errorf("%w (have %s, need %s)", err,
-				domain.FromMilli(available), req.Amount)
+			return Plan{}, fmt.Errorf("%w: only %s %s of %q here, and %s %s was asked for (%v)",
+				ErrInsufficient, domain.FromMilli(available), item.ContentUnit, item.Name,
+				req.Amount, item.ContentUnit, err)
 		}
 		target = opened
 		available += item.PackageSize.Milli()

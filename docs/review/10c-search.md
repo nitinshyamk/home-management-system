@@ -107,7 +107,6 @@ on — was answered yes.
 
 ## Sign-off
 
-- [ ] Reviewed by:
-- [ ] Date:
-- [ ] Verdict: accept / rework
-- [ ] Notes:
+- [x] Reviewed by:Nitin
+- [x] Verdict: accept
+- [x] Notes:

@@ -49,7 +49,60 @@ var (
 	dimStyle    = lipgloss.NewStyle().Faint(true)
 	cursorStyle = lipgloss.NewStyle().Bold(true).Reverse(true)
 	alertStyle  = lipgloss.NewStyle().Bold(true)
+
+	// Red, and bold, because a refusal has to be distinguishable from a
+	// confirmation at a glance. Everything else in this interface is deliberately
+	// quiet, which is exactly what makes one loud thing readable.
+	errorStyle = lipgloss.NewStyle().Bold(true).
+			Foreground(lipgloss.AdaptiveColor{Light: "160", Dark: "203"})
 )
+
+// wrap breaks text onto as many lines as it needs.
+//
+// Truncating an error is the worst thing to truncate: the part that says what
+// to do about it is at the END, so a cut message is a message that reports a
+// problem and withholds the answer.
+func wrap(text string, width int) []string {
+	if width < 20 {
+		width = 20
+	}
+	var lines []string
+	line := ""
+	for _, word := range strings.Fields(text) {
+		switch {
+		case line == "":
+			line = word
+		case len([]rune(line))+1+len([]rune(word)) <= width:
+			line += " " + word
+		default:
+			lines = append(lines, line)
+			line = word
+		}
+	}
+	if line != "" {
+		lines = append(lines, line)
+	}
+	return lines
+}
+
+// humanise strips the package prefixes Go errors accumulate on the way up.
+//
+// "ops: not enough on hand: only 20 g of Ancho Chile here" is a sentence
+// wearing a call stack. The layers are useful in a log and are noise to a
+// person, who wants the last clause -- the one that says what actually
+// happened.
+func humanise(text string) string {
+	for _, prefix := range []string{
+		"ops: ", "command: ", "app: ", "tui: ",
+		"ledger: ", "origin: ", "annotate: ", "query: ", "db: ",
+		"invalid request: ", "cannot read line: ", "cannot read value: ",
+	} {
+		for strings.HasPrefix(text, prefix) {
+			text = strings.TrimPrefix(text, prefix)
+		}
+	}
+	return text
+}
 
 // Model is the Bubbletea model.
 type Model struct {
@@ -85,6 +138,9 @@ type Model struct {
 	// between a person and a permanent change.
 	editor  editor.Model
 	confirm *pendingPlan
+	// problem is what went wrong, held apart from status so it can be rendered
+	// loudly and wrapped rather than squeezed into a one-line summary.
+	problem []string
 	// holdingIDs parallels rows in the Holdings view, so Enter knows what was
 	// selected without the rendering layer carrying domain types.
 	holdingIDs []domain.HoldingID
@@ -281,10 +337,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.apply(msg.plan, msg.summary)
 
 	case issuesMsg:
-		m.status = alertStyle.Render(strings.Join(msg.issues, " - "))
+		m.problem = msg.issues
+		m.status = ""
 		return m, nil
 
 	case appliedMsg:
+		m.problem = nil
 		// Reload, because something changed. The list a person is looking at
 		// must not disagree with the house.
 		m.status = msg.summary
@@ -346,6 +404,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// diverge completely, which is why the omnibox renders them differently
 	// before a word has been read.
 	case "/":
+		m.problem = nil
 		m.box = m.box.Open(omnibox.Filter)
 		m = m.applyLive()
 		return m, nil
@@ -354,6 +413,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m = m.refreshJump()
 		return m, m.loadCandidates()
 	case ":":
+		m.problem = nil
 		m.box = m.box.Open(omnibox.Command)
 		return m, nil
 
@@ -422,21 +482,20 @@ func (m Model) View() string {
 	if !m.ready {
 		return "loading..."
 	}
+	// The editor's lines go INTO the surface, spliced after the row they belong
+	// to, rather than under the whole list. Under the list is not inline; it is
+	// a second place to look.
+	overlay := m.editor.SetWidth(m.width).Lines()
+
 	body := m.viewport.View()
 	if forest(m.view) {
-		body = m.tree.View()
+		body = m.tree.SetOverlay(overlay).View()
 	}
 	if tabular(m.view) {
 		// The table scrolls itself, so it renders straight rather than through
 		// the viewport. Two things scrolling one list is how a cursor ends up
 		// off screen with nothing obviously wrong.
-		body = m.table.View()
-	}
-	if m.editor.IsOpen() {
-		// Inside the list, under the row it belongs to, so the rows around it
-		// stay where they are. Losing your place is the thing that made the old
-		// interface unusable for its actual job.
-		body = body + "\n" + m.editor.SetWidth(m.width).View()
+		body = m.table.SetOverlay(overlay).View()
 	}
 	if m.confirm != nil {
 		body = m.confirmView()
@@ -453,13 +512,33 @@ func (m Model) View() string {
 	if line := m.box.View(); line != "" {
 		parts = append(parts, line)
 	}
+	for _, line := range m.problemLines() {
+		parts = append(parts, errorStyle.Render(line))
+	}
 	return strings.Join(append(parts, m.footer()), "\n")
+}
+
+// problemLines is the refusal, humanised and wrapped to the terminal.
+func (m Model) problemLines() []string {
+	if len(m.problem) == 0 {
+		return nil
+	}
+	var out []string
+	for _, issue := range m.problem {
+		out = append(out, wrap(humanise(issue), max(20, m.width-2))...)
+	}
+	for i := range out {
+		out[i] = "  " + out[i]
+	}
+	return out
 }
 
 // bodyHeight is the room left after the header, the footer, and the input line
 // when there is one.
 func (m Model) bodyHeight() int {
-	if h := m.height - 4 - m.box.Height() - m.editor.Height(); h > 3 {
+	// The editor is NOT subtracted: it takes lines from inside the surface
+	// rather than from around it, so the screen keeps its shape.
+	if h := m.height - 4 - m.box.Height() - len(m.problemLines()); h > 3 {
 		return h
 	}
 	return 3
