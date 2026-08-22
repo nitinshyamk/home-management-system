@@ -25,7 +25,7 @@ the selection tint, and the red on a refusal.
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
   USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  Winter Coat                                     at rest  Garage            gone 2026-05-31
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -149,7 +149,7 @@ the selection tint, and the red on a refusal.
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
   USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  Winter Coat                                     at rest  Garage            gone 2026-05-31
   a unit needs the command line, which knows how to convert it: try :consume 4c10
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
@@ -232,7 +232,7 @@ the selection tint, and the red on a refusal.
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
   USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  Winter Coat                                     at rest  Garage            gone 2026-05-31
 --------------------------------------------------------------------------------------------
 12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
@@ -356,7 +356,7 @@ the selection tint, and the red on a refusal.
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
   USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  Winter Coat                                     at rest  Garage            gone 2026-05-31
 --------------------------------------------------------------------------------------------
 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
@@ -375,7 +375,7 @@ the selection tint, and the red on a refusal.
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
   USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  Winter Coat                                     at rest  Garage            gone 2026-05-31
 /_  enter apply   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
@@ -391,7 +391,7 @@ the selection tint, and the red on a refusal.
   Ancho Chile                                        40 g  Small Parts Tray                 
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Brass Thumbtack                                82 count  Desk Drawer 2                    
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  Winter Coat                                     at rest  Garage            gone 2026-05-31
   Basmati Rice                                      800 g  Shelf 1                          
   USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -405,7 +405,7 @@ the selection tint, and the red on a refusal.
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
 > Empty Computer Box                              at rest  Attic                            
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  Winter Coat                                     at rest  Garage            gone 2026-05-31
   Ancho Chile                                       170 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Forever Stamp                                   3 count  Desk Drawer 2                    
@@ -495,9 +495,13 @@ filtered /cable   esc clear
 ===== retire  (92x20) ====================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
-  ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2     gone 2026-08-21
+  retire USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one)?
+
+  no way back   one holding stops existing
+                the history stays; the holding does not
+
+  [enter] go ahead    [esc] back
 filtered /cable   esc clear
 --------------------------------------------------------------------------------------------
-1 of 12 holdings - retire USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one) - sorted by item a-z
+1 of 12 holdings - sorted by item a-z
 ```

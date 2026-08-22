@@ -435,3 +435,81 @@ func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
 		}
 	}
 }
+
+// Retiring asks, and the reason is not the write path it uses.
+//
+// Gone is the single lifecycle terminal and nothing in the fold ever clears
+// RetiredAt, so a retirement is permanent in the only sense a person cares
+// about: the history stays and the holding does not. Friction is proportional
+// to permanence rather than to whether the write happened to be a recording.
+func TestRetiringAsksFirst(t *testing.T) {
+	s := sim.New(t)
+	_, cable := stocked(t, s)
+	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Type("cable"))
+	s.Send(sim.Enter)
+
+	// The identifier is taken BEFORE anything happens: a retired Holding is no
+	// longer listed among its item's holdings, so looking it up afterwards
+	// finds nothing and says nothing about why.
+	held := holdingOf(t, s, cable)
+
+	s.Send(sim.Press("d"), sim.Press("d"))
+	s.ShowsText("no way back")
+	s.ShowsText("the history stays")
+	if contains(s.EventTypes(held), "Gone") {
+		t.Error("the holding was retired before the question was answered")
+	}
+
+	// esc means it did not happen.
+	s.Send(sim.Esc)
+	if contains(s.EventTypes(held), "Gone") {
+		t.Error("escaping the confirmation retired it anyway")
+	}
+
+	s.Send(sim.Press("d"), sim.Press("d"))
+	s.Send(sim.Enter)
+	if recorded := s.EventTypes(held); !contains(recorded, "Gone") {
+		t.Errorf("confirming did not retire it: %v", recorded)
+	}
+}
+
+// The confirmation says the act's own verb. "[enter] create" on a retirement
+// would be describing the wrong thing at the worst moment.
+func TestTheConfirmationUsesTheActsOwnVerb(t *testing.T) {
+	s := sim.New(t)
+	stocked(t, s)
+	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Type("cable"))
+	s.Send(sim.Enter)
+	s.Send(sim.Press("d"), sim.Press("d"))
+
+	s.ShowsText("go ahead")
+	s.HidesText("[enter] create")
+}
+
+// The reversible actions still do not ask. Everything else stays frictionless
+// BECAUSE the permanent things are not.
+func TestReversibleActionsStillDoNotAsk(t *testing.T) {
+	s := sim.New(t)
+	rice, _ := stocked(t, s)
+	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Type("rice"))
+	s.Send(sim.Enter)
+
+	s.Send(sim.Press("c"))
+	s.Send(sim.Type("100"))
+	s.Send(sim.Enter)
+	s.HidesText("no way back")
+	s.OnHand(rice, 400*domain.Scale) // it just happened
+}
+
+// holdingOf is an item's first holding.
+func holdingOf(t *testing.T, s *sim.Simulator, item domain.ItemID) domain.HoldingID {
+	t.Helper()
+	details, err := s.Reader().HoldingsOfItem(s.Context(), item)
+	if err != nil || len(details) == 0 {
+		t.Fatalf("no holdings of item %d: %v", item, err)
+	}
+	return details[0].Holding.Base().ID
+}

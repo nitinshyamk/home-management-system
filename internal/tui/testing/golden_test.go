@@ -126,3 +126,19 @@ func TestGoldenARefusal(t *testing.T) {
 	s.Send(sim.Enter)
 	s.AssertFrame("10d-refusal-wrapped")
 }
+
+// 10f's confirmation, which asks for a different reason than 10d's.
+//
+// Both frames are kept because the two labels have to line up with each other:
+// "permanent" and "no way back" sit in the same column, so a change to either
+// shows in both.
+func TestGoldenTheRetirementConfirmation(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(92, 18)
+	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Type("thunder"))
+	s.Send(sim.Enter)
+	s.Send(sim.Press("d"), sim.Press("d"))
+	s.AssertFrame("10f-retire-confirmation")
+}

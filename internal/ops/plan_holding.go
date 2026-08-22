@@ -272,7 +272,9 @@ func planOne[R any](
 	if err != nil {
 		return Batch{}, err
 	}
-	return Batch{Steps: []Step{{Summary: summary, Records: fixed(events)}}}, nil
+	return Batch{Steps: []Step{{
+		Summary: summary, Records: fixed(events), Ends: endsSomething(events),
+	}}}, nil
 }
 
 func (p *Planner) CheckOut(ctx context.Context, req CheckOutRequest) (Batch, error) {

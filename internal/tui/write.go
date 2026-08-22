@@ -306,16 +306,31 @@ func (m Model) handleConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 // is proportional to permanence, and this is the only place in the application
 // that has any.
 func (m Model) confirmView() string {
+	plan := m.confirm.plan
 	lines := []string{"  " + alertStyle.Render(m.confirm.summary+"?"), ""}
-	for _, facts := range m.confirm.plan.Permanent {
-		lines = append(lines, "  "+titleStyle.Render("permanent")+"   "+facts)
-		lines = append(lines, "  "+strings.Repeat(" ", len("permanent"))+"   "+
+
+	for _, facts := range plan.Permanent {
+		lines = append(lines, "  "+titleStyle.Render("permanent")+"     "+facts)
+		lines = append(lines, "  "+strings.Repeat(" ", len("permanent"))+"     "+
 			dimStyle.Render("changing these later replaces every holding"))
 	}
-	if len(m.confirm.plan.Permanent) == 0 {
-		lines = append(lines, "  "+dimStyle.Render("nothing here is permanent, but a second one by accident is worse than a question"))
+	for _, ends := range plan.Irreversible {
+		lines = append(lines, "  "+alertStyle.Render("no way back")+"   "+ends)
+		lines = append(lines, "  "+strings.Repeat(" ", len("no way back"))+"   "+
+			dimStyle.Render("the history stays; the holding does not"))
 	}
-	lines = append(lines, "", dimStyle.Render("  [enter] create    [esc] back"))
+	if len(plan.Permanent) == 0 && len(plan.Irreversible) == 0 {
+		lines = append(lines, "  "+dimStyle.Render(
+			"nothing here is permanent, but a second one by accident is worse than a question"))
+	}
+
+	// The verb is the act's own. "[enter] create" on a retirement would be
+	// describing the wrong thing at the worst moment.
+	verb := "go ahead"
+	if plan.Creates() {
+		verb = "create"
+	}
+	lines = append(lines, "", dimStyle.Render("  [enter] "+verb+"    [esc] back"))
 	return strings.Join(lines, "\n")
 }
 

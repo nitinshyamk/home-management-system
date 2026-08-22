@@ -51,7 +51,7 @@ make reseed && ./bin/hms
 | 6 | navigate to the cable, `t` | Toggle custody. It is `Out` now. |
 | 7 | `t` again | And back. **One key, not two** — the state decides. |
 | 8 | `#`, type `5`, `enter` | Count. Does it say what it recorded *and* what it corrected? |
-| 9 | `dd` | Retire. Is there a confirmation, and should there be? |
+| 9 | `dd` | Retire. It asks. Is the reason it gives the right one? |
 | 10 | `y` on a row, navigate elsewhere, `p` | Yank and put. Same as `m`, different idiom. |
 | 11 | `space` ×3, `c`, `10`, `enter` | Three rows. Does it say three, and act on three? |
 | 12 | `c` on a Unique row | Refused, in a sentence. |
@@ -77,9 +77,16 @@ make reseed && ./bin/hms
    the ledger are two events, and a count that silently overwrites destroys the
    only evidence that the two ever disagreed.
 
-5. **`dd` asks.** Step 9. Retiring is reversible in the ledger's sense — the
-   history survives — but the thing leaves every active view, so it should not
-   be a slip. Judge whether the confirmation is proportionate or annoying.
+5. **`dd` asks, and the reason is not the write path.** Step 9. My first
+   version did not ask, on the grounds that retiring is a *recording* and
+   recordings are reversible by a compensating event. That was wrong: `Gone` is
+   the single lifecycle terminal and nothing in the fold ever clears
+   `RetiredAt`. The history survives and the Holding does not, which is
+   permanent in the only sense a person cares about.
+
+   So the confirmation is driven by the EVENTS rather than by the write path —
+   a plan that emits a `Gone` asks, whatever produced it. Judge whether "no way
+   back / the history stays; the holding does not" is the right thing to say.
 
 6. **A refusal is about the thing, not the keystroke.** Step 12. "You cannot
    consume a cable" beats "invalid operation".

@@ -37,6 +37,16 @@ type Step struct {
 	// this Step.
 	Summary string
 
+	// Ends names what this step puts beyond recovery, and is empty when nothing
+	// is. Gone is the single lifecycle terminal -- no event clears RetiredAt --
+	// so a step that emits one is as permanent IN EFFECT as an origination, and
+	// friction is proportional to permanence rather than to write path.
+	//
+	// Derived from the EVENTS rather than declared per operation, so an
+	// operation that ends something inherits the confirmation instead of having
+	// to remember to ask for it.
+	Ends string
+
 	// Originates is PERMANENT, so it is data: the review screen renders each
 	// one in full and requires an explicit confirmation. A wrong kind or
 	// content unit has no remedy short of retiring the entity, which is why
