@@ -253,6 +253,9 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case tea.KeyEnter:
 		// A field opened for an ACTION answers to that action; only a rename
 		// goes back through the command line, because only a rename is text.
+		if m.editor.Purpose() == "fix" {
+			return m.applyFix()
+		}
 		if m.editor.Purpose() != "rename" {
 			return m.actOnPrompt()
 		}
@@ -422,6 +425,12 @@ func (m Model) completions(kind, typed string) []string {
 // asked.
 func (m Model) suggestForPrompt() Model {
 	kind, ok := promptResolves(m.editor.Purpose())
+	if m.editor.Purpose() == "fix" {
+		// A fix completes whatever the FIELD refers to, which the editor was
+		// told when it opened. One completer, told what to complete against,
+		// rather than a second list of which purposes mean which kind.
+		kind, ok = m.editor.Kind(), m.editor.Kind() != ""
+	}
 	if !ok {
 		return m
 	}

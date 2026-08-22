@@ -96,8 +96,11 @@ func (m Model) IsOpen() bool   { return m.open }
 func (m Model) Subject() int64 { return m.subject }
 func (m Model) Kind() string   { return m.kind }
 func (m Model) Value() string  { return m.value }
-func (m Model) Changed() bool  { return strings.TrimSpace(m.value) != m.initial }
-func (m Model) Close() Model   { m.open = false; return m }
+
+// Label is the field's name, which for a fix IS the field being corrected.
+func (m Model) Label() string { return m.label }
+func (m Model) Changed() bool { return strings.TrimSpace(m.value) != m.initial }
+func (m Model) Close() Model  { m.open = false; return m }
 
 // Update handles a keystroke, reporting whether it was consumed.
 //

@@ -64,7 +64,7 @@ make reseed
 | 5 | `tab` | Accept the suggestion. The row goes ready. |
 | 6 | `j` onto the row that would create | The creation panel opens — **the same one `o` opens**. |
 | 7 | `enter` | The permanent-fields confirmation, the same one everywhere else. |
-| 8 | `j` onto a blocked row, `e` | Edit it in place, fix it, `enter`. |
+| 8 | `j` onto a blocked row, `e` | Edit it in place, fix it, `enter`. A field that names something completes. |
 | 9 | `j` onto the last blocked row, `d` | Drop it. Does the count change? |
 | 10 | `A` | Now it applies. **One transaction.** |
 | 11 | check the Items view | Two rows named one new item; there is **one** Turmeric. |
