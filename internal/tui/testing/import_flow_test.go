@@ -1,0 +1,237 @@
+package testing_test
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"home-management-system/internal/domain"
+	"home-management-system/internal/ops"
+	sim "home-management-system/internal/tui/testing"
+)
+
+// 11b: the import plan screen.
+//
+// The highest-stakes screen in the system. Everywhere else one thing happens
+// and you watch it happen; here a file you did not write proposes a batch of
+// changes, and the only thing between it and the house is whether this screen
+// told the truth about what it was going to do.
+
+// kitchen is a house a receipt can be about.
+func kitchen(t *testing.T, s *sim.Simulator) {
+	t.Helper()
+	p, ctx := s.Planner(), s.Context()
+
+	s.Apply(p.NewLocation(ctx, ops.NewLocationRequest{Name: "Shelf 1"}))
+	shelf := s.HasLocation("Shelf 1")
+	s.Apply(p.NewCategory(ctx, ops.NewCategoryRequest{Name: "Spices"}))
+	spices := s.HasCategory("Spices")
+
+	for _, name := range []string{"Basmati Rice", "Cumin"} {
+		s.Apply(p.NewItem(ctx, ops.NewItemRequest{
+			Name: name, Category: spices, Counting: ops.CountingMeasured, ContentUnit: "g",
+		}))
+		s.Apply(p.Receive(ctx, ops.ReceiveRequest{
+			Item: s.HasItem(name), Location: shelf, Basis: domain.BasisContent,
+			Amount: domain.FromMilli(500 * domain.Scale), Source: "shop",
+		}))
+	}
+}
+
+// receipt writes a file and returns its path.
+func receipt(t *testing.T, body string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "receipt.csv")
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+const messy = `op,item,qty,at,reason,name,counting,unit,category
+acquire,Basmati Rice,100,Shelf 1,,,,,
+consume,Cumin,10,Shelf 1,dinner,,,,
+acquire,Cumn,20,Shelf 1,,,,,
+acquire,Cardamom,50,Shelf 1,,,,,
+consume,Basmati Rice,lots,Shelf 1,dinner,,,,
+`
+
+// The three states are legible before they are read, and the arithmetic adds up
+// to the file.
+func TestThePlanScreenCountsTheWholeFile(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, messy))
+
+	s.ShowsText("5 rows")
+	s.ShowsText("2 ready")
+	s.ShowsText("2 need confirming")
+	s.ShowsText("1 blocked")
+}
+
+// A is refused with a reason rather than being a key that does nothing.
+func TestApplyIsRefusedWithAReason(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, messy))
+
+	s.Send(sim.Press("A"))
+	s.ShowsText("A is unavailable")
+	s.ShowsText("blocked")
+	s.OnHand(rice, 500*domain.Scale) // nothing happened
+}
+
+// A suggestion is offered and never applied, so accepting it is a keystroke
+// rather than something the screen did on your behalf.
+func TestAcceptingASuggestion(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, messy))
+
+	s.ShowsText("did you mean")
+	s.Send(sim.Press("j"), sim.Press("j"))
+	s.Send(sim.Enter)
+
+	s.HidesText("did you mean")
+	s.ShowsText("3 ready")
+}
+
+// Dropping settles a row without fixing it, and is reversible right up until
+// the apply.
+func TestDroppingAndUndropping(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, messy))
+
+	s.Send(sim.Press("G")) // the blocked row
+	s.Send(sim.Press("d"))
+	s.ShowsText("1 dropped")
+	s.ShowsText("0 blocked")
+
+	s.Send(sim.Press("u"))
+	s.ShowsText("1 blocked")
+	s.HidesText("dropped")
+}
+
+// All-or-nothing, and it applies in ONE transaction.
+func TestApplyingTheWholeFile(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice, cumin := s.HasItem("Basmati Rice"), s.HasItem("Cumin")
+	s.Import(receipt(t, `op,item,qty,at,reason
+acquire,Basmati Rice,100,Shelf 1,
+consume,Cumin,10,Shelf 1,dinner
+`))
+
+	s.ShowsText("2 ready")
+	s.ShowsText("A applies all of it")
+	s.Send(sim.Press("A"))
+
+	s.OnHand(rice, 600*domain.Scale)
+	s.OnHand(cumin, 490*domain.Scale)
+	s.ShowsText("applied 2 rows in one transaction")
+}
+
+// A row that binds but cannot WORK is named before anything is applied, rather
+// than rolling back a transaction and naming nothing.
+func TestARowThatCannotWorkIsNamedBeforeApplying(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, `op,item,qty,at,reason
+acquire,Basmati Rice,100,Shelf 1,
+consume,Basmati Rice,99999,Shelf 1,dinner
+`))
+
+	s.Send(sim.Press("A"))
+	s.ShowsText("row 3")
+	s.ShowsText("not enough")
+	// And nothing was applied, including the row that would have worked.
+	s.OnHand(rice, 500*domain.Scale)
+}
+
+// Cancelling leaves nothing behind, which is all-or-nothing seen from the
+// other end.
+func TestCancellingAppliesNothing(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, messy))
+	s.Send(sim.Press("q"))
+	s.OnHand(rice, 500*domain.Scale)
+}
+
+// TestTwoRowsNamingOneNewItemCreateItOnce is the property the whole design is
+// arranged around: a receipt cannot produce two Turmerics.
+//
+// Settling the first row creates the item; the second must then FIND it rather
+// than offering to make it again.
+func TestTwoRowsNamingOneNewItemCreateItOnce(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at
+acquire,Cardamom,50,Shelf 1
+acquire,Cardamom,25,Shelf 1
+`))
+	s.ShowsText("2 need confirming")
+
+	// Settle the first: the creation panel opens, pre-named from the row.
+	s.Send(sim.Enter)
+	s.ShowsText("new item")
+	s.ShowsText("Cardamom")
+	s.Send(sim.Tab, sim.Tab) // past counting, onto unit
+	s.Send(sim.Type("g"))
+	s.Send(sim.Tab, sim.Tab) // onto category
+	s.Send(sim.Type("Spices"))
+	s.Send(sim.Enter) // the permanent-fields confirmation
+	s.ShowsText("permanent")
+	s.Send(sim.Enter)
+
+	// Both rows are now ready, and there is exactly one Cardamom.
+	s.ShowsText("2 ready")
+	s.ShowsText("0 need confirming")
+	if got := countItemsNamed(t, s, "Cardamom"); got != 1 {
+		t.Errorf("%d items called Cardamom, want 1", got)
+	}
+}
+
+func countItemsNamed(t *testing.T, s *sim.Simulator, name string) int {
+	t.Helper()
+	items, err := s.Reader().Items(s.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, it := range items {
+		if strings.EqualFold(it.Base().Name, name) && it.Base().ArchivedAt == nil {
+			n++
+		}
+	}
+	return n
+}
+
+// A row that needs confirming stops the apply just as a blocked one does.
+//
+// Its own test, because the messy receipt has a blocked row too -- and a plan
+// refused for two reasons cannot tell you whether it would have been refused
+// for either.
+func TestApplyIsRefusedForAnUnconfirmedRowAlone(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, `op,item,qty,at
+acquire,Basmati Rice,100,Shelf 1
+acquire,Cardamom,50,Shelf 1
+`))
+	s.ShowsText("1 ready")
+	s.ShowsText("1 need confirming")
+	s.ShowsText("0 blocked")
+
+	s.Send(sim.Press("A"))
+	s.ShowsText("A is unavailable")
+	s.ShowsText("confirming")
+	// Not even the ready row, because it is all or nothing.
+	s.OnHand(rice, 500*domain.Scale)
+}

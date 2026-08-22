@@ -1,6 +1,6 @@
 # 11b — The plan screen
 
-**Status:** not built
+**Status:** built; awaiting sign-off
 **Gate:** human.
 
 Written before the substage is built.
@@ -58,7 +58,7 @@ make reseed
 | # | Keys | What to look at |
 |---|---|---|
 | 1 | — | The plan opens. **Can you tell ready from blocked without reading?** |
-| 2 | read the counts | "3 ready, 1 needs confirmation, 2 blocked". Does it add up to the file? |
+| 2 | read the counts | "3 ready, 2 need confirming, 1 blocked". Does it add up to the file? |
 | 3 | `A` | Refused, and it says why. |
 | 4 | `j` onto the suggested row | The issue is stated in full: *did you mean Turmeric?* |
 | 5 | `tab` | Accept the suggestion. The row goes ready. |
@@ -81,6 +81,10 @@ make reseed
 2. **The counts are the file.** Step 2. ready + confirmable + blocked + dropped
    must equal the rows in the file, always. A row that vanished from the
    arithmetic is a row that will surprise someone.
+
+   *(The fixture yields 3/2/1 rather than the plan's 3/1/2, because the
+   walkthrough needs both a suggestion row and a creating row and there are only
+   so many ways to be blocked. The shape is what matters.)*
 
 3. **`A` is refused with a reason.** Step 3. "2 rows are blocked" beats a key
    that does nothing.

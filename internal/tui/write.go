@@ -55,6 +55,14 @@ type appliedMsg struct{ summary string }
 // cursor -- so the two cases are the same code and cannot drift.
 func (m Model) runLine(line string) tea.Cmd {
 	subjects := m.subjects()
+	if len(subjects) == 0 {
+		// A line that names everything it needs takes no subject, and there is
+		// nothing under the cursor on an import screen anyway. One empty
+		// subject rather than none: zero subjects would mean zero commands, and
+		// the line would report "nothing to do" for a command that was
+		// perfectly complete.
+		subjects = []command.Subject{{}}
+	}
 	return func() tea.Msg {
 		var combined app.Plan
 		var summaries []string

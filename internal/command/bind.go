@@ -49,7 +49,7 @@ type Issue struct {
 
 func (i Issue) String() string {
 	if i.Problem != "" {
-		return i.Field + ": " + i.Problem
+		return i.Field + ": " + Humanise(i.Problem)
 	}
 	switch o := i.Outcome.(type) {
 	case resolve.Suggested:
@@ -64,6 +64,29 @@ func (i Issue) String() string {
 		return fmt.Sprintf("%s: nothing called %q", i.Field, o.Query)
 	}
 	return i.Field + ": cannot be settled"
+}
+
+// Humanise strips the package prefixes a Go error accumulates on the way up.
+//
+// "command: cannot read value: \"lots\" has no number in it" is a sentence
+// wearing a call stack. The layers are useful in a log and are noise to a
+// person, who wants the last clause -- the one that says what actually
+// happened.
+//
+// It lives here rather than in the interface because an Issue is already the
+// thing a person reads: an importer, a plan screen, and a command line all
+// render these, and three copies of this list would drift.
+func Humanise(text string) string {
+	for _, prefix := range []string{
+		"ops: ", "command: ", "app: ", "tui: ", "importer: ",
+		"ledger: ", "origin: ", "annotate: ", "query: ", "db: ",
+		"invalid request: ", "cannot read line: ", "cannot read value: ",
+	} {
+		for strings.HasPrefix(text, prefix) {
+			text = strings.TrimPrefix(text, prefix)
+		}
+	}
+	return text
 }
 
 // Bind turns one RawCommand into a Command, or into the reasons it could not.

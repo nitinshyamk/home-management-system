@@ -1,0 +1,9 @@
+op,item,qty,at,from,reason,name,counting,unit,package,category
+acquire,Basmati Rice,2bag,Shelf 1,corner shop,,,,,,
+acquire,Ancho Chile,200g,Shelf 2,corner shop,,,,,,
+consume,Cumin,10g,Shelf 2,,dinner,,,,,
+acquire,Cumn,20g,Shelf 2,corner shop,,,,,,
+acquire,Cardamom,50g,Shelf 2,corner shop,,,,,,
+acquire,Cardamom,25g,Shelf 2,corner shop,,,,,,
+consume,Basmati Rice,lots,Shelf 1,,dinner,,,,,
+acquire,Ancho Chile,1,Shelf,corner shop,,,,,,
