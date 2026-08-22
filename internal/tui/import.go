@@ -24,7 +24,7 @@ import (
 
 // Import opens a file for review.
 func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error) {
-	rows, err := readRows(path)
+	rows, err := ReadRows(path)
 	if err != nil {
 		return Model{}, err
 	}
@@ -39,11 +39,11 @@ func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error
 	return m, nil
 }
 
-// readRows picks the transport from the file's name.
+// ReadRows picks the transport from the file's name.
 //
 // The two are interchangeable, so the only thing the extension decides is which
 // parser reads the bytes -- not what the rows mean.
-func readRows(path string) ([]importer.Row, error) {
+func ReadRows(path string) ([]importer.Row, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err

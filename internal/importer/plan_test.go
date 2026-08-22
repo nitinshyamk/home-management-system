@@ -2,6 +2,7 @@ package importer_test
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -17,6 +18,15 @@ import (
 
 // house builds enough of a kitchen for a receipt to be about.
 func house(t *testing.T) *command.Vocabulary {
+	return houseWith(t, []string{"Basmati Rice", "Turmeric", "Brown Rice"}, nil)
+}
+
+// houseWith builds a kitchen holding the named items.
+//
+// packaged names the ones that come in packages, because a house where nothing
+// does cannot exercise the package grammar -- and `2bag` refusing everywhere
+// looks exactly like `2bag` being understood and rejected for a good reason.
+func houseWith(t *testing.T, items, packaged []string) *command.Vocabulary {
 	t.Helper()
 	ctx := context.Background()
 	conn := testsupport.NewDB(t)
@@ -30,29 +40,25 @@ func house(t *testing.T) *command.Vocabulary {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rice, err := orig.CreateBulkItem(ctx, origin.CreateBulkItemInput{
-		Name: "Basmati Rice", Category: spices, ContentUnit: "g",
-	})
-	if err != nil {
-		t.Fatal(err)
+	comesInPackages := map[string]bool{}
+	for _, name := range packaged {
+		comesInPackages[name] = true
 	}
-	if _, err := orig.CreateBulkItem(ctx, origin.CreateBulkItemInput{
-		Name: "Turmeric", Category: spices, ContentUnit: "g",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	// A second rice, so that "rice" is genuinely AMBIGUOUS rather than merely
-	// approximate. A house with one of everything cannot tell a suggestion from
-	// a tie, and those are the two states the screen most has to separate.
-	if _, err := orig.CreateBulkItem(ctx, origin.CreateBulkItemInput{
-		Name: "Brown Rice", Category: spices, ContentUnit: "g",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := led.CreateBulkHolding(ctx, ledger.CreateBulkHoldingInput{
-		Item: rice, Location: pantry, UnitBasis: domain.BasisContent,
-	}); err != nil {
-		t.Fatal(err)
+	size := domain.FromMilli(2_000_000)
+	for _, name := range items {
+		in := origin.CreateBulkItemInput{Name: name, Category: spices, ContentUnit: "g"}
+		if comesInPackages[name] {
+			in.PackageSize = &size
+		}
+		item, err := orig.CreateBulkItem(ctx, in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := led.CreateBulkHolding(ctx, ledger.CreateBulkHoldingInput{
+			Item: item, Location: pantry, UnitBasis: domain.BasisContent,
+		}); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	vocabulary, err := command.LoadVocabulary(ctx, query.New(conn))
@@ -234,5 +240,81 @@ func TestAnUnknownColumnBlocksTheRow(t *testing.T) {
 	}
 	if len(plan.Entries[0].Issues) == 0 || !strings.Contains(plan.Entries[0].Issues[0].Problem, "no such field") {
 		t.Errorf("issues = %v", plan.Entries[0].Issues)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 11c: the dry run
+// ---------------------------------------------------------------------------
+
+// The dry run reports the same three states the plan screen shows, from the
+// same Bind. Two renderings that could disagree would mean an agent iterating
+// against a different contract from the one that finally judges it.
+func TestTheDryRunReportsWhatTheScreenWould(t *testing.T) {
+	plan := bind(t, strings.Join([]string{
+		"op,item,qty,at,name,counting,unit,category",
+		"acquire,Basmati Rice,100,Left Pantry,,,,",
+		"consume,Tumeric,10,Left Pantry,,,,",
+		"consume,rice,10,Left Pantry,,,,",
+	}, "\n")+"\n")
+
+	report := importer.NewDryRun(plan, nil)
+	ready, confirmable, blocked, _ := plan.Counts()
+	if report.Ready != ready || report.Confirmable != confirmable || report.Blocked != blocked {
+		t.Errorf("the dry run says %d/%d/%d and the plan says %d/%d/%d",
+			report.Ready, report.Confirmable, report.Blocked, ready, confirmable, blocked)
+	}
+	if report.Rows != len(plan.Entries) {
+		t.Errorf("%d rows reported, %d in the plan", report.Rows, len(plan.Entries))
+	}
+
+	// Every row carries its line, so an agent can point at what to change.
+	for i, entry := range report.Entries {
+		if entry.Line != plan.Entries[i].Row.Line {
+			t.Errorf("row %d reports line %d", i, entry.Line)
+		}
+		if entry.State != plan.Entries[i].State.String() {
+			t.Errorf("row %d reports %q, the plan says %q", i, entry.State, plan.Entries[i].State)
+		}
+	}
+}
+
+// The issues are the same sentences, so an agent fixing what the report says is
+// fixing what a person would have been shown.
+func TestTheDryRunCarriesTheIssues(t *testing.T) {
+	plan := bind(t, "op,item,qty,at\nconsume,rice,10,Left Pantry\n")
+	report := importer.NewDryRun(plan, nil)
+
+	if len(report.Entries[0].Issues) == 0 {
+		t.Fatal("a blocked row reports no issues")
+	}
+	if got := report.Entries[0].Issues[0]; got != plan.Entries[0].Issues[0].String() {
+		t.Errorf("issue = %q, the plan says %q", got, plan.Entries[0].Issues[0])
+	}
+}
+
+// A row that would create something says so. An agent that sees this and did
+// not mean it has guessed at something permanent.
+func TestTheDryRunNamesWhatWouldBeCreated(t *testing.T) {
+	plan := bind(t, "op,item,qty,at,name,counting,unit,category\nnew item,,,,Cardamom,measured,g,Spices\n")
+	report := importer.NewDryRun(plan, nil)
+	if got := report.Entries[0].Creates; len(got) != 1 || !strings.Contains(got[0], "Cardamom") {
+		t.Errorf("creates = %v", got)
+	}
+}
+
+// It is readable by a program, which is the whole point of it being JSON.
+func TestTheDryRunIsValidJSON(t *testing.T) {
+	plan := bind(t, "op,item,qty,at\nacquire,Basmati Rice,100,Left Pantry\n")
+	var b strings.Builder
+	if err := importer.NewDryRun(plan, nil).WriteJSON(&b); err != nil {
+		t.Fatal(err)
+	}
+	var decoded importer.DryRun
+	if err := json.Unmarshal([]byte(b.String()), &decoded); err != nil {
+		t.Fatalf("not readable: %v", err)
+	}
+	if decoded.Ready != 1 {
+		t.Errorf("ready = %d after a round trip", decoded.Ready)
 	}
 }
