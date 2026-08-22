@@ -11,9 +11,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"home-management-system/internal/app"
+	"home-management-system/internal/command"
 	"home-management-system/internal/db"
+	"home-management-system/internal/importer"
 	"home-management-system/internal/ledger"
 	"home-management-system/internal/tui"
 )
@@ -31,6 +34,8 @@ func run() error {
 	checkpoint := flag.Bool("checkpoint", false, "record a replay checkpoint for every holding")
 	info := flag.Bool("info", false, "print database details and exit")
 	render := flag.String("render", "", "replay a .keys script and print each frame (for design review)")
+	dryRun := flag.Bool("dry-run", false, "with `import FILE`, print the resolved plan as JSON instead of reviewing it")
+	schemaFormat := flag.String("format", "prompt", "with `schema`, json or prompt")
 	width := flag.Int("width", 100, "terminal width for --render")
 	height := flag.Int("height", 30, "terminal height for --render")
 	colour := flag.Bool("color", false, "keep colour in --render output (pipe to less -R)")
@@ -93,10 +98,35 @@ func run() error {
 		return tui.RenderFile(ctx, ctrl, *render, os.Stdout, *width, *height, *colour)
 	}
 
+	// Flags after the positional argument, because `hms import plan.csv
+	// --dry-run` is how a person writes it and Go's flag package stops at the
+	// first non-flag. Pulling them out here is less surprising than telling
+	// everyone to put them first.
+	args, trailing := splitTrailingFlags(flag.Args())
+	if trailingFlags(trailing).has("dry-run") {
+		*dryRun = true
+	}
+	if format, ok := trailing["format"]; ok && format != "" {
+		*schemaFormat = format
+	}
+
+	// `hms schema` emits the vocabulary so an agent targets a fixed spec
+	// rather than a remembered one. It needs no database: the vocabulary is a
+	// property of the code, not of the house.
+	if len(args) >= 1 && args[0] == "schema" {
+		return writeSchema(*schemaFormat)
+	}
+
+	// `hms import FILE --dry-run` reports the plan as JSON, so an agent can
+	// iterate against exactly what a person would review.
+	if len(args) == 2 && args[0] == "import" && *dryRun {
+		return runDryRun(ctx, ctrl, args[1])
+	}
+
 	// `hms import FILE` opens the plan screen. It is a positional argument
 	// rather than a flag because it is a different thing to do, not a different
 	// way of browsing.
-	if args := flag.Args(); len(args) == 2 && args[0] == "import" {
+	if len(args) == 2 && args[0] == "import" {
 		model, err := tui.Import(ctx, ctrl, args[1])
 		if err != nil {
 			return err
@@ -106,6 +136,66 @@ func run() error {
 
 	// No flags: browse.
 	return tui.Run(ctx, ctrl)
+}
+
+// splitTrailingFlags separates positional arguments from flags written after
+// them, returning the flags as name -> value ("" for a bare boolean).
+func splitTrailingFlags(args []string) ([]string, map[string]string) {
+	var positional []string
+	flags := map[string]string{}
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "-") {
+			positional = append(positional, arg)
+			continue
+		}
+		name := strings.TrimLeft(arg, "-")
+		key, value, _ := strings.Cut(name, "=")
+		flags[key] = value
+	}
+	return positional, flags
+}
+
+// trailingFlags is a tiny type so a bare `--dry-run` reads as true.
+type trailingFlags map[string]string
+
+func (f trailingFlags) has(name string) bool { _, ok := f[name]; return ok }
+
+// writeSchema emits the command vocabulary.
+func writeSchema(format string) error {
+	schema := command.NewSchema()
+	if format == "json" {
+		return schema.WriteJSON(os.Stdout)
+	}
+	return schema.WritePrompt(os.Stdout)
+}
+
+// runDryRun binds a file and reports it, without a terminal and without
+// applying anything.
+//
+// An agent never applies anything. It produces a file; a person approves it.
+func runDryRun(ctx context.Context, ctrl app.Controller, path string) error {
+	rows, err := tui.ReadRows(path)
+	if err != nil {
+		return err
+	}
+	vocabulary, err := ctrl.Vocabulary(ctx)
+	if err != nil {
+		return err
+	}
+	plan := importer.Bind(ctx, vocabulary, path, rows)
+	return importer.NewDryRun(plan, describer{ctx: ctx, ctrl: ctrl}).WriteJSON(os.Stdout)
+}
+
+type describer struct {
+	ctx  context.Context
+	ctrl app.Controller
+}
+
+func (d describer) Describe(entry importer.Entry) string {
+	if entry.Command == nil {
+		return entry.AsWritten()
+	}
+	return d.ctrl.Describe(d.ctx, entry.Command)
 }
 
 // runVerify reports and never repairs. Silently correcting stored state would

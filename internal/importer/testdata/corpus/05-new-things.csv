@@ -1,0 +1,3 @@
+op,item,qty,at,name,counting,unit,category
+acquire,Cardamom,50g,Left Pantry,,,,
+new item,,,,Nutmeg,measured,g,Spices

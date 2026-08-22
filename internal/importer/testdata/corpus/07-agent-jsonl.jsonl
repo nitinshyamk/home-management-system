@@ -1,0 +1,3 @@
+{"op":"acquire","item":"Basmati Rice","qty":"2bag","at":"Left Pantry","from":"shop"}
+{"op":"consume","item":"Turmeric","qty":"20g","at":"Left Pantry","reason":"curry"}
+{"op":"acquire","item":"Turmeric","qty":100,"at":"Left Pantry"}
