@@ -86,6 +86,8 @@ func (m Model) handleImport(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m.applyImport()
 	case "enter":
 		return m.settleRow()
+	case "e":
+		return m.fixRow()
 	}
 	next, handled := m.plan.Update(msg)
 	m.plan = next
@@ -153,6 +155,40 @@ func (m Model) settleRow() (tea.Model, tea.Cmd, bool) {
 		// keystroke rather than something the screen did on your behalf.
 		return m.acceptSuggestions(entry, at), nil, true
 	}
+}
+
+// fixRow opens an inline field on whatever is stopping the row.
+//
+// At the row, like every other field in this interface. A blocked row is
+// usually one word away from working, and the word is right there.
+func (m Model) fixRow() (tea.Model, tea.Cmd, bool) {
+	entry, at, ok := m.plan.Current()
+	if !ok {
+		return m, nil, true
+	}
+	field, value, fixable := entry.Fixable()
+	if !fixable {
+		return m.refuse("nothing on this row is one field away -- d drops it"), nil, true
+	}
+	m.settling = at
+	m.editor = m.editor.
+		OpenFor("fix", importer.FieldKind(field), int64(at), field, value).
+		SetWidth(m.width)
+	return m.suggestForPrompt(), m.loadCandidates(), true
+}
+
+// applyFix takes the corrected text and re-binds the row.
+func (m Model) applyFix() (tea.Model, tea.Cmd, bool) {
+	field, value := m.editor.Label(), strings.TrimSpace(m.editor.Value())
+	at := m.settling
+	m.editor = m.editor.Close()
+	m.settling = -1
+
+	entry, _, ok := m.plan.Current()
+	if !ok || at < 0 {
+		return m, nil, true
+	}
+	return m.rebindRow(at, importer.Correct(entry, field, value)), nil, true
 }
 
 // acceptSuggestions rewrites the row with what the resolver suggested and binds

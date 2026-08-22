@@ -235,3 +235,124 @@ acquire,Cardamom,50,Shelf 1
 	// Not even the ready row, because it is all or nothing.
 	s.OnHand(rice, 500*domain.Scale)
 }
+
+// TestFixingARowInPlace is what the walkthrough asked for and nothing did.
+//
+// A blocked row is usually one word away from working, and the word is right
+// there -- so the field opens AT the row, like every other field in this
+// interface.
+func TestFixingARowInPlace(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, `op,item,qty,at,reason
+consume,Basmati Rice,lots,Shelf 1,dinner
+`))
+	s.ShowsText("1 blocked")
+
+	s.Send(sim.Press("e"))
+	s.ShowsText("qty")  // the field that is wrong
+	s.ShowsText("lots") // pre-filled with what it holds
+	s.ShowsText("enter fix")
+
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("20"))
+	s.Send(sim.Enter)
+
+	s.ShowsText("1 ready")
+	s.ShowsText("0 blocked")
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 480*domain.Scale)
+}
+
+// A corrected row goes through Bind exactly as it would have if it had arrived
+// that way. A fixed row and a right-first-time row must not take different
+// paths, or only one of them is the path everything else is tested against.
+func TestAFixedRowIsRefusedLikeAnyOther(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at,reason
+consume,Basmati Rice,lots,Shelf 1,dinner
+`))
+	s.Send(sim.Press("e"))
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("also nonsense"))
+	s.Send(sim.Enter)
+
+	s.ShowsText("1 blocked")
+	s.ShowsText("no number in it")
+}
+
+// Escaping a fix leaves the row exactly as it was.
+func TestAbandoningAFixChangesNothing(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at,reason
+consume,Basmati Rice,lots,Shelf 1,dinner
+`))
+	s.Send(sim.Press("e"))
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("20"))
+	s.Send(sim.Esc)
+
+	s.ShowsText("1 blocked")
+	s.ShowsText("lots")
+}
+
+// A field that names something completes, through the same completer as
+// everywhere else.
+func TestFixingANameCompletes(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at
+acquire,Basmati Rice,100,Nowhere At All
+`))
+	s.Send(sim.Press("e"))
+	s.ShowsText("at")
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("shel"))
+	s.ShowsText("Shelf 1")
+	s.ShowsText("tab to take it")
+
+	s.Send(sim.Tab)
+	s.Send(sim.Enter)
+	s.ShowsText("1 ready")
+}
+
+// While a field is open, the plan's own keys are not the plan's. `ctrl+u` is
+// the table's page-up and `enter` settles a row -- and both were eating
+// keystrokes meant for the field, because the plan saw them first.
+func TestThePlanDoesNotEatKeysMeantForTheField(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at,reason
+consume,Basmati Rice,lots,Shelf 1,dinner
+`))
+	rice := s.HasItem("Basmati Rice")
+	s.Send(sim.Press("e"))
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("5"))
+	s.Send(sim.Enter)
+
+	// enter saved the field rather than settling the row underneath it, and
+	// ctrl+u cleared the field rather than paging the table -- which shows in
+	// the AMOUNT: an uncleared field would have made "lots5", and a paged
+	// table would have left "lots".
+	s.ShowsText("1 ready")
+	s.HidesText("enter fix")
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 495*domain.Scale)
+}
+
+// A row that is not one field away says so rather than opening a field that
+// cannot help.
+func TestARowThatIsNotOneFieldAwaySaysSo(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at
+frobnicate,Basmati Rice,100,Shelf 1
+`))
+	s.Send(sim.Press("e"))
+	s.ShowsText("d drops it")
+	s.HidesText("enter fix")
+}

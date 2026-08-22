@@ -437,13 +437,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if next, cmd, handled := m.handleConfirm(msg); handled {
 			return next, cmd
 		}
-		if next, cmd, handled := m.handleImport(msg); handled {
-			return next, cmd
-		}
 		if next, cmd, handled := m.handleEditor(msg); handled {
 			return next, cmd
 		}
 		if next, cmd, handled := m.handleCreator(msg); handled {
+			return next, cmd
+		}
+		// After the field and the panel, because they are INSIDE it. Putting
+		// the plan first meant its table ate ctrl+u while someone was clearing
+		// a field, and enter settled the row instead of saving what they had
+		// typed into it.
+		if next, cmd, handled := m.handleImport(msg); handled {
 			return next, cmd
 		}
 		if next, cmd, handled := m.handleOmnibox(msg); handled {
@@ -609,10 +613,13 @@ func (m Model) View() string {
 		// And a panel opened for one of its rows sits ON the plan, not on the
 		// house behind it -- otherwise settling a row shows you a screen that
 		// has nothing to do with what you are settling.
-		height := m.height - 2 - len(m.problemLines()) - m.creator.Height()
+		height := m.height - 2 - len(m.problemLines()) - m.creator.Height() - m.editor.Height()
 		parts := []string{m.plan.SetSize(m.width, height).View()}
 		if m.creator.IsOpen() {
 			parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
+		}
+		if m.editor.IsOpen() {
+			parts = append(parts, m.editor.SetWidth(m.width).Lines()...)
 		}
 		for _, line := range m.problemLines() {
 			parts = append(parts, errorStyle.Render(line))
