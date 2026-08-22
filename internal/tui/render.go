@@ -37,13 +37,18 @@ func Render(ctx context.Context, ctrl app.Controller, script io.Reader, out io.W
 	// have no plain-text form at all -- row banding, the selection underline --
 	// which otherwise could only be judged by running the application and
 	// describing what you saw.
-	if !colour {
-		lipgloss.SetColorProfile(termenv.Ascii)
-	} else {
-		lipgloss.SetColorProfile(termenv.TrueColor)
-	}
+	setProfile(colour)
 
-	m := New(ctx, ctrl)
+	return renderModel(New(ctx, ctrl), steps, out, width, height)
+}
+
+// renderModel replays a script against a model that is already built.
+//
+// Split out so the IMPORT screen replays through the same loop as every other
+// screen. It had no way in before, which is why it was the one screen no
+// review frame ever showed -- and the one whose row editing was broken in a
+// way a person hit on their first keystroke.
+func renderModel(m Model, steps []step, out io.Writer, width, height int) error {
 	var model tea.Model = m
 	run := func(cmd tea.Cmd) {
 		for cmd != nil {
@@ -97,6 +102,15 @@ type step struct {
 //
 // A file rather than a flag, because a review script is a thing that gets
 // checked in next to the walkthrough that explains it.
+// setProfile picks plain text or colour for the frames.
+func setProfile(colour bool) {
+	if colour {
+		lipgloss.SetColorProfile(termenv.TrueColor)
+		return
+	}
+	lipgloss.SetColorProfile(termenv.Ascii)
+}
+
 func parseScript(r io.Reader) ([]step, error) {
 	var steps []step
 	scanner := bufio.NewScanner(r)
@@ -170,11 +184,54 @@ func keyByName(name string) (tea.KeyMsg, bool) {
 		return tea.KeyMsg{Type: tea.KeyBackspace}, true
 	case "ctrl+f":
 		return tea.KeyMsg{Type: tea.KeyCtrlF}, true
+	case "ctrl+w":
+		return tea.KeyMsg{Type: tea.KeyCtrlW}, true
+	case "ctrl+a":
+		return tea.KeyMsg{Type: tea.KeyCtrlA}, true
+	case "ctrl+e":
+		return tea.KeyMsg{Type: tea.KeyCtrlE}, true
+	case "left":
+		return tea.KeyMsg{Type: tea.KeyLeft}, true
+	case "right":
+		return tea.KeyMsg{Type: tea.KeyRight}, true
+	case "home":
+		return tea.KeyMsg{Type: tea.KeyHome}, true
+	case "end":
+		return tea.KeyMsg{Type: tea.KeyEnd}, true
 	}
 	if len([]rune(name)) == 1 {
 		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(name)}, true
 	}
 	return tea.KeyMsg{}, false
+}
+
+// RenderImport replays a script against the plan screen for a file, so the
+// highest-stakes screen in the system can be reviewed from frames like the
+// rest of them.
+func RenderImport(
+	ctx context.Context,
+	ctrl app.Controller,
+	file, script string,
+	out io.Writer,
+	width, height int,
+	colour bool,
+) error {
+	f, err := os.Open(script)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	steps, err := parseScript(f)
+	if err != nil {
+		return err
+	}
+	setProfile(colour)
+
+	m, err := Import(ctx, ctrl, file)
+	if err != nil {
+		return err
+	}
+	return renderModel(m, steps, out, width, height)
 }
 
 // RenderFile is Render over a script on disk.

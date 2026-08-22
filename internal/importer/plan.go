@@ -345,52 +345,26 @@ func AcceptSuggestions(entry Entry) Entry {
 	return entry
 }
 
-// Fixable is the field a person would edit to unstick a row, and what it
-// currently holds.
+// AsLine renders a row as the command line a person edits.
 //
-// The FIRST issue's field: a row is settled one problem at a time, and the
-// first is the one the reader is looking at. Reporting all of them and then
-// editing an arbitrary one would be two different orders in one screen.
-func (e Entry) Fixable() (field, value string, ok bool) {
-	if len(e.Issues) == 0 {
-		return "", "", false
-	}
-	field = e.Issues[0].Field
-	// A multi-field issue -- unknown columns -- names them all at once and is
-	// not one field to edit.
-	if strings.Contains(field, ",") || field == "op" {
-		return "", "", false
-	}
-	return field, e.Row.Raw.Fields[field], true
-}
+// The whole row, not one field of it. A row on this screen is a COMMAND -- the
+// same sentence a CSV column set and a typed `:` line both spell -- so editing
+// it means editing that sentence. An earlier version opened only the field of
+// the first issue, which meant `e` refused on every row that HAD no issue:
+// every ready row, and every row whose only business was creating something.
+// That is most of a typical receipt, and the key appeared broken.
+func (e Entry) AsLine() string { return command.Line(e.Row.Raw) }
 
-// Correct rewrites one field of a row, for a person fixing it in place.
+// Rewrite replaces a row's text with a re-parsed line.
 //
 // It writes the row's TEXT rather than reaching past it to an identifier, so
 // the corrected row goes through Bind exactly as it would have if it had
 // arrived that way. A fixed row and a right-first-time row must not take
 // different paths, or only one of them is the path everything else is tested
 // against.
-func Correct(entry Entry, field, value string) Entry {
-	if entry.Row.Raw.Fields == nil {
-		entry.Row.Raw.Fields = map[string]string{}
-	}
-	if strings.TrimSpace(value) == "" {
-		delete(entry.Row.Raw.Fields, field)
-	} else {
-		entry.Row.Raw.Fields[field] = strings.TrimSpace(value)
-	}
+func Rewrite(entry Entry, raw command.RawCommand) Entry {
+	entry.Row.Raw = raw
 	return entry
-}
-
-// FieldKind is what a named field refers to, or "" when it is free text.
-// Exported so an editor can offer the right completions for it.
-func FieldKind(name string) string {
-	kinds := fieldKinds(name)
-	if len(kinds) != 1 {
-		return ""
-	}
-	return string(kinds[0])
 }
 
 // Settle re-binds one row after its text has been corrected.

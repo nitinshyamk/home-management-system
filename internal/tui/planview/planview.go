@@ -68,6 +68,16 @@ func (m Model) SetSize(width, height int) Model {
 	return m
 }
 
+// SetOverlay draws lines immediately after the cursor's row, which is how a
+// field opens ON the row it belongs to rather than under the whole plan.
+//
+// Under the plan is not inline; it is a second place to look, and on a screen
+// where the row you are correcting is the whole point it is the wrong place.
+func (m Model) SetOverlay(lines []string) Model {
+	m.tbl = m.tbl.SetOverlay(lines)
+	return m
+}
+
 // Plan is the file as it now stands.
 func (m Model) Plan() importer.Plan { return m.plan }
 

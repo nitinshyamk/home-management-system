@@ -613,13 +613,17 @@ func (m Model) View() string {
 		// And a panel opened for one of its rows sits ON the plan, not on the
 		// house behind it -- otherwise settling a row shows you a screen that
 		// has nothing to do with what you are settling.
-		height := m.height - 2 - len(m.problemLines()) - m.creator.Height() - m.editor.Height()
-		parts := []string{m.plan.SetSize(m.width, height).View()}
+		// The field goes INTO the plan, spliced after the row it belongs to --
+		// the same overlay the browse views use, for the same reason.
+		//
+		// The creation panel does not: it is about a thing that does not exist
+		// yet rather than about the row's text, and it is tall enough that
+		// splicing it would push the plan off the screen it is confirming.
+		height := m.height - 2 - len(m.problemLines()) - m.creator.Height()
+		plan := m.plan.SetSize(m.width, height).SetOverlay(m.editor.SetWidth(m.width).Lines())
+		parts := []string{plan.View()}
 		if m.creator.IsOpen() {
 			parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
-		}
-		if m.editor.IsOpen() {
-			parts = append(parts, m.editor.SetWidth(m.width).Lines()...)
 		}
 		for _, line := range m.problemLines() {
 			parts = append(parts, errorStyle.Render(line))
