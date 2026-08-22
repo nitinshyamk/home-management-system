@@ -1,0 +1,3 @@
+{"op":"acquire","item":"Basmati Rice","qty":"2bag","at":"Left Pantry","from":"corner shop"}
+{"op":"consume","item":"rice","qty":"100g","reason":"dinner"}
+{"op":"new item","name":"Turmeric","counting":"measured","unit":"g","package":2000,"category":"Spices"}

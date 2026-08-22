@@ -1,0 +1,4 @@
+op,item,qty,at,from,reason,name,counting,unit,package,category
+acquire,Basmati Rice,2bag,Left Pantry,corner shop,,,,,,
+consume,rice,100g,,,dinner,,,,,
+new item,,,,,,Turmeric,measured,g,2000,Spices
