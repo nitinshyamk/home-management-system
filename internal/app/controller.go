@@ -41,8 +41,10 @@ type Controller interface {
 	// The write surface. A Plan holds an unexported Batch, so the interface can
 	// show what will happen and commit it without ever being able to assemble a
 	// write of its own.
+	Vocabulary(ctx context.Context) (*command.Vocabulary, error)
 	BindLine(ctx context.Context, line string, subject command.Subject) (command.BindResult, error)
 	PlanCommand(ctx context.Context, cmd command.Command) (Plan, error)
+	PlanAll(ctx context.Context, commands []command.Command) (Plan, int, error)
 	ApplyPlan(ctx context.Context, plan Plan) error
 	Describe(ctx context.Context, cmd command.Command) string
 	Nudges(ctx context.Context) ([]NudgeRow, error)

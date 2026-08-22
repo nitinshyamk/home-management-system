@@ -3,6 +3,7 @@ package command_test
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"home-management-system/internal/command"
@@ -121,4 +122,26 @@ func join(xs []string) string {
 		s += x
 	}
 	return s
+}
+
+// TestEveryCreatingCommandSaysSo pins the declaration, because it cannot be
+// inferred: a `new …` command BINDS perfectly well -- its name is text, not a
+// reference -- so nothing about the result says a thing is about to exist.
+//
+// A plan screen that waited for a failure to tell it would let creation
+// through silently, which is the one thing an import must never do.
+func TestEveryCreatingCommandSaysSo(t *testing.T) {
+	for _, c := range command.AllCommands {
+		spec, ok := command.SpecOf(c.Op())
+		if !ok {
+			continue
+		}
+		creates := strings.HasPrefix(string(c.Op()), "new ")
+		if creates && spec.Creates == "" {
+			t.Errorf("%q creates something and does not say so", c.Op())
+		}
+		if !creates && spec.Creates != "" {
+			t.Errorf("%q says it creates a %s and its name says otherwise", c.Op(), spec.Creates)
+		}
+	}
 }

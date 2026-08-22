@@ -16,11 +16,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"home-management-system/internal/app"
+	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/creator"
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/omnibox"
+	"home-management-system/internal/tui/planview"
 	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/tree"
 )
@@ -86,24 +88,10 @@ func wrap(text string, width int) []string {
 	return lines
 }
 
-// humanise strips the package prefixes Go errors accumulate on the way up.
-//
-// "ops: not enough on hand: only 20 g of Ancho Chile here" is a sentence
-// wearing a call stack. The layers are useful in a log and are noise to a
-// person, who wants the last clause -- the one that says what actually
-// happened.
-func humanise(text string) string {
-	for _, prefix := range []string{
-		"ops: ", "command: ", "app: ", "tui: ",
-		"ledger: ", "origin: ", "annotate: ", "query: ", "db: ",
-		"invalid request: ", "cannot read line: ", "cannot read value: ",
-	} {
-		for strings.HasPrefix(text, prefix) {
-			text = strings.TrimPrefix(text, prefix)
-		}
-	}
-	return text
-}
+// humanise defers to command.Humanise, which is where the list lives: an
+// importer, a plan screen, and this all render the same errors, and three
+// copies of the list would drift.
+func humanise(text string) string { return command.Humanise(text) }
 
 // Model is the Bubbletea model.
 type Model struct {
@@ -151,6 +139,14 @@ type Model struct {
 	// yanked is a row waiting for a p. pendingD is the first d of a dd.
 	yanked   *app.HoldingRow
 	pendingD bool
+
+	// The import flow. importing swaps the whole screen for the plan review,
+	// because a file proposing a batch of changes is not something to look at
+	// alongside the house -- it is the only thing worth looking at until it is
+	// settled. settling is the row a creation panel was opened for, or -1.
+	importing bool
+	plan      planview.Model
+	settling  int
 	// holdingIDs parallels rows in the Holdings view, so Enter knows what was
 	// selected without the rendering layer carrying domain types.
 	holdingIDs []domain.HoldingID
@@ -166,11 +162,12 @@ type Model struct {
 func New(ctx context.Context, ctrl app.Controller) Model {
 	return Model{
 		ctx: ctx, ctrl: ctrl, view: viewHoldings,
-		table:   table.New(columnsFor(viewHoldings)),
-		box:     omnibox.New(),
-		editor:  editor.New(),
-		creator: creator.New(),
-		jump:    table.New(jumpColumns).Fixed(),
+		table:    table.New(columnsFor(viewHoldings)),
+		box:      omnibox.New(),
+		editor:   editor.New(),
+		creator:  creator.New(),
+		settling: -1,
+		jump:     table.New(jumpColumns).Fixed(),
 	}
 }
 
@@ -386,6 +383,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.status = ""
 		return m, nil
 
+	case importedMsg:
+		m.problem = nil
+		m.importing = false
+		// Said through the load rather than before it, because a loadedMsg
+		// carries the view's own status and would otherwise overwrite the only
+		// report a whole import ever makes.
+		m.status = fmt.Sprintf("applied %d rows in one transaction", msg.rows)
+		m.view = viewHoldings
+		return m, m.reloadKeepingStatus()
+
 	case appliedMsg:
 		m.problem = nil
 		// The panel closes only once something was actually created. Escaping
@@ -393,6 +400,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// it, which is what makes the confirmation a step rather than a
 		// dead end.
 		m.creator = m.creator.Close()
+		// And when it was opened FOR a row of an import, that row is re-bound
+		// now that the thing it named exists.
+		if m.importing && m.settling >= 0 {
+			at := m.settling
+			m.settling = -1
+			entry, _, _ := m.plan.Current()
+			m = m.rebindRow(at, entry)
+			return m, nil
+		}
 		// Reload, because something changed. The list a person is looking at
 		// must not disagree with the house.
 		m.status = msg.summary
@@ -419,6 +435,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// contains it, so esc leaves exactly one -- never two, and never
 		// depending on how you got there.
 		if next, cmd, handled := m.handleConfirm(msg); handled {
+			return next, cmd
+		}
+		if next, cmd, handled := m.handleImport(msg); handled {
 			return next, cmd
 		}
 		if next, cmd, handled := m.handleEditor(msg); handled {
@@ -580,6 +599,25 @@ func (m Model) View() string {
 		// would suggest it is being searched, which is the confusion between
 		// the two modes that this substage exists to avoid.
 		body = m.jump.View()
+	}
+
+	if m.importing && m.confirm == nil {
+		// The plan REPLACES the house. A file proposing a batch of changes is
+		// not something to look at alongside what you own; it is the only thing
+		// worth looking at until it is settled.
+		//
+		// And a panel opened for one of its rows sits ON the plan, not on the
+		// house behind it -- otherwise settling a row shows you a screen that
+		// has nothing to do with what you are settling.
+		height := m.height - 2 - len(m.problemLines()) - m.creator.Height()
+		parts := []string{m.plan.SetSize(m.width, height).View()}
+		if m.creator.IsOpen() {
+			parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
+		}
+		for _, line := range m.problemLines() {
+			parts = append(parts, errorStyle.Render(line))
+		}
+		return strings.Join(parts, "\n")
 	}
 
 	parts := []string{m.header(), body}
@@ -955,6 +993,15 @@ func max(a, b int) int {
 }
 
 // Run starts the program.
+// RunModel starts the interface on a model that is already set up, which is
+// how an import arrives: the file is read and bound before the terminal is
+// touched, so a file that cannot be read fails as a command-line error rather
+// than as a blank screen.
+func RunModel(m Model) error {
+	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
+	return err
+}
+
 func Run(ctx context.Context, ctrl app.Controller) error {
 	program := tea.NewProgram(New(ctx, ctrl), tea.WithAltScreen())
 	_, err := program.Run()

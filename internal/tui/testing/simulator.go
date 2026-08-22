@@ -87,6 +87,19 @@ func New(t *testing.T) *Simulator {
 	return s
 }
 
+// Import swaps the Simulator onto an import plan for a file, so the review
+// screen is driven by the same keystrokes-in, database-out harness as
+// everything else.
+func (s *Simulator) Import(path string) {
+	s.t.Helper()
+	model, err := tui.Import(s.ctx, s.ctrl, path)
+	if err != nil {
+		s.t.Fatalf("import %s: %v", path, err)
+	}
+	s.model = model
+	s.resize(Width, Height)
+}
+
 // Planner and Executor seed state through the operations layer.
 func (s *Simulator) Planner() *ops.Planner    { return s.pl }
 func (s *Simulator) Executor() *ops.Executor  { return s.ex }

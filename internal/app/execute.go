@@ -102,6 +102,27 @@ func (p Plan) Merge(other Plan) Plan {
 	return p
 }
 
+// PlanAll works out a whole batch of Commands as ONE unit of work, and
+// attributes a refusal to the command that caused it.
+//
+// This is what makes an import's all-or-nothing honest. Planning the commands
+// one at a time and applying them together would let a row that cannot work --
+// consuming from something the batch is about to create empty -- reach the
+// transaction, where its failure rolls back everything and names nothing. Here
+// the refusal arrives with the index of the row that caused it, before anything
+// is applied and before a person is asked to approve it.
+func (c *controller) PlanAll(ctx context.Context, commands []command.Command) (Plan, int, error) {
+	var combined Plan
+	for i, cmd := range commands {
+		plan, err := c.PlanCommand(ctx, cmd)
+		if err != nil {
+			return Plan{}, i, err
+		}
+		combined = combined.Merge(plan)
+	}
+	return combined, -1, nil
+}
+
 // ApplyPlan commits it, as one unit of work.
 func (c *controller) ApplyPlan(ctx context.Context, p Plan) error {
 	if p.Empty() {
@@ -109,6 +130,17 @@ func (c *controller) ApplyPlan(ctx context.Context, p Plan) error {
 	}
 	_, err := c.executor.Execute(ctx, p.batch)
 	return err
+}
+
+// Vocabulary is everything Bind needs: the names, and the facts that decide
+// what a quantity means.
+//
+// Loaded once and used for a whole file, because every row of a receipt must be
+// bound against the SAME picture of the world -- a row that resolved
+// differently from the row above it would make an all-or-nothing import a lie
+// about what it applied.
+func (c *controller) Vocabulary(ctx context.Context) (*command.Vocabulary, error) {
+	return command.LoadVocabulary(ctx, c.read)
 }
 
 // BindLine turns a typed line into a Command, filling the subject from the

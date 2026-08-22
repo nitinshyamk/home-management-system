@@ -63,6 +63,16 @@ type Spec struct {
 	Op     Op
 	What   string
 	Fields []Field
+
+	// Creates names what this command brings into existence, or "" when it
+	// brings nothing.
+	//
+	// Declared rather than inferred, because it cannot be inferred: `new item`
+	// BINDS perfectly well -- its name is text, not a reference -- so nothing
+	// about the bind result says a thing is about to exist. A plan screen that
+	// waited for a failure to tell it would let creation through silently,
+	// which is the one thing an import must never do.
+	Creates domain.EntityKind
 }
 
 // Field returns the named field, if the command has one.
@@ -124,7 +134,7 @@ var specs = []Spec{
 	// -----------------------------------------------------------------------
 	// Origination
 	// -----------------------------------------------------------------------
-	{Op: OpNewItem, What: "add a kind of thing you keep", Fields: []Field{
+	{Op: OpNewItem, What: "add a kind of thing you keep", Creates: domain.EntityItem, Fields: []Field{
 		{Key: "name", Type: FieldText, What: "what it is called", Required: true, Positional: true},
 		{Key: "counting", Type: FieldChoice, What: "how it is counted -- PERMANENT",
 			Required: true, Choices: []string{"unique", "pile", "measured"}},
@@ -137,17 +147,17 @@ var specs = []Spec{
 		name("category", "where to file it", true, false, domain.EntityCategory),
 		text("notes", "anything worth knowing about it"),
 	}},
-	{Op: OpNewCategory, What: "add a classification", Fields: []Field{
+	{Op: OpNewCategory, What: "add a classification", Creates: domain.EntityCategory, Fields: []Field{
 		{Key: "name", Type: FieldText, What: "what it is called", Required: true, Positional: true},
 		name("under", "the classification it belongs to", false, false, domain.EntityCategory),
 		text("describe", "what belongs in it"),
 	}},
-	{Op: OpNewLocation, What: "add a place", Fields: []Field{
+	{Op: OpNewLocation, What: "add a place", Creates: domain.EntityLocation, Fields: []Field{
 		{Key: "name", Type: FieldText, What: "what it is called", Required: true, Positional: true},
 		name("under", "the place it is inside", false, false, domain.EntityLocation),
 		text("describe", "what it is"),
 	}},
-	{Op: OpNewHolding, What: "keep a thing somewhere, at nothing", Fields: []Field{
+	{Op: OpNewHolding, What: "keep a thing somewhere, at nothing", Creates: domain.EntityHolding, Fields: []Field{
 		name("item", "what is kept there", true, true, domain.EntityItem),
 		name("at", "where it is kept", true, false, domain.EntityLocation),
 		{Key: "basis", Type: FieldChoice, What: "counted as sealed packages or as contents",

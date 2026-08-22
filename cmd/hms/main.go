@@ -93,6 +93,17 @@ func run() error {
 		return tui.RenderFile(ctx, ctrl, *render, os.Stdout, *width, *height, *colour)
 	}
 
+	// `hms import FILE` opens the plan screen. It is a positional argument
+	// rather than a flag because it is a different thing to do, not a different
+	// way of browsing.
+	if args := flag.Args(); len(args) == 2 && args[0] == "import" {
+		model, err := tui.Import(ctx, ctrl, args[1])
+		if err != nil {
+			return err
+		}
+		return tui.RunModel(model)
+	}
+
 	// No flags: browse.
 	return tui.Run(ctx, ctrl)
 }

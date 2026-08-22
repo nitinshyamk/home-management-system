@@ -126,6 +126,18 @@ func (m Model) Open(kind Kind, parent string) Model {
 	return m
 }
 
+// WithName pre-fills the name, for a panel opened because a row named
+// something that is not there yet. Retyping a name the file already carries is
+// how a receipt ends up with a second spelling of one thing.
+func (m Model) WithName(name string) Model {
+	for i := range m.fields {
+		if m.fields[i].key == "name" {
+			m.fields[i].value = name
+		}
+	}
+	return m
+}
+
 func (m Model) IsOpen() bool { return m.open }
 func (m Model) Kind() Kind   { return m.kind }
 func (m Model) Close() Model { m.open = false; return m }

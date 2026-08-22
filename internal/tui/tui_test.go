@@ -95,6 +95,11 @@ func (f *fakeController) SearchIndex(context.Context) (*resolve.Index, error) {
 // The write surface. The fake records what it was ASKED to do and does none of
 // it, which is what lets TestTheUIMakesNoWrites assert on the calls a browse
 // keystroke did not make. Anything that actually writes uses the Simulator.
+func (f *fakeController) Vocabulary(context.Context) (*command.Vocabulary, error) {
+	f.calls = append(f.calls, "Vocabulary")
+	return command.NewVocabulary(resolve.NewIndex(nil), nil, nil, nil), nil
+}
+
 func (f *fakeController) BindLine(_ context.Context, line string, subject command.Subject) (command.BindResult, error) {
 	f.calls = append(f.calls, "BindLine")
 	f.boundLine, f.boundSubject = line, subject
@@ -107,6 +112,11 @@ func (f *fakeController) BindLine(_ context.Context, line string, subject comman
 func (f *fakeController) PlanCommand(context.Context, command.Command) (app.Plan, error) {
 	f.calls = append(f.calls, "PlanCommand")
 	return f.plan, f.planErr
+}
+
+func (f *fakeController) PlanAll(_ context.Context, commands []command.Command) (app.Plan, int, error) {
+	f.calls = append(f.calls, "PlanAll")
+	return f.plan, -1, f.planErr
 }
 
 func (f *fakeController) ApplyPlan(context.Context, app.Plan) error {
