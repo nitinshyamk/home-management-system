@@ -141,15 +141,24 @@ func run() error {
 // splitTrailingFlags separates positional arguments from flags written after
 // them, returning the flags as name -> value ("" for a bare boolean).
 func splitTrailingFlags(args []string) ([]string, map[string]string) {
+	// The flags that take a value, so `--format json` is one flag and not a
+	// flag plus a stray word. There is no way to know this from the text: a
+	// bare `--dry-run` and a `--format` awaiting its value look identical.
+	takesValue := map[string]bool{"format": true, "width": true, "height": true, "db-path": true}
+
 	var positional []string
 	flags := map[string]string{}
-	for _, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		if !strings.HasPrefix(arg, "-") {
 			positional = append(positional, arg)
 			continue
 		}
-		name := strings.TrimLeft(arg, "-")
-		key, value, _ := strings.Cut(name, "=")
+		key, value, joined := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+		if !joined && takesValue[key] && i+1 < len(args) {
+			value = args[i+1]
+			i++
+		}
 		flags[key] = value
 	}
 	return positional, flags
