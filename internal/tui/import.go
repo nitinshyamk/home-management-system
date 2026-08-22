@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"home-management-system/internal/app"
+	"home-management-system/internal/command"
 	"home-management-system/internal/importer"
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/creator"
@@ -87,11 +88,20 @@ func (m Model) handleImport(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case "enter":
 		return m.settleRow()
 	case "e":
-		return m.fixRow()
+		return m.editRow()
 	}
 	next, handled := m.plan.Update(msg)
 	m.plan = next
-	return m, nil, handled
+	if handled {
+		return m, nil, true
+	}
+	// Anything the plan does not want is still CONSUMED. Falling through put
+	// the browse keystrokes live underneath the review screen: `#` opened a
+	// count prompt, `c` a consume prompt, `dd` a retirement -- each against
+	// whatever the browse view had selected, which is not what the person is
+	// looking at. A review screen that can write outside its own plan is not a
+	// review screen.
+	return m, nil, true
 }
 
 // applyImport commits the whole file, or none of it.
@@ -157,29 +167,30 @@ func (m Model) settleRow() (tea.Model, tea.Cmd, bool) {
 	}
 }
 
-// fixRow opens an inline field on whatever is stopping the row.
+// editRow opens the row as the command line it is.
 //
-// At the row, like every other field in this interface. A blocked row is
-// usually one word away from working, and the word is right there.
-func (m Model) fixRow() (tea.Model, tea.Cmd, bool) {
+// Every row, whatever its state. A ready row is edited because the file said
+// something true but not what you meant; a blocked row because it said
+// something that does not resolve; a creating row because you would rather
+// name an item that exists than make a new one. Refusing on any of those makes
+// the key look broken, which is exactly how it looked.
+//
+// At the row, like every other field in this interface.
+func (m Model) editRow() (tea.Model, tea.Cmd, bool) {
 	entry, at, ok := m.plan.Current()
 	if !ok {
 		return m, nil, true
 	}
-	field, value, fixable := entry.Fixable()
-	if !fixable {
-		return m.refuse("nothing on this row is one field away -- d drops it"), nil, true
-	}
 	m.settling = at
 	m.editor = m.editor.
-		OpenFor("fix", importer.FieldKind(field), int64(at), field, value).
+		OpenFor("row", "", int64(at), "command", entry.AsLine()).
 		SetWidth(m.width)
 	return m.suggestForPrompt(), m.loadCandidates(), true
 }
 
-// applyFix takes the corrected text and re-binds the row.
-func (m Model) applyFix() (tea.Model, tea.Cmd, bool) {
-	field, value := m.editor.Label(), strings.TrimSpace(m.editor.Value())
+// applyRowEdit re-parses the edited line and binds the row again.
+func (m Model) applyRowEdit() (tea.Model, tea.Cmd, bool) {
+	line := strings.TrimSpace(m.editor.Value())
 	at := m.settling
 	m.editor = m.editor.Close()
 	m.settling = -1
@@ -188,7 +199,15 @@ func (m Model) applyFix() (tea.Model, tea.Cmd, bool) {
 	if !ok || at < 0 {
 		return m, nil, true
 	}
-	return m.rebindRow(at, importer.Correct(entry, field, value)), nil, true
+	raw, err := command.Parse(line)
+	if err != nil {
+		// The row keeps exactly what it had. Writing back a line that could not
+		// be read would leave a third state -- neither what the file said nor
+		// what was typed -- and nothing downstream could tell which it was
+		// looking at.
+		return m.refuse("%s", command.Humanise(err.Error())), nil, true
+	}
+	return m.rebindRow(at, importer.Rewrite(entry, raw)), nil, true
 }
 
 // acceptSuggestions rewrites the row with what the resolver suggested and binds

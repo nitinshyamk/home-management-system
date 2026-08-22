@@ -241,6 +241,20 @@ acquire,Cardamom,50,Shelf 1
 // A blocked row is usually one word away from working, and the word is right
 // there -- so the field opens AT the row, like every other field in this
 // interface.
+// left is n presses of the left arrow, for walking back into a line.
+func left(n int) []sim.Key {
+	out := make([]sim.Key, n)
+	for i := range out {
+		out[i] = sim.Left
+	}
+	return out
+}
+
+// The row opens as the command it is, and the cursor reaches the word that is
+// wrong without disturbing the rest of the line.
+//
+// Without a cursor this is not editing but retyping: the field only appended
+// and backspaced, so correcting "lots" meant destroying everything after it.
 func TestFixingARowInPlace(t *testing.T) {
 	s := sim.New(t)
 	kitchen(t, s)
@@ -251,18 +265,87 @@ consume,Basmati Rice,lots,Shelf 1,dinner
 	s.ShowsText("1 blocked")
 
 	s.Send(sim.Press("e"))
-	s.ShowsText("qty")  // the field that is wrong
-	s.ShowsText("lots") // pre-filled with what it holds
-	s.ShowsText("enter fix")
+	s.ShowsText("command")
+	// The whole row, as a line, quoted so it means what the row meant.
+	s.ShowsText(`consume "Basmati Rice" lots at "Shelf 1" reason dinner`)
 
-	s.Send(sim.CtrlU)
+	// Walk back over the tail, so the cursor sits just after the bad word,
+	// then replace only that word.
+	tail := ` at "Shelf 1" reason dinner`
+	s.Send(left(len(tail)))
+	s.Send(sim.Backspace, sim.Backspace, sim.Backspace, sim.Backspace)
 	s.Send(sim.Type("20"))
+	// The tail is still there, untouched, which is the whole point.
+	s.ShowsText(`consume "Basmati Rice" 20 at "Shelf 1" reason dinner`)
 	s.Send(sim.Enter)
 
 	s.ShowsText("1 ready")
 	s.ShowsText("0 blocked")
 	s.Send(sim.Press("A"))
 	s.OnHand(rice, 480*domain.Scale)
+}
+
+// ctrl+w takes back a token at a time, which is how the last word of a line
+// gets replaced.
+func TestCtrlWTakesBackOneTokenAtATime(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at,reason
+consume,Basmati Rice,lots,Shelf 1,dinner
+`))
+	s.Send(sim.Press("e"))
+	s.Send(sim.CtrlW)
+	s.ShowsText(`consume "Basmati Rice" lots at "Shelf 1" reason`)
+	s.HidesText(`reason dinner`)
+}
+
+// The bug this whole path was rebuilt for: `e` refused on any row that had no
+// blocking issue, which on a typical receipt is most of them -- every ready row
+// and every row whose only business is creating something. The cursor starts on
+// one, so the first `e` a person ever pressed was refused.
+func TestARowThatIsAlreadyReadyCanStillBeEdited(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, `op,item,qty,at,reason
+consume,Basmati Rice,10,Shelf 1,dinner
+`))
+	s.ShowsText("1 ready")
+
+	s.Send(sim.Press("e"))
+	s.HidesText("d drops it")
+	s.ShowsText(`consume "Basmati Rice" 10 at "Shelf 1" reason dinner`)
+
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("consume \"Basmati Rice\" 25 at \"Shelf 1\" reason dinner"))
+	s.Send(sim.Enter)
+	s.ShowsText("1 ready")
+
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 475*domain.Scale)
+}
+
+// A row whose only business is creating something has no issue to fix, and was
+// refused for the same reason a ready row was. Editing it is how you say "I
+// meant the thing that already exists".
+func TestARowThatWouldCreateCanBeEditedOntoAnExistingItem(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	cumin := s.HasItem("Cumin")
+	s.Import(receipt(t, `op,item,qty,at
+acquire,Cardamom,50,Shelf 1
+`))
+	s.ShowsText("1 need confirming")
+
+	s.Send(sim.Press("e"))
+	s.HidesText("d drops it")
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("acquire Cumin 50 at \"Shelf 1\""))
+	s.Send(sim.Enter)
+
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+	s.OnHand(cumin, 550*domain.Scale)
 }
 
 // A corrected row goes through Bind exactly as it would have if it had arrived
@@ -276,14 +359,33 @@ consume,Basmati Rice,lots,Shelf 1,dinner
 `))
 	s.Send(sim.Press("e"))
 	s.Send(sim.CtrlU)
-	s.Send(sim.Type("also nonsense"))
+	s.Send(sim.Type("consume \"Basmati Rice\" nonsense at \"Shelf 1\""))
 	s.Send(sim.Enter)
 
 	s.ShowsText("1 blocked")
 	s.ShowsText("no number in it")
 }
 
-// Escaping a fix leaves the row exactly as it was.
+// A line that is not a command at all leaves the row exactly as it was, rather
+// than writing back a third state that is neither what the file said nor what
+// was typed.
+func TestALineThatCannotBeReadLeavesTheRowAlone(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at,reason
+consume,Basmati Rice,lots,Shelf 1,dinner
+`))
+	s.Send(sim.Press("e"))
+	s.Send(sim.CtrlU)
+	s.Send(sim.Type("frobnicate the whole kitchen"))
+	s.Send(sim.Enter)
+
+	s.ShowsText("is not a command")
+	s.ShowsText("1 blocked")
+	s.ShowsText("lots")
+}
+
+// Escaping an edit leaves the row exactly as it was.
 func TestAbandoningAFixChangesNothing(t *testing.T) {
 	s := sim.New(t)
 	kitchen(t, s)
@@ -292,31 +394,52 @@ consume,Basmati Rice,lots,Shelf 1,dinner
 `))
 	s.Send(sim.Press("e"))
 	s.Send(sim.CtrlU)
-	s.Send(sim.Type("20"))
+	s.Send(sim.Type("consume \"Basmati Rice\" 20 at \"Shelf 1\""))
 	s.Send(sim.Esc)
 
 	s.ShowsText("1 blocked")
 	s.ShowsText("lots")
 }
 
-// A field that names something completes, through the same completer as
-// everywhere else.
-func TestFixingANameCompletes(t *testing.T) {
+// A token that names something completes, through the same completer as
+// everywhere else -- and against the field the PARSER says it is in, not a
+// second guess at which slot the cursor is sitting in.
+func TestEditingARowCompletesTheNameBeingTyped(t *testing.T) {
 	s := sim.New(t)
 	kitchen(t, s)
 	s.Import(receipt(t, `op,item,qty,at
 acquire,Basmati Rice,100,Nowhere At All
 `))
 	s.Send(sim.Press("e"))
-	s.ShowsText("at")
 	s.Send(sim.CtrlU)
-	s.Send(sim.Type("shel"))
+	s.Send(sim.Type("acquire \"Basmati Rice\" 100 at shel"))
 	s.ShowsText("Shelf 1")
 	s.ShowsText("tab to take it")
 
 	s.Send(sim.Tab)
 	s.Send(sim.Enter)
 	s.ShowsText("1 ready")
+}
+
+// The completion offered is for the slot the parser will read the token in.
+// "at" takes a Location, so an Item that also matches must not be offered --
+// which is the failure a completer with its own idea of the grammar produces.
+func TestCompletionFollowsTheFieldNotTheText(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at
+acquire,Basmati Rice,100,Shelf 1
+`))
+	s.Send(sim.Press("e"))
+	s.Send(sim.CtrlU)
+	// "c" in the ITEM slot offers the item.
+	s.Send(sim.Type("acquire Cum"))
+	s.ShowsText("Cumin")
+
+	s.Send(sim.CtrlU)
+	// The same letters in the AT slot offer no item, because `at` is a Location.
+	s.Send(sim.Type("acquire \"Basmati Rice\" 100 at Cum"))
+	s.HidesText("tab to take it")
 }
 
 // While a field is open, the plan's own keys are not the plan's. `ctrl+u` is
@@ -331,28 +454,40 @@ consume,Basmati Rice,lots,Shelf 1,dinner
 	rice := s.HasItem("Basmati Rice")
 	s.Send(sim.Press("e"))
 	s.Send(sim.CtrlU)
-	s.Send(sim.Type("5"))
+	s.Send(sim.Type("consume \"Basmati Rice\" 5 at \"Shelf 1\""))
 	s.Send(sim.Enter)
 
 	// enter saved the field rather than settling the row underneath it, and
 	// ctrl+u cleared the field rather than paging the table -- which shows in
-	// the AMOUNT: an uncleared field would have made "lots5", and a paged
-	// table would have left "lots".
+	// the AMOUNT: an uncleared field would have left the old line in place.
 	s.ShowsText("1 ready")
-	s.HidesText("enter fix")
+	s.HidesText("enter re-check the row")
 	s.Send(sim.Press("A"))
 	s.OnHand(rice, 495*domain.Scale)
 }
 
-// A row that is not one field away says so rather than opening a field that
-// cannot help.
-func TestARowThatIsNotOneFieldAwaySaysSo(t *testing.T) {
+// The review screen consumes every key it does not use.
+//
+// It used to fall through to the browse keystrokes, so `#` opened a count
+// prompt, `c` a consume prompt and `dd` a retirement -- each against whatever
+// the browse view had selected, which is not what the person is looking at. A
+// review screen that can write outside its own plan is not a review screen.
+func TestThePlanScreenDoesNotFallThroughToBrowseKeys(t *testing.T) {
 	s := sim.New(t)
 	kitchen(t, s)
-	s.Import(receipt(t, `op,item,qty,at
-frobnicate,Basmati Rice,100,Shelf 1
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, `op,item,qty,at,reason
+consume,Basmati Rice,10,Shelf 1,dinner
 `))
-	s.Send(sim.Press("e"))
-	s.ShowsText("d drops it")
-	s.HidesText("enter fix")
+
+	for _, key := range []string{"#", "c", "m", "t", "o", "O", "E", "v", "V", "y", "p"} {
+		s.Send(sim.Press(key))
+		s.HidesText("how much is actually there")
+		s.HidesText("new item")
+		s.ShowsText("enter settle")
+	}
+	s.Send(sim.Press("d"), sim.Press("d"))
+
+	// Nothing was applied, and nothing was written outside the plan.
+	s.OnHand(rice, 500*domain.Scale)
 }

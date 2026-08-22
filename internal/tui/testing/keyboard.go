@@ -36,6 +36,9 @@ var (
 	CtrlC     = Key{tea.KeyMsg{Type: tea.KeyCtrlC}}
 	CtrlD     = Key{tea.KeyMsg{Type: tea.KeyCtrlD}}
 	CtrlU     = Key{tea.KeyMsg{Type: tea.KeyCtrlU}}
+	CtrlW     = Key{tea.KeyMsg{Type: tea.KeyCtrlW}}
+	Home      = Key{tea.KeyMsg{Type: tea.KeyHome}}
+	End       = Key{tea.KeyMsg{Type: tea.KeyEnd}}
 	CtrlP     = Key{tea.KeyMsg{Type: tea.KeyCtrlP}}
 	CtrlN     = Key{tea.KeyMsg{Type: tea.KeyCtrlN}}
 	CtrlF     = Key{tea.KeyMsg{Type: tea.KeyCtrlF}}

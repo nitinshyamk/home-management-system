@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"home-management-system/internal/app"
@@ -91,13 +92,6 @@ func run() error {
 
 	ctrl := app.Open(conn)
 
-	// --render replays a key script and prints each frame, so a design review
-	// is about a specific screen rather than a description of one. It is the
-	// Simulator with a main() around it: same model, same keys, same loop.
-	if *render != "" {
-		return tui.RenderFile(ctx, ctrl, *render, os.Stdout, *width, *height, *colour)
-	}
-
 	// Flags after the positional argument, because `hms import plan.csv
 	// --dry-run` is how a person writes it and Go's flag package stops at the
 	// first non-flag. Pulling them out here is less surprising than telling
@@ -108,6 +102,26 @@ func run() error {
 	}
 	if format, ok := trailing["format"]; ok && format != "" {
 		*schemaFormat = format
+	}
+	if script, ok := trailing["render"]; ok && script != "" {
+		*render = script
+	}
+	// Written after the positional too, and previously dropped there, so
+	// `--width 104` silently produced a 100-column frame.
+	if n, ok := trailingFlags(trailing).number("width"); ok {
+		*width = n
+	}
+	if n, ok := trailingFlags(trailing).number("height"); ok {
+		*height = n
+	}
+
+	// --render replays a key script and prints each frame, so a design review
+	// is about a specific screen rather than a description of one. It is the
+	// Simulator with a main() around it: same model, same keys, same loop.
+	// The import screen has its own model, so it takes its own branch below;
+	// this one is the browse model.
+	if *render != "" && !(len(args) == 2 && args[0] == "import") {
+		return tui.RenderFile(ctx, ctrl, *render, os.Stdout, *width, *height, *colour)
 	}
 
 	// `hms schema` emits the vocabulary so an agent targets a fixed spec
@@ -126,6 +140,13 @@ func run() error {
 	// `hms import FILE` opens the plan screen. It is a positional argument
 	// rather than a flag because it is a different thing to do, not a different
 	// way of browsing.
+	// `hms import FILE --render script.keys` photographs the plan screen. The
+	// review frames for every other screen come from --render; this one had no
+	// way in, and it is the screen where being wrong costs the most.
+	if len(args) == 2 && args[0] == "import" && *render != "" {
+		return tui.RenderImport(ctx, ctrl, args[1], *render, os.Stdout, *width, *height, *colour)
+	}
+
 	if len(args) == 2 && args[0] == "import" {
 		model, err := tui.Import(ctx, ctrl, args[1])
 		if err != nil {
@@ -144,7 +165,7 @@ func splitTrailingFlags(args []string) ([]string, map[string]string) {
 	// The flags that take a value, so `--format json` is one flag and not a
 	// flag plus a stray word. There is no way to know this from the text: a
 	// bare `--dry-run` and a `--format` awaiting its value look identical.
-	takesValue := map[string]bool{"format": true, "width": true, "height": true, "db-path": true}
+	takesValue := map[string]bool{"format": true, "width": true, "height": true, "db-path": true, "render": true}
 
 	var positional []string
 	flags := map[string]string{}
@@ -168,6 +189,15 @@ func splitTrailingFlags(args []string) ([]string, map[string]string) {
 type trailingFlags map[string]string
 
 func (f trailingFlags) has(name string) bool { _, ok := f[name]; return ok }
+
+// number reads a numeric trailing flag, reporting whether it was given as one.
+func (f trailingFlags) number(name string) (int, bool) {
+	n, err := strconv.Atoi(f[name])
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return n, true
+}
 
 // writeSchema emits the command vocabulary.
 func writeSchema(format string) error {

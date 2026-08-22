@@ -98,6 +98,14 @@ func (s *Simulator) Import(path string) {
 	}
 	s.model = model
 	s.resize(Width, Height)
+
+	// Init(), because bubbletea runs it and therefore so does the real binary.
+	// Without it the browse view UNDERNEATH the plan stayed empty, so a
+	// keystroke that fell through to it found no row and quietly did nothing --
+	// and a test asserting "nothing happened" passed against a fixture that
+	// could not have shown it happening. In the real program that same
+	// keystroke found the loaded holdings and opened a prompt against them.
+	s.runCmd(s.model.Init())
 }
 
 // Planner and Executor seed state through the operations layer.

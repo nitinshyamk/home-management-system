@@ -32,7 +32,22 @@ type Model struct {
 	// suggestions complete a destination, offered and never applied. Empty for
 	// the fields that are free text.
 	suggestions []string
-	width       int
+	// cursor is where the next character goes, as a rune index into value.
+	//
+	// A field holding one short value barely needs one -- backspace reaches
+	// the mistake in a keystroke or two. A field holding a whole COMMAND LINE
+	// does: without it, correcting one word of "consume \"Basmati Rice\" lots
+	// at \"Shelf 1\"" means backspacing over everything after it, which is not
+	// editing so much as retyping.
+	cursor int
+	// keep is the part of the value a taken suggestion leaves alone.
+	//
+	// Empty for a field holding one value, where a completion replaces the
+	// whole thing. Non-empty when the field holds a LINE and only its last
+	// token is being completed -- the caller knows where that token starts,
+	// because only the caller knows the grammar.
+	keep  string
+	width int
 }
 
 var (
@@ -62,15 +77,16 @@ func (m Model) Open(kind string, subject int64, label, current string) Model {
 func (m Model) OpenFor(purpose, kind string, subject int64, label, current string) Model {
 	m.open, m.purpose, m.kind, m.subject = true, purpose, kind, subject
 	m.label, m.value, m.initial = label, current, current
-	m.suggestions = nil
+	m.suggestions, m.keep = nil, ""
+	m.cursor = len([]rune(current))
 	return m
 }
 
 // Purpose is what enter will do with the answer.
 func (m Model) Purpose() string { return m.purpose }
 
-// SetSuggestions offers completions. Offered, never applied.
-func (m Model) SetSuggestions(s []string) Model { m.suggestions = s; return m }
+// SetSuggestions offers completions for the whole value. Offered, never applied.
+func (m Model) SetSuggestions(s []string) Model { m.suggestions, m.keep = s, ""; return m }
 
 // Suggestions are what is on offer.
 func (m Model) Suggestions() []string { return m.suggestions }
@@ -86,9 +102,17 @@ func (m Model) Completion() (string, bool) {
 // Take fills the field with the top suggestion.
 func (m Model) Take() Model {
 	if suggestion, ok := m.Completion(); ok {
-		m.value = suggestion
+		m.value = m.keep + suggestion
 		m.suggestions = nil
+		m.cursor = len([]rune(m.value))
 	}
+	return m
+}
+
+// SetSuggestionsAfter offers completions for the last token of a line, keeping
+// everything before it.
+func (m Model) SetSuggestionsAfter(keep string, s []string) Model {
+	m.keep, m.suggestions = keep, s
 	return m
 }
 
@@ -113,18 +137,57 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	}
 	switch msg.Type {
 	case tea.KeyRunes:
-		m.value += string(msg.Runes)
-		return m, true
+		return m.insert(string(msg.Runes)), true
 	case tea.KeySpace:
-		m.value += " "
-		return m, true
+		return m.insert(" "), true
 	case tea.KeyBackspace:
-		if r := []rune(m.value); len(r) > 0 {
-			m.value = string(r[:len(r)-1])
+		if m.cursor > 0 {
+			r := []rune(m.value)
+			m.value = string(r[:m.cursor-1]) + string(r[m.cursor:])
+			m.cursor--
 		}
 		return m, true
+	case tea.KeyDelete:
+		if r := []rune(m.value); m.cursor < len(r) {
+			m.value = string(r[:m.cursor]) + string(r[m.cursor+1:])
+		}
+		return m, true
+	case tea.KeyLeft:
+		if m.cursor > 0 {
+			m.cursor--
+		}
+		return m, true
+	case tea.KeyRight:
+		if m.cursor < len([]rune(m.value)) {
+			m.cursor++
+		}
+		return m, true
+	case tea.KeyHome, tea.KeyCtrlA:
+		m.cursor = 0
+		return m, true
+	case tea.KeyEnd, tea.KeyCtrlE:
+		m.cursor = len([]rune(m.value))
+		return m, true
 	case tea.KeyCtrlU:
-		m.value = ""
+		// To the start of the line, as readline has it. With the cursor at the
+		// end -- where it is unless someone moved it -- that clears the field,
+		// which is what it has always done here.
+		m.value = string([]rune(m.value)[m.cursor:])
+		m.cursor = 0
+		return m, true
+	case tea.KeyCtrlW:
+		// The word before the cursor, which on a command line is usually the
+		// token that is wrong.
+		r := []rune(m.value)
+		end := m.cursor
+		for end > 0 && r[end-1] == ' ' {
+			end--
+		}
+		for end > 0 && r[end-1] != ' ' {
+			end--
+		}
+		m.value = string(r[:end]) + string(r[m.cursor:])
+		m.cursor = end
 		return m, true
 	case tea.KeyTab:
 		if _, ok := m.Completion(); ok {
@@ -151,7 +214,7 @@ func (m Model) Lines() []string {
 	}
 	out := []string{
 		labelStyle.Render(head),
-		"  " + valueStyle.Render(m.value) + cursorStyle.Render(" "),
+		"  " + m.renderValue(),
 	}
 	for i, suggestion := range m.suggestions {
 		if i == 0 {
@@ -163,12 +226,42 @@ func (m Model) Lines() []string {
 	return append(out, hintStyle.Render("  enter "+m.verb()+"   esc discard"))
 }
 
+// insert puts text at the cursor and moves past it.
+func (m Model) insert(text string) Model {
+	r := []rune(m.value)
+	m.value = string(r[:m.cursor]) + text + string(r[m.cursor:])
+	m.cursor += len([]rune(text))
+	return m
+}
+
+// renderValue draws the value with the block cursor sitting IN it rather than
+// always after it, so a cursor that has been moved is visible where it is.
+func (m Model) renderValue() string {
+	r := []rune(m.value)
+	at := m.cursor
+	if at > len(r) {
+		at = len(r)
+	}
+	if at == len(r) {
+		return valueStyle.Render(m.value) + cursorStyle.Render(" ")
+	}
+	return valueStyle.Render(string(r[:at])) +
+		cursorStyle.Render(string(r[at])) +
+		valueStyle.Render(string(r[at+1:]))
+}
+
+// AtEnd reports whether the cursor is at the end of the value, which is the
+// only place a completion of the last token means anything.
+func (m Model) AtEnd() bool { return m.cursor >= len([]rune(m.value)) }
+
 // verb says what enter will do, in the words of the thing being done. "enter
 // save" on a quantity prompt would be describing the wrong act.
 func (m Model) verb() string {
 	switch m.purpose {
 	case "rename":
 		return "save"
+	case "row":
+		return "re-check the row"
 	case "":
 		return "confirm"
 	}

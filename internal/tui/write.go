@@ -253,8 +253,8 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case tea.KeyEnter:
 		// A field opened for an ACTION answers to that action; only a rename
 		// goes back through the command line, because only a rename is text.
-		if m.editor.Purpose() == "fix" {
-			return m.applyFix()
+		if m.editor.Purpose() == "row" {
+			return m.applyRowEdit()
 		}
 		if m.editor.Purpose() != "rename" {
 			return m.actOnPrompt()
@@ -424,17 +424,51 @@ func (m Model) completions(kind, typed string) []string {
 // complete against, and offering it a list would be answering a question nobody
 // asked.
 func (m Model) suggestForPrompt() Model {
-	kind, ok := promptResolves(m.editor.Purpose())
-	if m.editor.Purpose() == "fix" {
-		// A fix completes whatever the FIELD refers to, which the editor was
-		// told when it opened. One completer, told what to complete against,
-		// rather than a second list of which purposes mean which kind.
-		kind, ok = m.editor.Kind(), m.editor.Kind() != ""
+	if m.editor.Purpose() == "row" {
+		return m.suggestForLine()
 	}
+	kind, ok := promptResolves(m.editor.Purpose())
 	if !ok {
 		return m
 	}
 	m.editor = m.editor.SetSuggestions(m.completions(kind, strings.TrimSpace(m.editor.Value())))
+	return m
+}
+
+// suggestForLine completes the token being typed at the end of a command line.
+//
+// Which field that token belongs to is answered by the PARSER (command.FieldAt)
+// rather than guessed here, so the completer cannot offer Locations in a slot
+// the parser will read as an Item.
+func (m Model) suggestForLine() Model {
+	value := m.editor.Value()
+	// Only at the end of the line. A completion of "the last token" means
+	// nothing when the cursor is in the middle of one, and taking it would
+	// overwrite the tail the person moved back to keep.
+	if !m.editor.AtEnd() {
+		return m.clearLineSuggestions()
+	}
+	field, partial, ok := command.FieldAt(value)
+	if !ok || field.Type != command.FieldName || len(field.Kinds) == 0 || partial == "" {
+		return m.clearLineSuggestions()
+	}
+	var quoted []string
+	for _, path := range m.completions(string(field.Kinds[0]), partial) {
+		// Quoted, because that is literally what goes into the line: a path
+		// holds spaces, and a suggestion shown bare would be a suggestion for
+		// a line that means something else.
+		quoted = append(quoted, command.Quote(path))
+	}
+	if len(quoted) == 0 {
+		return m.clearLineSuggestions()
+	}
+	// Everything up to the token being typed is kept when one is taken.
+	m.editor = m.editor.SetSuggestionsAfter(value[:len(value)-len(partial)], quoted)
+	return m
+}
+
+func (m Model) clearLineSuggestions() Model {
+	m.editor = m.editor.SetSuggestionsAfter("", nil)
 	return m
 }
 
