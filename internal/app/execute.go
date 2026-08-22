@@ -34,11 +34,26 @@ type Plan struct {
 	// A Category is confirmed and has none.
 	Permanent []string
 
+	// Irreversible is what the plan puts beyond recovery. It is a separate
+	// question from Confirm: creating asks because a second Turmeric by
+	// accident is worse than a question, while ENDING something asks because
+	// there is no way back. Retiring is not a write path's idea of permanent --
+	// it is a recording -- but Gone is the single lifecycle terminal and
+	// nothing clears RetiredAt, so it is permanent in the only sense a person
+	// cares about.
+	Irreversible []string
+
 	batch ops.Batch
 }
 
 // NeedsConfirmation reports whether anything permanent is about to happen.
-func (p Plan) NeedsConfirmation() bool { return len(p.Confirm) > 0 }
+func (p Plan) NeedsConfirmation() bool {
+	return len(p.Confirm) > 0 || len(p.Irreversible) > 0
+}
+
+// Creates reports whether anything is being brought into existence, which is a
+// different question from whether to ask.
+func (p Plan) Creates() bool { return len(p.Confirm) > 0 }
 
 // Empty reports a plan that would do nothing.
 func (p Plan) Empty() bool { return len(p.batch.Steps) == 0 }
@@ -52,6 +67,9 @@ func (c *controller) PlanCommand(ctx context.Context, cmd command.Command) (Plan
 	out := Plan{batch: batch}
 	for _, step := range batch.Steps {
 		out.Summary = append(out.Summary, step.Summary)
+		if step.Ends != "" {
+			out.Irreversible = append(out.Irreversible, step.Ends)
+		}
 		for _, origination := range step.Originates {
 			if !origination.NeedsConfirmation() {
 				continue
@@ -79,6 +97,7 @@ func (p Plan) Merge(other Plan) Plan {
 	p.Summary = append(p.Summary, other.Summary...)
 	p.Confirm = append(p.Confirm, other.Confirm...)
 	p.Permanent = append(p.Permanent, other.Permanent...)
+	p.Irreversible = append(p.Irreversible, other.Irreversible...)
 	p.batch.Steps = append(p.batch.Steps, other.batch.Steps...)
 	return p
 }

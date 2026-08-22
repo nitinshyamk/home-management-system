@@ -81,5 +81,27 @@ func (p *Planner) NewStockedItem(ctx context.Context, req NewStockedItemRequest)
 
 // oneStep wraps a fixed event list as a Batch.
 func oneStep(summary string, events []domain.Event) Batch {
-	return Batch{Steps: []Step{{Summary: summary, Records: fixed(events)}}}
+	return Batch{Steps: []Step{{Summary: summary, Records: fixed(events), Ends: endsSomething(events)}}}
+}
+
+// endsSomething names what a set of events puts beyond recovery.
+//
+// Only Gone qualifies, and only Gone can: it is the single lifecycle terminal,
+// and nothing in the fold ever clears RetiredAt. Lost looks final and is not --
+// it has Found -- which is exactly why this reads the EVENT rather than
+// guessing from the operation's name.
+func endsSomething(events []domain.Event) string {
+	var ended int
+	for _, e := range events {
+		if _, ok := e.(domain.Gone); ok {
+			ended++
+		}
+	}
+	switch ended {
+	case 0:
+		return ""
+	case 1:
+		return "one holding stops existing"
+	}
+	return fmt.Sprintf("%d holdings stop existing", ended)
 }
