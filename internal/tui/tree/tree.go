@@ -16,6 +16,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"home-management-system/internal/tui/keys"
+
 	"home-management-system/internal/tui/table"
 )
 
@@ -30,7 +32,45 @@ type Node struct {
 	Depth int
 	// Count is the rollup over the subtree -- items, or holdings.
 	Count int64
+	// Kind says what this node IS. A tree used to hold only its own kind; it
+	// can now hold what its nodes CONTAIN, and the difference is load-bearing
+	// rather than cosmetic -- see Key.
+	Kind string
+	// Measure is what a contained node says for itself where a container shows
+	// its rollup: "120 g", "1 held".
+	Measure string
 }
+
+// Key identifies a node across kinds.
+//
+// The bare ID cannot: a Category and an Item are numbered from different
+// tables, so Category 7 and Item 7 collide -- and the ID is the fold key, the
+// selection key, and the identity the cursor is restored by. Folding one would
+// fold the other, and selecting one would select both.
+//
+// The kind goes in the high bits, reversibly, because landing a jump and
+// restoring a cursor both need the ID back out again. SQLite rowids are
+// nowhere near 2^56, so nothing here is close to overflowing.
+func (n Node) Key() int64 { return kindBit(n.Kind)<<56 | n.ID }
+
+func kindBit(kind string) int64 {
+	switch kind {
+	case "Location":
+		return 1
+	case "Item":
+		return 2
+	case "Holding":
+		return 3
+	}
+	return 0 // Category, and anything that forgot to say
+}
+
+// Contained reports a node that is INSIDE its parent rather than part of the
+// tree's own hierarchy -- an Item under a Category, a Holding under a Location.
+//
+// Everything that acts on a tree row asks this first. A contained row is shown,
+// folded and filtered like any other, and is a valid target for nothing.
+func (n Node) Contained() bool { return n.Kind == "Item" || n.Kind == "Holding" }
 
 // indent is two spaces per level: enough to see, cheap enough to go five deep
 // in sixty columns.
@@ -48,8 +88,14 @@ type Model struct {
 	collapsed map[int64]bool
 	filter    string
 	unit      string // "items" or "holdings", for the count column's title
-	pendingZ  bool
-	tbl       table.Model
+	// kids is "does this node have anything under it", built once per SetNodes.
+	//
+	// It is read for every rendered row, and the answer used to be a scan of
+	// the whole forest -- so rendering was quadratic before any of this. That
+	// was survivable for a dozen locations and is not once every holding in the
+	// house is a node.
+	kids map[int64]bool
+	tbl  table.Model
 }
 
 // New builds a tree whose counts are labelled with unit.
@@ -81,16 +127,46 @@ func (m Model) columns() []table.Column {
 	}
 }
 
+// Folds is which nodes are collapsed, so a caller rebuilding the tree can hand
+// the answer back.
+//
+// The tree is rebuilt from scratch on every load -- after a write, a refresh, a
+// display-mode toggle -- and without this every one of those silently unfolded
+// the whole house. It showed up the moment the trees learned to show their
+// contents: asking for them reloaded, the reload discarded the folds, and a
+// tree somebody had carefully collapsed sprang open with every holding in it.
+func (m Model) Folds() map[int64]bool {
+	out := make(map[int64]bool, len(m.collapsed))
+	for key, folded := range m.collapsed {
+		out[key] = folded
+	}
+	return out
+}
+
+// WithFolds restores fold state. SetNodes prunes whatever no longer refers to a
+// node, so a stale fold is dropped rather than kept against nothing.
+func (m Model) WithFolds(folds map[int64]bool) Model {
+	m.collapsed = make(map[int64]bool, len(folds))
+	for key, folded := range folds {
+		m.collapsed[key] = folded
+	}
+	return m
+}
+
 // SetNodes replaces the forest, keeping folds that still refer to a node.
 func (m Model) SetNodes(nodes []Node) Model {
 	m.nodes = nodes
-	present := map[int64]bool{}
-	for _, n := range nodes {
-		present[n.ID] = true
+	present := make(map[int64]bool, len(nodes))
+	m.kids = make(map[int64]bool, len(nodes))
+	for i, n := range nodes {
+		present[n.Key()] = true
+		// A node's descendants are exactly the nodes that follow it with a
+		// greater depth, so having any is a single look at the next one.
+		m.kids[n.Key()] = i+1 < len(nodes) && nodes[i+1].Depth > n.Depth
 	}
-	for id := range m.collapsed {
-		if !present[id] {
-			delete(m.collapsed, id)
+	for key := range m.collapsed {
+		if !present[key] {
+			delete(m.collapsed, key)
 		}
 	}
 	return m.refresh()
@@ -113,9 +189,23 @@ func (m Model) SetFilter(text string) Model {
 func (m Model) Filtered() bool { return m.filter != "" }
 
 // Counts returns how many nodes are shown and how many exist.
+// Counts is how many nodes are shown and how many exist.
+//
+// CONTAINERS only, both times. The footer says "13 locations", and a count that
+// grew to 40 the moment the holdings were shown would be answering a different
+// question with the same words.
 func (m Model) Counts() (shown, total int) {
-	rows, _ := m.tbl.Counts()
-	return rows, len(m.nodes)
+	for _, n := range m.nodes {
+		if !n.Contained() {
+			total++
+		}
+	}
+	for _, row := range m.tbl.Rows() {
+		if node, ok := m.node(row.Key); ok && !node.Contained() {
+			shown++
+		}
+	}
+	return shown, total
 }
 
 // SetOverlay draws lines after the cursor's row, which is how the editor opens
@@ -156,21 +246,27 @@ func (m Model) SelectionCount() int { return m.tbl.SelectionCount() }
 // Update handles a keystroke, reporting what it did not use so the application
 // still sees its own keys.
 //
-// The fold gestures are taken BEFORE the table sees them, because the table
-// reads z as the start of zz and h and l as column motion -- both of which mean
-// something else in a tree.
+// The tree takes only the keys it means something different by, and hands the
+// rest to the table underneath. C-b and C-f are ascend and descend here rather
+// than column motion, because a tree has depth where a table has columns; tab
+// folds, the way it cycles an outline in org-mode.
 func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
-	switch msg.String() {
-	case "h", "left":
+	switch keys.Lookup(keys.Tree, msg) {
+	case keys.MoveLeft:
 		return m.ascend(), true
-	case "l", "right":
+	case keys.MoveRight:
 		return m.descend(), true
-	}
-
-	// za, zR, zM are z-prefixed and so is the table's zz. The table is asked
-	// first only for the keys it alone owns.
-	if handled, next, ok := m.foldGesture(msg); ok {
-		return next, handled
+	case keys.FoldToggle:
+		return m.toggleFold(), true
+	case keys.FoldCycleAll:
+		// One key for what used to be two gestures. Everything-collapsed and
+		// everything-expanded are the only two states worth reaching from here,
+		// and which one you want is always the one you are not in -- so the key
+		// can read the tree instead of asking.
+		if len(m.collapsed) > 0 {
+			return m.expandAll(), true
+		}
+		return m.collapseAll(), true
 	}
 
 	next, handled := m.tbl.Update(msg)
@@ -178,40 +274,14 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	return m, handled
 }
 
-// foldGesture recognises z followed by a, R, or M, and lets zz through to the
-// table's centring.
-func (m Model) foldGesture(msg tea.KeyMsg) (bool, Model, bool) {
-	if m.pendingZ {
-		key := msg.String()
-		m.pendingZ = false
-		switch key {
-		case "a":
-			return true, m.toggleFold(), true
-		case "R":
-			return true, m.expandAll(), true
-		case "M":
-			return true, m.collapseAll(), true
-		}
-		// Not a fold gesture. Hand both keys to the table so zz still centres.
-		m.tbl, _ = m.tbl.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("z")})
-		next, handled := m.tbl.Update(msg)
-		m.tbl = next
-		return handled, m, true
-	}
-	if msg.String() == "z" {
-		m.pendingZ = true
-		return true, m, true
-	}
-	return false, m, false
-}
-
 // expandAll and collapseAll both move rows ABOVE the cursor, which is the case
 // folding at the cursor never produces -- so both have to put the cursor back
 // by identity, and collapseAll has to settle for the nearest ancestor that is
 // still on screen.
 //
-// Without that, zM from five levels down landed on whatever row happened to
-// take that index, and zR from a root landed on its own grandchild. Both were
+// Without that, collapsing everything from five levels down landed on whatever
+// row happened to take that index, and expanding everything from a root landed
+// on its own grandchild. Both were
 // the cursor sliding onto whatever moved under it, which is the failure folding
 // is careful about everywhere else.
 func (m Model) expandAll() Model {
@@ -219,7 +289,7 @@ func (m Model) expandAll() Model {
 	m.collapsed = map[int64]bool{}
 	m = m.refresh()
 	if ok {
-		m = m.focusVisible(anchor.ID)
+		m = m.focusVisible(anchor.Key())
 	}
 	return m
 }
@@ -229,12 +299,12 @@ func (m Model) collapseAll() Model {
 	m.collapsed = map[int64]bool{}
 	for _, n := range m.nodes {
 		if m.hasChildren(n) {
-			m.collapsed[n.ID] = true
+			m.collapsed[n.Key()] = true
 		}
 	}
 	m = m.refresh()
 	if ok {
-		m = m.focusVisible(anchor.ID)
+		m = m.focusVisible(anchor.Key())
 	}
 	return m
 }
@@ -249,30 +319,30 @@ func (m Model) toggleFold() Model {
 	if !ok || !m.hasChildren(current) {
 		return m
 	}
-	if m.collapsed[current.ID] {
-		delete(m.collapsed, current.ID)
+	if m.collapsed[current.Key()] {
+		delete(m.collapsed, current.Key())
 	} else {
-		m.collapsed[current.ID] = true
+		m.collapsed[current.Key()] = true
 	}
-	return m.refresh().focus(current.ID)
+	return m.refresh().focus(current.Key())
 }
 
 // ascend collapses an open node, or moves to its parent when there is nothing
 // to close.
 //
-// Collapse-then-move rather than jumping straight up, because h is used far
+// Collapse-then-move rather than jumping straight up, because C-b is used far
 // more often to tidy away a subtree you have finished with than to travel.
 func (m Model) ascend() Model {
 	current, ok := m.Current()
 	if !ok {
 		return m
 	}
-	if m.hasChildren(current) && !m.collapsed[current.ID] {
-		m.collapsed[current.ID] = true
-		return m.refresh().focus(current.ID)
+	if m.hasChildren(current) && !m.collapsed[current.Key()] {
+		m.collapsed[current.Key()] = true
+		return m.refresh().focus(current.Key())
 	}
 	if parent, ok := m.parentOf(current); ok {
-		return m.focus(parent.ID)
+		return m.focus(parent.Key())
 	}
 	return m
 }
@@ -283,12 +353,12 @@ func (m Model) descend() Model {
 	if !ok || !m.hasChildren(current) {
 		return m
 	}
-	if m.collapsed[current.ID] {
-		delete(m.collapsed, current.ID)
-		return m.refresh().focus(current.ID)
+	if m.collapsed[current.Key()] {
+		delete(m.collapsed, current.Key())
+		return m.refresh().focus(current.Key())
 	}
 	if child, ok := m.firstChildOf(current); ok {
-		return m.focus(child.ID)
+		return m.focus(child.Key())
 	}
 	return m
 }
@@ -314,10 +384,10 @@ func (m Model) rows() []table.Row {
 			skipBelow = -1
 		}
 		out = append(out, table.Row{
-			Key:   n.ID,
-			Cells: []string{m.label(n), fmt.Sprintf("%d", n.Count)},
+			Key:   n.Key(),
+			Cells: []string{m.label(n), measure(n)},
 		})
-		if m.collapsed[n.ID] {
+		if m.collapsed[n.Key()] {
 			skipBelow = n.Depth
 		}
 	}
@@ -348,13 +418,27 @@ func (m Model) filteredRows() []table.Row {
 			continue
 		}
 		out = append(out, table.Row{
-			Key: n.ID,
+			Key: n.Key(),
 			// No fold marker while filtering: what is shown is what matched,
 			// not what is open, and a marker would claim otherwise.
-			Cells: []string{strings.Repeat(indent, n.Depth) + "  " + n.Name, fmt.Sprintf("%d", n.Count)},
+			Cells: []string{strings.Repeat(indent, n.Depth) + "  " + n.Name, measure(n)},
 		})
 	}
 	return out
+}
+
+// measure is what the second column says for a node.
+//
+// A container shows its ROLLUP -- how many things are under it -- and a
+// contained node shows its own quantity, which is the only number it has. The
+// column carries two meanings, and that is the honest reading of it: the header
+// says HOLDINGS, and "120 g" is what that holding is. The alternative was a
+// bare 0 on every contained row, which is a number that means nothing.
+func measure(n Node) string {
+	if n.Contained() {
+		return n.Measure
+	}
+	return fmt.Sprintf("%d", n.Count)
 }
 
 // label is the fold marker, the indentation, and the name.
@@ -366,25 +450,23 @@ func (m Model) label(n Node) string {
 	marker := markerLeaf
 	if m.hasChildren(n) {
 		marker = markerExpanded
-		if m.collapsed[n.ID] {
+		if m.collapsed[n.Key()] {
 			marker = markerCollapsed
 		}
 	}
 	return strings.Repeat(indent, n.Depth) + marker + " " + n.Name
 }
 
-func (m Model) hasChildren(n Node) bool {
-	for i, candidate := range m.nodes {
-		if candidate.ID != n.ID {
-			continue
-		}
-		return i+1 < len(m.nodes) && m.nodes[i+1].Depth > n.Depth
-	}
-	return false
-}
+// hasChildren reads a table built once per SetNodes.
+//
+// It used to scan the whole forest for the node, and it is called for every
+// rendered row -- so the render was already quadratic. That was survivable
+// while a forest was a dozen locations; it is not once every holding in the
+// house is a node too.
+func (m Model) hasChildren(n Node) bool { return m.kids[n.Key()] }
 
 func (m Model) parentOf(n Node) (Node, bool) {
-	at := m.indexOf(n.ID)
+	at := m.indexOf(n.Key())
 	for i := at - 1; i >= 0; i-- {
 		if m.nodes[i].Depth < n.Depth {
 			return m.nodes[i], true
@@ -394,7 +476,7 @@ func (m Model) parentOf(n Node) (Node, bool) {
 }
 
 func (m Model) firstChildOf(n Node) (Node, bool) {
-	at := m.indexOf(n.ID)
+	at := m.indexOf(n.Key())
 	if at < 0 || at+1 >= len(m.nodes) {
 		return Node{}, false
 	}
@@ -404,9 +486,9 @@ func (m Model) firstChildOf(n Node) (Node, bool) {
 	return Node{}, false
 }
 
-func (m Model) indexOf(id int64) int {
+func (m Model) indexOf(key int64) int {
 	for i, n := range m.nodes {
-		if n.ID == id {
+		if n.Key() == key {
 			return i
 		}
 	}
@@ -446,7 +528,7 @@ func (m Model) focusVisible(id int64) Model {
 	node, ok := m.node(id)
 	for ok {
 		for i, row := range m.tbl.Rows() {
-			if row.Key == node.ID {
+			if row.Key == node.Key() {
 				m.tbl = m.tbl.SetCursor(i)
 				return m
 			}

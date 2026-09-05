@@ -16,7 +16,11 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/charmbracelet/lipgloss"
+	"home-management-system/internal/tui/complete"
+	"home-management-system/internal/tui/keys"
+	"home-management-system/internal/tui/line"
 )
 
 // Kind is what the panel is making.
@@ -46,6 +50,10 @@ type field struct {
 	key   string
 	label string
 	value string
+	// cursor is where the next character goes, as a rune index into value.
+	// The panel's fields had none until the bindings became emacs, and could
+	// only be appended to and backspaced over.
+	cursor int
 	// hint is what the field is for, shown while it is focused. A label alone
 	// says what to type; the hint says why.
 	hint string
@@ -60,6 +68,23 @@ type field struct {
 	// and the caller answers from the resolve index, so the panel and the
 	// command line agree about what a name nearly is.
 	resolves string
+
+	// choices is a CLOSED vocabulary, offered instead of asking the caller.
+	//
+	// Units are the case: seven codes in a reference table, not a household's
+	// growing list of shelves. A closed set is worth telling the field about
+	// directly, because there is nothing to resolve and no index to consult.
+	choices []string
+
+	// warns names a kind whose existing members are shown but NOT offered.
+	//
+	// The item name uses it. Naming a new item something that already exists is
+	// legal -- the schema permits two items sharing a name, told apart by their
+	// category -- so this is not a refusal. It is the fact, put where the
+	// decision is being made, and deliberately not takeable: a completion here
+	// would make recreating what you already have the fastest path through the
+	// form.
+	warns string
 }
 
 // Model is the panel.
@@ -70,15 +95,21 @@ type Model struct {
 	focus    int
 	counting int
 	width    int
-	// suggestions are what the focused field could be completed to, best
-	// first. They are offered and never applied: a completion that filled
-	// itself in would be the resolver deciding, which is the one thing it must
-	// never do.
-	suggestions []string
+	// list is the dropdown over the focused field. Offered and never applied:
+	// a completion that filled itself in would be the resolver deciding, which
+	// is the one thing it must never do.
+	list complete.Model
+	// warnings are existing things matching the focused field, shown and not
+	// takeable. See field.warns.
+	warnings []string
 	// parent is the thing the cursor was on when the panel opened, offered as
 	// the default parent or category. Creating inside what you are looking at
 	// is what o means.
 	parent string
+	// units is the unit vocabulary, handed in by the caller because it comes
+	// from the database. Seven codes in a reference table -- a closed set, so
+	// the field carries it directly rather than asking the resolver.
+	units []string
 }
 
 var (
@@ -93,6 +124,18 @@ var (
 
 func New() Model { return Model{width: 80} }
 
+// WithUnits hands the panel the unit vocabulary. It survives Open, because the
+// units are reference data and do not change while a panel is being filled in.
+func (m Model) WithUnits(units []string) Model {
+	m.units = units
+	for i := range m.fields {
+		if m.fields[i].key == "unit" {
+			m.fields[i].choices = units
+		}
+	}
+	return m
+}
+
 func (m Model) SetWidth(w int) Model { m.width = w; return m }
 
 // Open starts a fresh panel.
@@ -100,13 +143,19 @@ func (m Model) SetWidth(w int) Model { m.width = w; return m }
 // Fresh every time: a panel that remembered an abandoned attempt will
 // eventually create it.
 func (m Model) Open(kind Kind, parent string) Model {
-	m = Model{open: true, kind: kind, width: m.width, parent: parent, counting: 2}
+	units := m.units
+	m = Model{open: true, kind: kind, width: m.width, parent: parent, counting: 2, units: units}
 	switch kind {
 	case KindItem:
 		m.fields = []field{
-			{key: "name", label: "name", hint: "what it is called"},
+			// The name WARNS rather than completes. Two items may share a name
+			// -- the schema permits it, told apart by category -- so an
+			// existing Turmeric is a fact worth putting in front of somebody
+			// naming a new one, and not a thing to offer them.
+			{key: "name", label: "name", hint: "what it is called", warns: "Item"},
 			{key: "counting", label: "counting", hint: "how it is counted -- PERMANENT"},
-			{key: "unit", label: "unit", hint: "what it is measured in -- PERMANENT", measured: true},
+			{key: "unit", label: "unit", hint: "what it is measured in -- PERMANENT",
+				measured: true, choices: units},
 			{key: "package", label: "per package", hint: "how much is in one package", measured: true},
 			{key: "category", label: "category", value: parent, hint: "where to file it", resolves: "Category"},
 		}
@@ -123,6 +172,19 @@ func (m Model) Open(kind Kind, parent string) Model {
 			{key: "describe", label: "describe", hint: "what it is"},
 		}
 	}
+	return m.cursorsToEnd()
+}
+
+// cursorsToEnd puts every cursor after the text already in its field.
+//
+// The parent fields arrive pre-filled with whatever the cursor was on. A cursor
+// left at zero would put the next character typed in FRONT of that -- "Kitchen"
+// becoming "sKitchen" -- which is not what a field that has always appended
+// does, and not what anybody means.
+func (m Model) cursorsToEnd() Model {
+	for i := range m.fields {
+		m.fields[i].cursor = len([]rune(m.fields[i].value))
+	}
 	return m
 }
 
@@ -133,6 +195,7 @@ func (m Model) WithName(name string) Model {
 	for i := range m.fields {
 		if m.fields[i].key == "name" {
 			m.fields[i].value = name
+			m.fields[i].cursor = len([]rune(name))
 		}
 	}
 	return m
@@ -154,27 +217,67 @@ func (m Model) Value(key string) string {
 
 // Resolving reports what kind of thing the focused field refers to, and what
 // has been typed into it, so the caller can offer completions. Empty when the
-// field is free text.
+// field is free text or has a closed vocabulary of its own.
 func (m Model) Resolving() (kind, typed string) {
-	if !m.open {
+	f, ok := m.focused()
+	if !ok {
 		return "", ""
 	}
-	visible := m.visible()
-	if len(visible) == 0 {
-		return "", ""
-	}
-	f := m.fields[visible[m.focus]]
 	return f.resolves, strings.TrimSpace(f.value)
 }
 
+// Warning reports the kind whose existing members the focused field warns
+// about, and what has been typed. Empty for every field but the item name.
+func (m Model) Warning() (kind, typed string) {
+	f, ok := m.focused()
+	if !ok {
+		return "", ""
+	}
+	return f.warns, strings.TrimSpace(f.value)
+}
+
+// Choices is the focused field's own closed vocabulary, if it has one.
+func (m Model) Choices() ([]string, string) {
+	f, ok := m.focused()
+	if !ok {
+		return nil, ""
+	}
+	return f.choices, strings.TrimSpace(f.value)
+}
+
+func (m Model) focused() (field, bool) {
+	if !m.open {
+		return field{}, false
+	}
+	visible := m.visible()
+	if len(visible) == 0 {
+		return field{}, false
+	}
+	return m.fields[visible[m.focus]], true
+}
+
 // SetSuggestions offers completions for the focused field.
+//
+// Recomputed on every keystroke, so it goes through Offer rather than replacing
+// the list: Offer keeps the highlight on the option it was on, and honours a
+// list the person has already dismissed.
 func (m Model) SetSuggestions(suggestions []string) Model {
-	m.suggestions = suggestions
+	_, typed := m.Resolving()
+	if choices, value := m.Choices(); len(choices) > 0 {
+		typed = value
+	}
+	m.list = m.list.Offer(suggestions, typed)
+	return m
+}
+
+// SetWarnings shows what already exists under the focused field.
+func (m Model) SetWarnings(warnings []string) Model {
+	m.warnings = warnings
 	return m
 }
 
 // Suggestions are what is currently on offer.
-func (m Model) Suggestions() []string { return m.suggestions }
+func (m Model) Suggestions() []string { return m.list.Options() }
 
 // Counting is the chosen preset.
 func (m Model) Counting() string { return countings[m.counting].Value }
@@ -228,6 +331,12 @@ func quote(s string) string {
 }
 
 // Update handles a keystroke, reporting whether it was consumed.
+//
+// The dropdown is consulted FIRST, and that ordering is the whole of the
+// interaction: while a list is open, Tab takes what is highlighted and C-n
+// moves the highlight; with nothing open the same two keys are field motion.
+// The panel does not branch on whether a list is up -- the list reports what it
+// did not use, exactly as every other layer in this interface does.
 func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	if !m.open {
 		return m, false
@@ -236,96 +345,68 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	if len(visible) == 0 {
 		return m, false
 	}
-	onCounting := m.fields[visible[m.focus]].key == "counting"
+	at := visible[m.focus]
+	onCounting := m.fields[at].key == "counting"
 
-	switch msg.Type {
-	case tea.KeyTab:
-		// Tab completes before it moves, which is what a terminal has always
-		// done. Moving first would mean the only way to take a suggestion is a
-		// key nobody would guess.
-		if suggestion, ok := m.completion(); ok {
-			m.fields[visible[m.focus]].value = suggestion
-			m.suggestions = nil
-			return m, true
+	if next, taken, handled := m.list.Update(msg); handled {
+		m.list = next
+		if taken != "" {
+			m.fields[at].value = taken
+			m.fields[at].cursor = len([]rune(taken))
 		}
-		m.focus = (m.focus + 1) % len(visible)
-		m.suggestions = nil
 		return m, true
-	case tea.KeyDown:
-		m.focus = (m.focus + 1) % len(visible)
-		m.suggestions = nil
-		return m, true
-	case tea.KeyShiftTab, tea.KeyUp:
-		m.focus = (m.focus - 1 + len(visible)) % len(visible)
-		m.suggestions = nil
-		return m, true
-	case tea.KeyLeft:
-		if onCounting {
+	}
+
+	action := keys.Lookup(keys.Creator, msg)
+
+	// The counting choice is not a text field -- it is one of three answers --
+	// so it takes the motion keys and nothing else. Any other keystroke would
+	// silently vanish into a field that has nowhere to put it.
+	if onCounting {
+		switch action {
+		case keys.MoveLeft:
 			m.counting = (m.counting - 1 + len(countings)) % len(countings)
 			m.focus = m.clampFocus()
-		}
-		return m, true
-	case tea.KeyRight:
-		if onCounting {
+			return m, true
+		case keys.MoveRight:
 			m.counting = (m.counting + 1) % len(countings)
-			m.focus = m.clampFocus()
-		}
-		return m, true
-	case tea.KeyCtrlU:
-		// Clear the field. The parent fields arrive pre-filled with whatever
-		// the cursor was on, which is right far more often than not -- but
-		// "far more often" needs a way out that is not fifteen backspaces.
-		if !onCounting {
-			m.fields[visible[m.focus]].value = ""
-		}
-		return m, true
-	case tea.KeyBackspace:
-		if !onCounting {
-			at := visible[m.focus]
-			if r := []rune(m.fields[at].value); len(r) > 0 {
-				m.fields[at].value = string(r[:len(r)-1])
-			}
-		}
-		return m, true
-	case tea.KeySpace:
-		if !onCounting {
-			m.fields[visible[m.focus]].value += " "
-		}
-		return m, true
-	case tea.KeyRunes:
-		if onCounting {
-			// h and l choose, matching the motion keys everywhere else. Any
-			// other letter would silently vanish, so it moves instead.
-			switch string(msg.Runes) {
-			case "h":
-				m.counting = (m.counting - 1 + len(countings)) % len(countings)
-			case "l":
-				m.counting = (m.counting + 1) % len(countings)
-			}
 			m.focus = m.clampFocus()
 			return m, true
 		}
-		m.fields[visible[m.focus]].value += string(msg.Runes)
+	}
+
+	switch action {
+	case keys.Complete, keys.MoveDown:
+		return m.moveFocus(1), true
+	case keys.MoveUp, keys.Dismiss:
+		// S-Tab is Dismiss, and with no list to dismiss it steps back a field
+		// -- which is what it has always done here.
+		return m.moveFocus(-1), true
+	}
+
+	if onCounting {
+		// Consumed rather than passed on. A stray letter here must not fall
+		// through to the application and act on the list behind the panel.
+		return m, true
+	}
+
+	if value, cursor, ok := line.Edit(m.fields[at].value, m.fields[at].cursor, msg); ok {
+		m.fields[at].value, m.fields[at].cursor = value, cursor
 		return m, true
 	}
 	return m, false
 }
 
-// completion is the suggestion Tab would take, if taking one would change
-// anything.
+// moveFocus steps between fields, arriving fresh.
 //
-// Nothing to take when the field already holds the suggestion, so a second Tab
-// moves on -- which is what makes Tab one key rather than two behaviours a
-// person has to keep track of.
-func (m Model) completion() (string, bool) {
-	if len(m.suggestions) == 0 {
-		return "", false
-	}
-	_, typed := m.Resolving()
-	if m.suggestions[0] == typed {
-		return "", false
-	}
-	return m.suggestions[0], true
+// Arriving is what clears a dismissal: esc means "not this field, this visit",
+// so coming back later offers the list again.
+func (m Model) moveFocus(by int) Model {
+	visible := m.visible()
+	m.focus = (m.focus + by + len(visible)) % len(visible)
+	m.list = m.list.Arrive()
+	m.warnings = nil
+	return m
 }
 
 // clampFocus keeps the focus in range after a choice changes which fields exist.
@@ -348,37 +429,72 @@ func (m Model) Lines() []string {
 	}
 	out := []string{frameStyle.Render(head)}
 
+	// The dropdown, the warnings and the hint all sit UNDER THE FIELD they
+	// belong to, spliced between the rows rather than collected at the bottom.
+	//
+	// They used to be drawn after every field, under a comment claiming they
+	// were under the one they belonged to. With one completing field in the
+	// panel the difference never showed; with three -- name, unit, category --
+	// a list at the bottom is a list you have to work out the owner of.
+	gutter := "  " + strings.Repeat(" ", 11) + " "
 	for n, i := range visible {
 		f := m.fields[i]
-		focused := n == m.focus
 		label := labelStyle.Render(fmt.Sprintf("  %-11s ", f.label))
 		if f.key == "counting" {
 			out = append(out, label+m.countingLine())
+		} else if n == m.focus {
+			out = append(out, label+renderFocused(f))
+		} else {
+			out = append(out, label+valueStyle.Render(f.value))
+		}
+		if n != m.focus {
 			continue
 		}
-		value := valueStyle.Render(f.value)
-		if focused {
-			value += focusStyle.Render(" ")
+		switch {
+		case m.list.IsOpen():
+			out = append(out, m.list.Lines(gutter, m.width)...)
+		case len(m.warnings) > 0:
+			out = append(out, complete.Warnings(gutter, m.width, m.warnings)...)
+		case f.hint != "":
+			out = append(out, hintStyle.Render(gutter+f.hint))
 		}
-		out = append(out, label+value)
 	}
 
-	// Suggestions sit under the field they belong to, offered and never
-	// applied. The resolver reports; it does not decide.
-	gutter := "  " + strings.Repeat(" ", 11) + " "
-	if len(m.suggestions) > 0 {
-		for i, suggestion := range m.suggestions {
-			if i == 0 {
-				out = append(out, gutter+chosenStyle.Render(suggestion)+hintStyle.Render("   tab to take it"))
-				continue
-			}
-			out = append(out, gutter+unchosenStyl.Render(suggestion))
-		}
-	} else if hint := m.fields[visible[m.focus]].hint; hint != "" {
-		out = append(out, hintStyle.Render(gutter+hint))
-	}
-	out = append(out, hintStyle.Render("  tab next   enter continue   esc discard"))
+	out = append(out, hintStyle.Render("  "+m.footerHint()))
 	return out
+}
+
+// footerHint says what the keys do HERE, which depends on whether a list is up.
+//
+// Tab means two things by design -- take the highlighted option, or move to the
+// next field -- and a footer that named only one of them would be wrong half
+// the time.
+func (m Model) footerHint() string {
+	if m.list.IsOpen() {
+		return complete.Hint()
+	}
+	return keys.Show(keys.Creator, keys.Complete) + " next   " +
+		keys.Show(keys.Creator, keys.Confirm) + " continue   " +
+		keys.Show(keys.Creator, keys.Cancel) + " discard"
+}
+
+// renderFocused draws the focused field with a block cursor IN it.
+//
+// The cursor used to be a block pinned after the text, which was honest while
+// a field could only be appended to. Now that C-a and C-b move within it, a
+// marker frozen at the end would be a lie about where the next character goes.
+func renderFocused(f field) string {
+	r := []rune(f.value)
+	at := f.cursor
+	if at > len(r) {
+		at = len(r)
+	}
+	if at == len(r) {
+		return valueStyle.Render(f.value) + focusStyle.Render(" ")
+	}
+	return valueStyle.Render(string(r[:at])) +
+		focusStyle.Render(string(r[at])) +
+		valueStyle.Render(string(r[at+1:]))
 }
 
 // countingLine renders the three presets as a choice rather than a field.

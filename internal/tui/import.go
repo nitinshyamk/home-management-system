@@ -13,6 +13,7 @@ import (
 	"home-management-system/internal/importer"
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/creator"
+	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/planview"
 )
 
@@ -78,16 +79,16 @@ func (m Model) handleImport(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if !m.importing || m.confirm != nil || m.creator.IsOpen() {
 		return m, nil, false
 	}
-	switch msg.String() {
-	case "q", "ctrl+c":
+	switch keys.Lookup(keys.Plan, msg) {
+	case keys.Quit:
 		// Cancelling leaves nothing behind, which is the whole of
 		// all-or-nothing seen from the other end.
 		return m, tea.Quit, true
-	case "A":
+	case keys.ApplyAll:
 		return m.applyImport()
-	case "enter":
+	case keys.Confirm:
 		return m.settleRow()
-	case "e":
+	case keys.EditInPlace:
 		return m.editRow()
 	}
 	next, handled := m.plan.Update(msg)
@@ -97,7 +98,7 @@ func (m Model) handleImport(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	}
 	// Anything the plan does not want is still CONSUMED. Falling through put
 	// the browse keystrokes live underneath the review screen: `#` opened a
-	// count prompt, `c` a consume prompt, `dd` a retirement -- each against
+	// count prompt, `c` a consume prompt, C-k a retirement -- each against
 	// whatever the browse view had selected, which is not what the person is
 	// looking at. A review screen that can write outside its own plan is not a
 	// review screen.

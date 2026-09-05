@@ -76,11 +76,25 @@ purpose.
 
 ## The rest of the substage
 
-Category and Location views with folds — `za`, `zR`, `zM` — and `h`/`l` to
+Category and Location views with folds — `TAB`, `S-TAB` — and `C-b`/`C-f` to
 ascend and descend.
 
+`v` toggles whether a tree shows what its nodes CONTAIN: a Category's Items, a
+Location's Holdings. Off by default, and remembered per tree — the two are
+asking different questions, and wanting one answered is no reason to want the
+other. A contained row shows its own quantity where a container shows its
+rollup, and the count in the footer still counts places, not things in them.
+
+Contained rows are **shown, and are targets for nothing**. `e`, `o`, `C-y` and
+the `M-x` subject all refuse them by name. That is not timidity: the put
+destination reads a tree row's identifier as a LocationID, so a holding row
+taken for a place would move stock to whatever shelf happens to share that
+number — a silent write to the wrong place, which is the worst kind of wrong
+this interface can be. Acting on them properly would make the Locations tree a
+second holdings screen, with its own selection, its own verbs and its own bugs.
+
 *Exit:* both trees traverse and fold; hierarchy is visible where the table
-layout cannot show it.
+layout cannot show it, and what a node holds is one keystroke away.
 
 ## The script
 

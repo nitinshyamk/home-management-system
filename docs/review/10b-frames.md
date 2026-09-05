@@ -24,8 +24,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                      at rest  Attic                            
   Forever Stamp                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual…  at rest: boxed, unopen…  Small Parts Tray                 
-  USB-C to HDMI Cable 2m            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                             at rest  Garage            gone 2026-06-02
 ------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -47,9 +47,9 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
-===== j  (84x22) =================================================================
+===== ctrl+n  (84x22) ============================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 ------------------------------------------------------------------------------------
   NAME                                                                      HOLDINGS
@@ -67,9 +67,9 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
-===== j  (84x22) =================================================================
+===== ctrl+n  (84x22) ============================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 ------------------------------------------------------------------------------------
   NAME                                                                      HOLDINGS
@@ -87,9 +87,9 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
-===== j  (84x22) =================================================================
+===== ctrl+n  (84x22) ============================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 ------------------------------------------------------------------------------------
   NAME                                                                      HOLDINGS
@@ -107,7 +107,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== four deep, inside the Garage  (84x22) ======================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -127,27 +127,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
-
-===== z  (84x22) =================================================================
- 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
-------------------------------------------------------------------------------------
-  NAME                                                                      HOLDINGS
-    Attic                                                                          1
-  ▾ Garage                                                                         3
-    ▾ Metal Shelving Unit                                                          2
-      ▾ Bay 3                                                                      2
->       ▾ Blue Crate                                                               2
-            Small Parts Tray                                                       2
-  ▾ Kitchen                                                                        4
-    ▾ Spice Cabinet                                                                2
-        Shelf 2                                                                    2
-    ▾ Left Pantry                                                                  2
-        Shelf 1                                                                    2
-  ▾ Office                                                                         3
-      Desk Drawer 2                                                                3
-------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== fold the node under the cursor  (84x22) ====================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -166,26 +146,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
-
-===== z  (84x22) =================================================================
- 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
-------------------------------------------------------------------------------------
-  NAME                                                                      HOLDINGS
-    Attic                                                                          1
-  ▾ Garage                                                                         3
-    ▾ Metal Shelving Unit                                                          2
-      ▾ Bay 3                                                                      2
->       ▸ Blue Crate                                                               2
-  ▾ Kitchen                                                                        4
-    ▾ Spice Cabinet                                                                2
-        Shelf 2                                                                    2
-    ▾ Left Pantry                                                                  2
-        Shelf 1                                                                    2
-  ▾ Office                                                                         3
-      Desk Drawer 2                                                                3
-------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== unfold it  (84x22) =========================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -205,27 +166,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
-
-===== z  (84x22) =================================================================
- 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
-------------------------------------------------------------------------------------
-  NAME                                                                      HOLDINGS
-    Attic                                                                          1
-  ▾ Garage                                                                         3
-    ▾ Metal Shelving Unit                                                          2
-      ▾ Bay 3                                                                      2
->       ▾ Blue Crate                                                               2
-            Small Parts Tray                                                       2
-  ▾ Kitchen                                                                        4
-    ▾ Spice Cabinet                                                                2
-        Shelf 2                                                                    2
-    ▾ Left Pantry                                                                  2
-        Shelf 1                                                                    2
-  ▾ Office                                                                         3
-      Desk Drawer 2                                                                3
-------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== collapse everything  (84x22) ===============================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -236,18 +177,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▸ Kitchen                                                                        4
   ▸ Office                                                                         3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
-
-===== z  (84x22) =================================================================
- 1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
-------------------------------------------------------------------------------------
-  NAME                                                                      HOLDINGS
-    Attic                                                                          1
-> ▸ Garage                                                                         3
-  ▸ Kitchen                                                                        4
-  ▸ Office                                                                         3
-------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== expand everything  (84x22) =================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -267,7 +197,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== ascend  (84x22) ============================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -283,7 +213,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== descend  (84x22) ===========================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -303,7 +233,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   ▾ Office                                                                         3
       Desk Drawer 2                                                                3
 ------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== the categories tree  (84x22) ===============================================
 [1 Categories]  2 Locations   3 Items   4 Holdings   5 Integrity 
@@ -317,5 +247,42 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
     Stationery                                                                     2
     Storage                                                                        2
 ------------------------------------------------------------------------------------
-7 categories - za fold - zR expand all - zM collapse all
+7 categories - TAB fold - S-TAB fold all - v contents
+
+===== what the places CONTAIN  (84x22) ===========================================
+[1 Categories]  2 Locations   3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                         ITEMS
+> ▾ Electronics                                                                    2
+    ▾ Cables                                                                       2
+        Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space Grey, 0.8m)      1 held
+        USB-C to HDMI Cable 2m                                                1 held
+  ▾ Pantry                                                                         1
+      Basmati Rice                                                            6800 g
+  ▾ Spices                                                                         2
+      Cumin                                                                     90 g
+    ▾ Dried Peppers                                                                1
+        Ancho Chile                                                            280 g
+  ▾ Stationery                                                                     2
+      Brass Thumbtack                                                       82 count
+      Forever Stamp                                                          3 count
+  ▾ Storage                                                                        2
+      Empty Computer Box                                                      1 held
+      Winter Coat                                                             0 held
+------------------------------------------------------------------------------------
+7 categories - TAB fold - S-TAB fold all - v contents
+
+===== and back  (84x22) ==========================================================
+[1 Categories]  2 Locations   3 Items   4 Holdings   5 Integrity 
+------------------------------------------------------------------------------------
+  NAME                                                                         ITEMS
+> ▾ Electronics                                                                    2
+      Cables                                                                       2
+    Pantry                                                                         1
+  ▾ Spices                                                                         2
+      Dried Peppers                                                                1
+    Stationery                                                                     2
+    Storage                                                                        2
+------------------------------------------------------------------------------------
+7 categories - TAB fold - S-TAB fold all - v contents
 ```

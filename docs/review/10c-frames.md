@@ -24,8 +24,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
 ------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -43,12 +43,12 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
 ------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
-===== the filter opens  (90x22) ========================================================
+===== the search line opens  (90x22) ===================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
@@ -62,9 +62,9 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/_  enter apply   esc cancel
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search:    enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -77,13 +77,13 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Ancho Chile                                      40 g  Small Parts Tray                 
   Empty Computer Box                            at rest  Attic                            
   Basmati Rice                                    800 g  Shelf 1                          
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
   Basmati Rice                      3 packages (6000 g)  Shelf 1                          
   Brass Thumbtack                              82 count  Desk Drawer 2                    
   Forever Stamp                                 3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-/a_  enter apply   esc cancel
+I-search: a   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 11 of 12 holdings - enter for history - sorted by item a-z
 
@@ -94,11 +94,11 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Ancho Chile                                     120 g  Garage                           
 > Ancho Chile                                     120 g  Shelf 2                          
   Ancho Chile                                      40 g  Small Parts Tray                 
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
   Brass Thumbtack                              82 count  Desk Drawer 2                    
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-/an_  enter apply   esc cancel
+I-search: an   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 7 of 12 holdings - enter for history - sorted by item a-z
 
@@ -109,7 +109,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Ancho Chile                                     120 g  Garage                           
 > Ancho Chile                                     120 g  Shelf 2                          
   Ancho Chile                                      40 g  Small Parts Tray                 
-/anc_  enter apply   esc cancel
+I-search: anc   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 3 of 12 holdings - enter for history - sorted by item a-z
 
@@ -120,7 +120,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Ancho Chile                                     120 g  Garage                           
 > Ancho Chile                                     120 g  Shelf 2                          
   Ancho Chile                                      40 g  Small Parts Tray                 
-/anch_  enter apply   esc cancel
+I-search: anch   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 3 of 12 holdings - enter for history - sorted by item a-z
 
@@ -131,7 +131,7 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Ancho Chile                                     120 g  Garage                           
 > Ancho Chile                                     120 g  Shelf 2                          
   Ancho Chile                                      40 g  Small Parts Tray                 
-/ancho_  enter apply   esc cancel
+I-search: ancho   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 3 of 12 holdings - enter for history - sorted by item a-z
 
@@ -142,18 +142,18 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Ancho Chile                                     120 g  Garage                           
 > Ancho Chile                                     120 g  Shelf 2                          
   Ancho Chile                                      40 g  Small Parts Tray                 
-filtered /ancho   esc clear
+filtered ancho   esc clear
 ------------------------------------------------------------------------------------------
 3 of 12 holdings - enter for history - sorted by item a-z
 
-===== n  (90x22) =======================================================================
+===== alt+n  (90x22) ===================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
   Ancho Chile                                     120 g  Garage                           
   Ancho Chile                                     120 g  Shelf 2                          
 > Ancho Chile                                      40 g  Small Parts Tray                 
-filtered /ancho   esc clear
+filtered ancho   esc clear
 ------------------------------------------------------------------------------------------
 3 of 12 holdings - enter for history - sorted by item a-z
 
@@ -164,7 +164,7 @@ filtered /ancho   esc clear
 > Ancho Chile                                     120 g  Garage                           
   Ancho Chile                                     120 g  Shelf 2                          
   Ancho Chile                                      40 g  Small Parts Tray                 
-filtered /ancho   esc clear
+filtered ancho   esc clear
 ------------------------------------------------------------------------------------------
 3 of 12 holdings - enter for history - sorted by item a-z
 
@@ -182,12 +182,12 @@ filtered /ancho   esc clear
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
 ------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
-===== /  (90x22) =======================================================================
+===== ctrl+s  (90x22) ==================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
@@ -201,9 +201,9 @@ filtered /ancho   esc clear
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/_  enter apply   esc cancel
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search:    enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -217,9 +217,9 @@ filtered /ancho   esc clear
   Basmati Rice                                    800 g  Shelf 1                          
   Ancho Chile                                      40 g  Small Parts Tray                 
   Basmati Rice                      3 packages (6000 g)  Shelf 1                          
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-/l_  enter apply   esc cancel
+I-search: l   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 8 of 12 holdings - enter for history - sorted by item a-z
 
@@ -227,9 +227,9 @@ filtered /ancho   esc clear
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
+> USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-/lo_  enter apply   esc cancel
+I-search: lo   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -237,9 +237,9 @@ filtered /ancho   esc clear
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
+> USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-/loc_  enter apply   esc cancel
+I-search: loc   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -257,9 +257,9 @@ filtered /ancho   esc clear
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-> USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/loc:_  enter apply   esc cancel
+> USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search: loc:   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 12 of 12 holdings - enter for history - sorted by item a-z
 
@@ -268,8 +268,8 @@ filtered /ancho   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
 > Ancho Chile                                     120 g  Garage                           
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/loc:g_  enter apply   esc cancel
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search: loc:g   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -278,8 +278,8 @@ filtered /ancho   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
 > Ancho Chile                                     120 g  Garage                           
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/loc:ga_  enter apply   esc cancel
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search: loc:ga   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -288,8 +288,8 @@ filtered /ancho   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
 > Ancho Chile                                     120 g  Garage                           
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/loc:gar_  enter apply   esc cancel
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search: loc:gar   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -298,8 +298,8 @@ filtered /ancho   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
 > Ancho Chile                                     120 g  Garage                           
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/loc:gara_  enter apply   esc cancel
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search: loc:gara   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -308,8 +308,8 @@ filtered /ancho   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
 > Ancho Chile                                     120 g  Garage                           
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/loc:garag_  enter apply   esc cancel
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search: loc:garag   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -318,8 +318,8 @@ filtered /ancho   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
 > Ancho Chile                                     120 g  Garage                           
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/loc:garage_  enter apply   esc cancel
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search: loc:garage   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -328,8 +328,8 @@ filtered /ancho   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
 > Ancho Chile                                     120 g  Garage                           
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-filtered /loc:garage   esc clear
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+filtered loc:garage   esc clear
 ------------------------------------------------------------------------------------------
 2 of 12 holdings - enter for history - sorted by item a-z
 
@@ -347,12 +347,12 @@ filtered /loc:garage   esc clear
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
 ------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
-===== /  (90x22) =======================================================================
+===== ctrl+s  (90x22) ==================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
@@ -366,9 +366,9 @@ filtered /loc:garage   esc clear
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
-/_  enter apply   esc cancel
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
+I-search:    enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -377,7 +377,7 @@ filtered /loc:garage   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
   (nothing matches this filter -- esc to clear it)
-/z_  enter apply   esc cancel
+I-search: z   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 0 of 12 holdings - enter for history - sorted by item a-z
 
@@ -386,7 +386,7 @@ filtered /loc:garage   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
   (nothing matches this filter -- esc to clear it)
-/zz_  enter apply   esc cancel
+I-search: zz   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 0 of 12 holdings - enter for history - sorted by item a-z
 
@@ -395,7 +395,7 @@ filtered /loc:garage   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
   (nothing matches this filter -- esc to clear it)
-/zzz_  enter apply   esc cancel
+I-search: zzz   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 0 of 12 holdings - enter for history - sorted by item a-z
 
@@ -404,7 +404,7 @@ filtered /loc:garage   esc clear
 ------------------------------------------------------------------------------------------
   ITEM ^                                            QTY  LOCATION          FLAGS          
   (nothing matches this filter -- esc to clear it)
-/zzzz_  enter apply   esc cancel
+I-search: zzzz   enter apply   esc cancel
 ------------------------------------------------------------------------------------------
 0 of 12 holdings - enter for history - sorted by item a-z
 
@@ -422,8 +422,8 @@ filtered /loc:garage   esc clear
   Empty Computer Box                            at rest  Attic                            
   Forever Stamp                                 3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Disp…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                   at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                  out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                   at rest  Garage            gone 2026-06-02
 ------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -443,7 +443,7 @@ filtered /loc:garage   esc clear
   Location  Garage > Metal Shelving Unit                                                  
   Location  Garage > Metal Shelving Unit > Bay 3                                          
   Location  Garage > Metal Shelving Unit > Bay 3 > Blue Crate                             
- JUMP  _  enter go   esc cancel
+ JUMP     enter go   esc cancel
 ------------------------------------------------------------------------------------------
 12 matches across every kind - enter go - esc cancel
 
@@ -463,7 +463,7 @@ filtered /loc:garage   esc clear
   Location  Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray          
   Location  Kitchen > Spice Cabinet                                                       
   Location  Kitchen > Spice Cabinet > Shelf 2                                             
- JUMP  s_  enter go   esc cancel
+ JUMP  s   enter go   esc cancel
 ------------------------------------------------------------------------------------------
 12 matches across every kind - enter go - esc cancel
 
@@ -483,7 +483,7 @@ filtered /loc:garage   esc clear
   Item      Electronics > Cables > USB-C to HDMI Cable 2m                                 
   Holding   Ancho Chile > Shelf 2 (loose)                                                 
   Holding   Basmati Rice > Shelf 1 (sealed)                                               
- JUMP  sh_  enter go   esc cancel
+ JUMP  sh   enter go   esc cancel
 ------------------------------------------------------------------------------------------
 12 matches across every kind - enter go - esc cancel
 
@@ -503,7 +503,7 @@ filtered /loc:garage   esc clear
   Holding   Ancho Chile > Shelf 2 (loose)                                                 
   Holding   Basmati Rice > Shelf 1 (sealed)                                               
   Holding   Basmati Rice > Shelf 1 (loose)                                                
- JUMP  she_  enter go   esc cancel
+ JUMP  she   enter go   esc cancel
 ------------------------------------------------------------------------------------------
 12 matches across every kind - enter go - esc cancel
 
@@ -523,7 +523,7 @@ filtered /loc:garage   esc clear
   Holding   Basmati Rice > Shelf 1 (loose)                                                
   Holding   Brass Thumbtack > Desk Drawer 2 (loose)                                       
   Holding   Cumin > Shelf 2 (loose)                                                       
- JUMP  shel_  enter go   esc cancel
+ JUMP  shel   enter go   esc cancel
 ------------------------------------------------------------------------------------------
 12 matches across every kind - enter go - esc cancel
 
@@ -537,7 +537,7 @@ filtered /loc:garage   esc clear
   Holding   Basmati Rice > Shelf 1 (sealed)                                               
   Holding   Basmati Rice > Shelf 1 (loose)                                                
   Holding   Cumin > Shelf 2 (loose)                                                       
- JUMP  shelf_  enter go   esc cancel
+ JUMP  shelf   enter go   esc cancel
 ------------------------------------------------------------------------------------------
 6 matches across every kind - enter go - esc cancel
 
@@ -559,5 +559,5 @@ filtered /loc:garage   esc clear
   ▾ Office                                                                               3
       Desk Drawer 2                                                                      3
 ------------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 ```

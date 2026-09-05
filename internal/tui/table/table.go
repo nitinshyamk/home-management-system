@@ -16,6 +16,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"home-management-system/internal/tui/keys"
 )
 
 // Align says which edge a cell is anchored to. Numbers read right-aligned
@@ -61,12 +63,30 @@ type Column struct {
 	// Grow shares out space left over after every column has its natural
 	// width. Only one column usually wants it: the one holding names.
 	Grow bool
+
+	// Path marks a column whose cells have a fuller, hierarchical form in
+	// Row.Paths -- "Garage > Bay 3 > Blue Crate" for a cell reading
+	// "Blue Crate".
+	//
+	// Its natural width stays the width of the CELLS, so a house with a deep
+	// tree does not squeeze every other column on the strength of one long
+	// path. It grows toward the fuller form only out of space nothing else
+	// claimed, and gives back the ancestors first when there is less.
+	Path bool
 }
 
 // Row is one line. Key is the caller's identifier, untouched.
 type Row struct {
 	Key   int64
 	Cells []string
+	// Paths is the fuller form of a cell, index-parallel to Cells, and empty
+	// where a cell has none.
+	//
+	// It is shown, never matched: the filter and the sort read Cells. Making
+	// the path the cell instead would quietly turn `loc:garage` into "anywhere
+	// in the Garage" and sort the column by branch rather than by name -- two
+	// behaviour changes hiding inside a rendering one.
+	Paths []string
 }
 
 // Model is the widget's state.
@@ -96,10 +116,6 @@ type Model struct {
 	// AT the row it belongs to rather than under the whole list, so the row
 	// being edited and the rows around it stay where the eye left them.
 	overlay []string
-
-	// pending holds the first key of a two-key sequence (g, z), because gg and
-	// zz are one gesture each and the widget has to remember it saw the first.
-	pending rune
 
 	width, height int
 }
@@ -302,65 +318,57 @@ func (m Model) SortDescription() string {
 	return "by " + strings.ToLower(m.cols[m.sortCol].Title) + " " + direction
 }
 
-// FocusedColumn is the column h and l move between.
+// FocusedColumn is the column C-f and C-b move between.
 func (m Model) FocusedColumn() int { return m.col }
 
 // Update handles a keystroke. It returns the model and whether the key was
 // consumed, so a parent can fall through to its own bindings.
+//
+// Two of the returns are deliberately NOT consumed, and both are how a
+// keystroke reaches past the table to whatever contains it. See Cancel and
+// SearchForward below.
 func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
-	key := msg.String()
-
-	// Two-key gestures first: the widget remembers it saw a g or a z.
-	if m.pending != 0 {
-		first := m.pending
-		m.pending = 0
-		switch {
-		case first == 'g' && key == "g":
-			m.cursor = 0
-			m.clampScroll()
-			return m, true
-		case first == 'z' && key == "z":
-			m.centre()
-			return m, true
-		}
-		// Not a gesture after all. Fall through and treat this key on its own.
-	}
-
-	switch key {
-	case "g", "z":
-		m.pending = rune(key[0])
-		return m, true
-
-	case "j", "down":
+	switch keys.Lookup(keys.Table, msg) {
+	case keys.MoveDown:
 		m.move(1)
-	case "k", "up":
+	case keys.MoveUp:
 		m.move(-1)
-	case "G":
+	case keys.Top:
+		m.cursor = 0
+		m.clampScroll()
+	case keys.Bottom:
 		m.cursor = max(0, len(m.visible)-1)
 		m.clampScroll()
-	// n and N step through what a filter left, wrapping. Wrapping is what makes
-	// them different from j and k rather than a second name for them: at the
-	// end of three matches, the useful next match is the first one.
-	case "n":
-		m.step(1)
-	case "N":
-		m.step(-1)
+	case keys.Recenter:
+		m.centre()
 
-	case "ctrl+d":
+	case keys.PageDown:
 		m.move(m.page() / 2)
-	case "ctrl+u":
+	case keys.PageUp:
 		m.move(-m.page() / 2)
 
-	case "h", "left":
+	// M-n and M-p step through what a filter left, wrapping. Wrapping is what
+	// makes them different from plain motion rather than a second name for it:
+	// at the end of three matches, the useful next match is the first one.
+	//
+	// They are not C-s. C-s OPENS the search line, and it has to keep doing
+	// that even once a filter is applied, because the line comes back prefilled
+	// and that is the only way to refine a filter rather than retype it.
+	case keys.NextMatch:
+		m.step(1)
+	case keys.PrevMatch:
+		m.step(-1)
+
+	case keys.MoveLeft:
 		if m.col > 0 {
 			m.col--
 		}
-	case "l", "right":
+	case keys.MoveRight:
 		if m.col < len(m.cols)-1 {
 			m.col++
 		}
 
-	case " ":
+	case keys.ToggleSelect:
 		if r, ok := m.Current(); ok {
 			if m.selected[r.Key] {
 				delete(m.selected, r.Key)
@@ -369,19 +377,19 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 			}
 			m.move(1)
 		}
-	// V picks what is SHOWN. Selecting rows a filter is hiding would mean
-	// acting on a set nobody has looked at.
-	case "V":
+	// Selecting everything picks what is SHOWN. Selecting rows a filter is
+	// hiding would mean acting on a set nobody has looked at.
+	case keys.SelectVisible:
 		for _, r := range m.visible {
 			m.selected[r.Key] = true
 		}
-	case "esc":
+	case keys.Cancel:
 		if len(m.selected) == 0 {
 			return m, false // nothing to clear; let the parent leave a mode
 		}
 		m.selected = map[int64]bool{}
 
-	case "s":
+	case keys.Sort:
 		if m.fixed {
 			return m, false
 		}
@@ -435,6 +443,14 @@ func cell(r Row, i int) string {
 		return r.Cells[i]
 	}
 	return ""
+}
+
+// path is the fuller form of a cell, or the cell itself when it has none.
+func path(r Row, i int) string {
+	if i < len(r.Paths) && r.Paths[i] != "" {
+		return r.Paths[i]
+	}
+	return cell(r, i)
 }
 
 // step moves with wrap-around.

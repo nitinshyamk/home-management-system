@@ -26,6 +26,9 @@ left one mode and sometimes two, and which was which depended on how you got
 there.
 
 The rule that replaces it: **`esc` always leaves exactly one mode, never two.**
+`C-g` is a synonym for it at every rung, because that is the key emacs reaches
+for — and a synonym that unwound a different number of modes would be worse than
+not having one.
 There are already three escapes before this substage adds any:
 
 | Where | What `esc` does |
@@ -33,6 +36,8 @@ There are already three escapes before this substage adds any:
 | the omnibox line | cancel, leaving any applied filter alone |
 | the list | clear an applied filter |
 | the table | clear a selection |
+
+Both keys, everywhere in that table.
 
 10d adds the field editor and the confirmation. Five is not too many *if the
 order is obvious*; it is far too many if it is not.
@@ -49,13 +54,13 @@ make reseed && ./bin/hms
 
 | # | Keys | What to look at |
 |---|---|---|
-| 1 | `2`, `j`, `e` | Rename a Location in place. **Does the list move?** It must not. |
+| 1 | `2`, `C-n`, `e` | Rename a Location in place. **Does the list move?** It must not. |
 | 2 | type ` Two`, `enter` | The name changes. Is it obvious it was saved rather than abandoned? |
 | 3 | `e`, edit, `esc` | Abandoned. The old name is back and nothing else changed. |
-| 4 | `4`, `:` | The command line. Is it a third thing, or does it read as the filter? |
+| 4 | `4`, `M-x` | The command line. Is it a third thing, or does it read as the filter? |
 | 5 | type `consume 100g` | Acting on the selected row without naming it. Does it say what it will do? |
 | 6 | `enter` | It runs. **Does the feedback say what actually happened**, in the terms of the receipt? |
-| 7 | `:` `consume 1kg` on an item with less than that | A refusal. Is it a sentence, or a stack trace? |
+| 7 | `M-x` `consume 1kg` on an item with less than that | A refusal. Is it a sentence, or a stack trace? |
 | 8 | `:new item Turmeric counting measured unit g category Spices` | Creation. The permanent-fields confirmation appears. |
 | 8a | `:new item Cardamom counting measured unit g` | Now leave the category off. Does it name the missing *field*, or report a constraint? |
 | 9 | read it | Does it say what cannot be changed later, in words worth reading? |
@@ -102,7 +107,7 @@ make reseed && ./bin/hms
 
 ## What is deliberately NOT being judged yet
 
-- **The plan screen.** 11b. A `:` command acts now; batches get their review
+- **The plan screen.** 11b. An `M-x` command acts now; batches get their review
   screen later.
 - **Keystroke actions** (`c`, `m`, `t`, `#`). 10f.
 - **Creation panel layout.** 10e — here the confirmation is only what `:new`

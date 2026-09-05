@@ -55,7 +55,7 @@ func TestTheKeystrokeAndTheLineDoTheSameThing(t *testing.T) {
 	byKeystroke := sim.New(t)
 	rice, _ := stocked(t, byKeystroke)
 	byKeystroke.Send(sim.Press("4"))
-	byKeystroke.Send(sim.Press("/"))
+	byKeystroke.Send(sim.CtrlS)
 	byKeystroke.Send(sim.Type("rice"))
 	byKeystroke.Send(sim.Enter)
 	byKeystroke.Send(sim.Press("c"))
@@ -65,10 +65,10 @@ func TestTheKeystrokeAndTheLineDoTheSameThing(t *testing.T) {
 	byLine := sim.New(t)
 	riceToo, _ := stocked(t, byLine)
 	byLine.Send(sim.Press("4"))
-	byLine.Send(sim.Press("/"))
+	byLine.Send(sim.CtrlS)
 	byLine.Send(sim.Type("rice"))
 	byLine.Send(sim.Enter)
-	byLine.Send(sim.Press(":"))
+	byLine.Send(sim.AltX)
 	byLine.Send(sim.Type("consume 100"))
 	byLine.Send(sim.Enter)
 
@@ -106,7 +106,7 @@ func TestTheQuantityPromptOpensAtTheRow(t *testing.T) {
 func TestAbandoningAPromptDoesNothing(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -121,7 +121,7 @@ func TestAbandoningAPromptDoesNothing(t *testing.T) {
 func TestToggleCustodyIsOneKey(t *testing.T) {
 	s := sim.New(t)
 	_, cable := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 
@@ -147,7 +147,7 @@ func TestActingTwiceStaysOnTheRow(t *testing.T) {
 	// Deliberately NOT filtered to one row. With a single row on screen the
 	// cursor lands back on it whatever the code does, so a test that filters
 	// first passes even when nothing restores anything.
-	s.Send(sim.Press("j")) // onto the cable, the second of two
+	s.Send(sim.CtrlN) // onto the cable, the second of two
 	before := cursorLine(s)
 	if !strings.Contains(before, "Cable") {
 		t.Fatalf("expected to be on the cable, on %q", before)
@@ -169,12 +169,12 @@ func TestActingTwiceStaysOnTheRow(t *testing.T) {
 func TestAFilterSurvivesAWrite(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 
 	s.Send(sim.Press("t"))
-	s.ShowsText("/cable")
+	s.ShowsText("cable")
 	s.HidesText("Basmati")
 }
 
@@ -182,7 +182,7 @@ func TestAFilterSurvivesAWrite(t *testing.T) {
 func TestAnActionThatDoesNotApplyExplainsItself(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 
@@ -191,27 +191,12 @@ func TestAnActionThatDoesNotApplyExplainsItself(t *testing.T) {
 	s.HidesText("how much") // the prompt never opened
 }
 
-// dd, because a single d is the start of an operator in every editor that has
-// one, and retiring on a slip is not a thing to allow.
-func TestRetiringNeedsTwoKeys(t *testing.T) {
-	s := sim.New(t)
-	stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
-	s.Send(sim.Type("cable"))
-	s.Send(sim.Enter)
-
-	s.Send(sim.Press("d"))
-	s.HidesText("retire")
-	s.Send(sim.Press("d"))
-	s.ShowsText("retire")
-}
-
 // Move by name, with the destination resolved because a person typed it -- and
 // the subject by identifier, because the cursor was already on it.
 func TestMoveByKeystroke(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -223,20 +208,23 @@ func TestMoveByKeystroke(t *testing.T) {
 	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
 }
 
-// Yank and put: the same operation as m, for when you would rather look for the
-// destination than name it.
-func TestYankAndPut(t *testing.T) {
+// Copy and put: the same operation as the move prompt, for when you would
+// rather look for the destination than name it.
+//
+// M-w then C-y, which is emacs's copy and paste. Note that the words swap sides
+// coming from vim, where a yank is the COPY rather than the paste.
+func TestCopyAndPut(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
-	s.Send(sim.Press("y"))
-	s.ShowsText("yanked")
+	s.Send(sim.AltW)
+	s.ShowsText("copied")
 
 	s.Send(sim.Press("2"))
 	moveTo(t, s, "Garage")
-	s.Send(sim.Press("p"))
+	s.Send(sim.CtrlY)
 
 	s.Send(sim.Press("4"))
 	s.OnHand(rice, 500*domain.Scale)
@@ -257,10 +245,10 @@ func TestAKeystrokeActsOnEverySelectedRow(t *testing.T) {
 		Amount: domain.FromMilli(500 * domain.Scale), Source: "shop",
 	}))
 
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
-	s.Send(sim.Press("g"), sim.Press("g"))
+	s.Send(sim.AltLess)
 	s.Send(sim.Space, sim.Space)
 	s.ShowsText("2 selected")
 
@@ -277,7 +265,7 @@ func TestAKeystrokeActsOnEverySelectedRow(t *testing.T) {
 func TestCountByKeystrokeRecordsAndCorrects(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -341,7 +329,7 @@ func TestARefusalClearsTheLastSuccess(t *testing.T) {
 	s.ShowsText("use 100")
 
 	// Then something that cannot, on the cable.
-	s.Send(sim.Press("j"))
+	s.Send(sim.CtrlN)
 	s.Send(sim.Press("c"))
 	s.ShowsText("one of a kind")
 	s.HidesText("use 100")
@@ -357,7 +345,7 @@ func TestARefusalClearsTheLastSuccess(t *testing.T) {
 func TestMovePromptCompletes(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -365,11 +353,11 @@ func TestMovePromptCompletes(t *testing.T) {
 	s.Send(sim.Type("gar"))
 
 	s.ShowsText("Garage")
-	s.ShowsText("tab to take it")
+	s.ShowsText("TAB to take it")
 	s.ShowsText("gar") // offered, not applied
 
 	s.Send(sim.Tab)
-	s.HidesText("tab to take it")
+	s.HidesText("TAB to take it")
 	s.Send(sim.Enter)
 
 	s.Send(sim.Press("4"))
@@ -388,7 +376,7 @@ func TestTheMovePromptCompletesOnlyPlaces(t *testing.T) {
 	s.Send(sim.Press("m"))
 	s.Send(sim.Type("grain")) // the Grains CATEGORY, and no location
 
-	s.HidesText("tab to take it")
+	s.HidesText("TAB to take it")
 	if strings.Contains(s.PlainView(), "Grains") {
 		t.Errorf("a destination field offered a classification:\n%s", s.PlainView())
 	}
@@ -405,7 +393,7 @@ func TestTheQuantityPromptOffersNothing(t *testing.T) {
 	// nothing: no location in this house contains a 1, so the prompt stays
 	// silent whether it is filtering by kind or not filtering at all.
 	s.Send(sim.Type("gar"))
-	s.HidesText("tab to take it")
+	s.HidesText("TAB to take it")
 	s.HidesText("Garage")
 }
 
@@ -414,7 +402,7 @@ func TestTheQuantityPromptOffersNothing(t *testing.T) {
 func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -442,10 +430,18 @@ func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
 // RetiredAt, so a retirement is permanent in the only sense a person cares
 // about: the history stays and the holding does not. Friction is proportional
 // to permanence rather than to whether the write happened to be a recording.
+// Retiring is one key, and the guard is the confirmation rather than the key.
+//
+// It used to be dd, on the reasoning that retiring on a slip is not a thing to
+// allow. The reasoning was right and the mechanism was redundant: a retirement
+// is permanent, so its plan carries a permanent fact and this panel opens on it
+// either way. Two keys in front of a panel that already asks was two answers to
+// one question -- and the panel is the answer that cannot be forgotten, because
+// it is the PLAN that decides it is needed, not the keystroke that asked.
 func TestRetiringAsksFirst(t *testing.T) {
 	s := sim.New(t)
 	_, cable := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 
@@ -454,7 +450,7 @@ func TestRetiringAsksFirst(t *testing.T) {
 	// finds nothing and says nothing about why.
 	held := holdingOf(t, s, cable)
 
-	s.Send(sim.Press("d"), sim.Press("d"))
+	s.Send(sim.CtrlK)
 	s.ShowsText("no way back")
 	s.ShowsText("the history stays")
 	if contains(s.EventTypes(held), "Gone") {
@@ -467,7 +463,7 @@ func TestRetiringAsksFirst(t *testing.T) {
 		t.Error("escaping the confirmation retired it anyway")
 	}
 
-	s.Send(sim.Press("d"), sim.Press("d"))
+	s.Send(sim.CtrlK)
 	s.Send(sim.Enter)
 	if recorded := s.EventTypes(held); !contains(recorded, "Gone") {
 		t.Errorf("confirming did not retire it: %v", recorded)
@@ -479,10 +475,10 @@ func TestRetiringAsksFirst(t *testing.T) {
 func TestTheConfirmationUsesTheActsOwnVerb(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
-	s.Send(sim.Press("d"), sim.Press("d"))
+	s.Send(sim.CtrlK)
 
 	s.ShowsText("go ahead")
 	s.HidesText("[enter] create")
@@ -493,7 +489,7 @@ func TestTheConfirmationUsesTheActsOwnVerb(t *testing.T) {
 func TestReversibleActionsStillDoNotAsk(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 

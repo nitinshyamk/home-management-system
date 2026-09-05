@@ -9,13 +9,13 @@ Written before the substage is built.
 
 ## The one mistake to avoid
 
-`/` and `C-p` are two different things that feel identical for exactly one
+`C-s` and `M-g` are two different things that feel identical for exactly one
 keystroke and then diverge completely.
 
 | Key | Scope | Purpose |
 |---|---|---|
-| `/` | **this view** | *Filter.* Narrows the rows in front of you. `n` / `N` step through what is left |
-| `C-p` | **everything** | *Jump.* Fuzzy across Categories, Locations, Items, and Holdings at once; `Enter` goes there |
+| `C-s` | **this view** | *Filter.* Narrows the rows in front of you. `M-n` / `M-p` step through what is left |
+| `M-g` | **everything** | *Jump.* Fuzzy across Categories, Locations, Items, and Holdings at once; `Enter` goes there |
 
 Conflating them is the failure mode. If a reviewer has to pause to work out
 which one they are in, the substage has not passed, however well either works on
@@ -42,18 +42,18 @@ make reseed && ./bin/hms
 
 | # | Keys | What to look at |
 |---|---|---|
-| 1 | `4` then `/` | The filter opens. **Is it obvious you are filtering rather than jumping?** |
+| 1 | `4` then `C-s` | The filter opens. **Is it obvious you are filtering rather than jumping?** |
 | 2 | type `ancho` | Rows narrow as you type. Does the count say what happened? |
 | 3 | `enter` | The filter stays applied and the cursor returns to the list. Is that clear? |
-| 4 | `n` `n` `n` | Step through the matches. Does it wrap, and is the wrap obvious? |
+| 4 | `M-n` `M-n` `M-n` | Step through the matches. Does it wrap, and is the wrap obvious? |
 | 5 | `esc` | The filter clears. Everything comes back. |
-| 6 | `/` then `loc:garage` | A facet alone. Does it read as a *field* rather than as text you typed wrong? |
-| 7 | `/` then `loc:garage ancho` | Facet and text together, one line. |
-| 8 | `/` then `zzzz` | No matches. Does the empty state say *why* it is empty? |
-| 9 | `C-p` | The jump palette. **Is it visibly a different thing from step 1?** |
+| 6 | `C-s` then `loc:garage` | A facet alone. Does it read as a *field* rather than as text you typed wrong? |
+| 7 | `C-s` then `loc:garage ancho` | Facet and text together, one line. |
+| 8 | `C-s` then `zzzz` | No matches. Does the empty state say *why* it is empty? |
+| 9 | `M-g` | The jump palette. **Is it visibly a different thing from step 1?** |
 | 10 | type `shelf` | Results from more than one kind at once. Is the kind of each result legible? |
 | 11 | `enter` | It goes there — the right view, cursor on the right row. |
-| 12 | `C-p`, `esc` | Cancelling leaves you exactly where you were. |
+| 12 | `M-g`, `esc` | Cancelling leaves you exactly where you were. |
 
 ---
 
@@ -86,7 +86,7 @@ make reseed && ./bin/hms
 
 ## What is deliberately NOT being judged yet
 
-- **`:` commands.** 10d. `/` and `C-p` only.
+- **`M-x` commands.** 10d. `C-s` and `M-g` only.
 - **Autocomplete inside the input.** 10d, where it is needed for editing.
 - **Acting on the filtered set.** 10f.
 

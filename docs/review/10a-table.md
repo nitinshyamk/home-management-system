@@ -46,14 +46,14 @@ the whole reason to look:
 | # | Keys | What to look at |
 |---|---|---|
 | 1 | `4` | The Holdings table. Read it for five seconds and stop. **How many rows did you take in?** |
-| 2 | `j` `j` `j` | Does the cursor read as a position, or as a highlight you have to hunt for? |
-| 3 | `G` then `gg` | Does the jump land somewhere you can orient from immediately? |
-| 4 | `l` `l` | Column focus. Is it obvious which column is active, without it shouting? |
+| 2 | `C-n` `C-n` `C-n` | Does the cursor read as a position, or as a highlight you have to hunt for? |
+| 3 | `M->` then `M-<` | Does the jump land somewhere you can orient from immediately? |
+| 4 | `C-f` `C-f` | Column focus. Is it obvious which column is active, without it shouting? |
 | 5 | `s` | Sort by the focused column. Does the header say which way it is sorted? |
-| 6 | `space` `j` `space` `j` `space` | Three rows selected. Can you tell at a glance which three, from anywhere on the screen? |
+| 6 | `C-space` `C-n` `C-space` `C-n` `C-space` | Three rows selected. Can you tell at a glance which three, from anywhere on the screen? |
 | 7 | `esc` | Selection clears. Nothing else changes. |
 | 8 | `3` | The Items table. Same shape, different columns — does it feel like the same widget? |
-| 9 | Resize to ~60 columns, then ~200 | What gets dropped first, and is it the right thing? |
+| 9 | Resize to ~60 columns, then ~200 | What gets dropped first, and is it the right thing? At 200, does LOCATION say where the shelf actually is? |
 | 10 | `4`, navigate to the adapter | The long name and the deep path on one row. Where does the truncation fall? |
 
 ---
@@ -87,6 +87,15 @@ Judge these, in this order. The first three are the ones that matter.
 6. **Narrow terminals degrade rather than break.** At step 9 the table should
    shed columns in priority order and stay readable. Wrapping is the failure
    mode to watch for: one overflowing line shifts every row below it.
+
+7. **Wide terminals say more.** Also at step 9, going the other way: LOCATION
+   holds a shelf's own name, and spends genuinely spare width on the branch
+   above it — `Shelf 2` becomes `… > Spice Cabinet > Shelf 2` and then
+   `Kitchen > Spice Cabinet > Shelf 2`. Three rows of one item in three
+   different Shelf 1s is the question this table exists to answer, and the leaf
+   alone cannot. Two things to check: the ancestors must never cost the ITEM
+   column room it was using, and the column must not settle on `… > Shelf 2`,
+   which spends four columns to say a parent exists without naming it.
 
 ---
 

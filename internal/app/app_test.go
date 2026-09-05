@@ -128,7 +128,7 @@ func TestSummariseHandlesEveryEventType(t *testing.T) {
 func TestCategoryTreeRollsUp(t *testing.T) {
 	h := newHarness(t)
 
-	rows, err := h.ctrl.CategoryTree(h.ctx)
+	rows, err := h.ctrl.CategoryTree(h.ctx, false)
 	if err != nil {
 		t.Fatalf("category tree: %v", err)
 	}
@@ -342,7 +342,7 @@ func TestCategoryWritesGoThroughTheController(t *testing.T) {
 		t.Fatalf("archive: %v", err)
 	}
 
-	rows, err := h.ctrl.CategoryTree(h.ctx)
+	rows, err := h.ctrl.CategoryTree(h.ctx, false)
 	if err != nil {
 		t.Fatalf("tree: %v", err)
 	}

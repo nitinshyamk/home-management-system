@@ -24,8 +24,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -43,8 +43,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -62,12 +62,12 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
-===== j  (100x24) =================================================================================
+===== ctrl+n  (100x24) ============================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ----------------------------------------------------------------------------------------------------
   ITEM ^                                                      QTY  LOCATION          FLAGS          
@@ -81,8 +81,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -100,8 +100,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -119,27 +119,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-> Winter Coat                                             at rest  Garage            gone 2026-05-29
-----------------------------------------------------------------------------------------------------
-12 holdings - enter for history - sorted by item a-z
-
-===== g  (100x24) =================================================================================
- 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
-----------------------------------------------------------------------------------------------------
-  ITEM ^                                                      QTY  LOCATION          FLAGS          
-  Ancho Chile                                               120 g  Shelf 2                          
-  Ancho Chile                                               120 g  Garage                           
-  Ancho Chile                                                40 g  Small Parts Tray                 
-  Basmati Rice                                3 packages (6000 g)  Shelf 1                          
-  Basmati Rice                                              800 g  Shelf 1                          
-  Brass Thumbtack                                        82 count  Desk Drawer 2                    
-  Cumin                                                      90 g  Shelf 2                          
-  Empty Computer Box                                      at rest  Attic                            
-  Forever Stamp                                           3 count  Desk Drawer 2                    
-  Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-> Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+> Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -157,8 +138,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -176,8 +157,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -195,8 +176,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -207,9 +188,9 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Brass Thumbtack                                        82 count  Desk Drawer 2                    
   Forever Stamp                                           3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
   Ancho Chile                                               120 g  Garage                           
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
   Basmati Rice                                3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                              800 g  Shelf 1                          
 > Ancho Chile                                               120 g  Shelf 2                          
@@ -230,10 +211,10 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Basmati Rice                                3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                              800 g  Shelf 1                          
   Ancho Chile                                               120 g  Garage                           
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
   Brass Thumbtack                                        82 count  Desk Drawer 2                    
   Forever Stamp                                           3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
   Empty Computer Box                                      at rest  Attic                            
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by location z-a
@@ -249,15 +230,15 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Basmati Rice                                3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                              800 g  Shelf 1                          
   Ancho Chile                                               120 g  Garage                           
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
   Brass Thumbtack                                        82 count  Desk Drawer 2                    
   Forever Stamp                                           3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
   Empty Computer Box                                      at rest  Attic                            
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by location z-a - 1 selected
 
-===== j  (100x24) =================================================================================
+===== ctrl+n  (100x24) ============================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ----------------------------------------------------------------------------------------------------
   ITEM                                                        QTY  LOCATION v        FLAGS          
@@ -268,15 +249,15 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
 > Basmati Rice                                3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                              800 g  Shelf 1                          
   Ancho Chile                                               120 g  Garage                           
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
   Brass Thumbtack                                        82 count  Desk Drawer 2                    
   Forever Stamp                                           3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
   Empty Computer Box                                      at rest  Attic                            
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by location z-a - 1 selected
 
-===== space  (100x24) =============================================================================
+===== ctrl+space  (100x24) ========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ----------------------------------------------------------------------------------------------------
   ITEM                                                        QTY  LOCATION v        FLAGS          
@@ -287,15 +268,15 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
  *Basmati Rice                                3 packages (6000 g)  Shelf 1                          
 > Basmati Rice                                              800 g  Shelf 1                          
   Ancho Chile                                               120 g  Garage                           
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
   Brass Thumbtack                                        82 count  Desk Drawer 2                    
   Forever Stamp                                           3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
   Empty Computer Box                                      at rest  Attic                            
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by location z-a - 2 selected
 
-===== j  (100x24) =================================================================================
+===== ctrl+n  (100x24) ============================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 ----------------------------------------------------------------------------------------------------
   ITEM                                                        QTY  LOCATION v        FLAGS          
@@ -306,10 +287,10 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
  *Basmati Rice                                3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                              800 g  Shelf 1                          
 > Ancho Chile                                               120 g  Garage                           
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
   Brass Thumbtack                                        82 count  Desk Drawer 2                    
   Forever Stamp                                           3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
   Empty Computer Box                                      at rest  Attic                            
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by location z-a - 2 selected
@@ -325,10 +306,10 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
  *Basmati Rice                                3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                              800 g  Shelf 1                          
  *Ancho Chile                                               120 g  Garage                           
-> Winter Coat                                             at rest  Garage            gone 2026-05-29
+> Winter Coat                                             at rest  Garage            gone 2026-06-02
   Brass Thumbtack                                        82 count  Desk Drawer 2                    
   Forever Stamp                                           3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
   Empty Computer Box                                      at rest  Attic                            
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by location z-a - 3 selected
@@ -344,10 +325,10 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Basmati Rice                                3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                              800 g  Shelf 1                          
   Ancho Chile                                               120 g  Garage                           
-> Winter Coat                                             at rest  Garage            gone 2026-05-29
+> Winter Coat                                             at rest  Garage            gone 2026-06-02
   Brass Thumbtack                                        82 count  Desk Drawer 2                    
   Forever Stamp                                           3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
   Empty Computer Box                                      at rest  Attic                            
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by location z-a
@@ -382,8 +363,8 @@ prompts do not appear. Add `--color` and pipe to `less -R` for those.
   Empty Computer Box                                      at rest  Attic                            
   Forever Stamp                                           3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual DisplayPort 1.…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                             at rest  Garage            gone 2026-05-29
+  USB-C to HDMI Cable 2m                            out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                             at rest  Garage            gone 2026-06-02
 ----------------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 ```

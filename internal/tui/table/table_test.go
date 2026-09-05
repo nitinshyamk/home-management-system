@@ -8,11 +8,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
+	tuikeys "home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/table"
 )
 
 // The widget crosses no boundary, so it is tested here rather than through the
-// Simulator: "does j move the cursor" needs no database. Everything that
+// Simulator: "does C-n move the cursor" needs no database. Everything that
 // crosses a boundary is tested through the Simulator instead.
 
 func columns() []table.Column {
@@ -43,20 +44,13 @@ func newTable(n int) table.Model {
 	return table.New(columns()).SetRows(rows(n)).SetSize(80, 12)
 }
 
-func press(m table.Model, keys ...string) table.Model {
-	for _, k := range keys {
-		var msg tea.KeyMsg
-		switch k {
-		case " ":
-			msg = tea.KeyMsg{Type: tea.KeySpace, Runes: []rune{' '}}
-		case "esc":
-			msg = tea.KeyMsg{Type: tea.KeyEscape}
-		case "ctrl+d":
-			msg = tea.KeyMsg{Type: tea.KeyCtrlD}
-		case "ctrl+u":
-			msg = tea.KeyMsg{Type: tea.KeyCtrlU}
-		default:
-			msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
+// press names keys the way the keymap names them, so a test cannot press a key
+// the interface does not bind.
+func press(m table.Model, names ...string) table.Model {
+	for _, name := range names {
+		msg, ok := tuikeys.Named(name)
+		if !ok {
+			panic(name + " is not a key")
 		}
 		m, _ = m.Update(msg)
 	}
@@ -65,30 +59,32 @@ func press(m table.Model, keys ...string) table.Model {
 
 func TestMotion(t *testing.T) {
 	m := newTable(20)
-	if got := press(m, "j", "j", "j").Cursor(); got != 3 {
-		t.Errorf("jjj put the cursor at %d, want 3", got)
+	if got := press(m, "ctrl+n", "ctrl+n", "ctrl+n").Cursor(); got != 3 {
+		t.Errorf("three C-n put the cursor at %d, want 3", got)
 	}
-	if got := press(m, "k").Cursor(); got != 0 {
-		t.Errorf("k from the top moved to %d, want 0 -- the cursor left the table", got)
+	if got := press(m, "ctrl+p").Cursor(); got != 0 {
+		t.Errorf("C-p from the top moved to %d, want 0 -- the cursor left the table", got)
 	}
-	if got := press(m, "G").Cursor(); got != 19 {
-		t.Errorf("G put the cursor at %d, want the last row", got)
+	if got := press(m, "alt+>").Cursor(); got != 19 {
+		t.Errorf("M-> put the cursor at %d, want the last row", got)
 	}
-	if got := press(m, "G", "j").Cursor(); got != 19 {
-		t.Errorf("j from the bottom moved to %d, want the last row", got)
+	if got := press(m, "alt+>", "ctrl+n").Cursor(); got != 19 {
+		t.Errorf("C-n from the bottom moved to %d, want the last row", got)
 	}
-	if got := press(m, "G", "g", "g").Cursor(); got != 0 {
-		t.Errorf("gg put the cursor at %d, want the first row", got)
+	if got := press(m, "alt+>", "alt+<").Cursor(); got != 0 {
+		t.Errorf("M-< put the cursor at %d, want the first row", got)
 	}
-	// A lone g is not a jump. It waits, which is what makes gg one gesture.
-	if got := press(m, "j", "j", "g").Cursor(); got != 2 {
-		t.Errorf("a pending g moved the cursor to %d", got)
+	// An unbound letter is not motion, and not a half-finished gesture either.
+	// The two-key sequences are gone: there is no state between keystrokes for
+	// a stray key to be the first half of.
+	if got := press(m, "ctrl+n", "ctrl+n", "g", "z", "d").Cursor(); got != 2 {
+		t.Errorf("unbound letters moved the cursor to %d, want 2", got)
 	}
 }
 
 func TestMotionOnAnEmptyTable(t *testing.T) {
 	m := table.New(columns()).SetSize(80, 12)
-	if got := press(m, "j", "k", "G", "g", "g", " ").Cursor(); got != -1 {
+	if got := press(m, "ctrl+n", "ctrl+p", "alt+>", "alt+<", "ctrl+space").Cursor(); got != -1 {
 		t.Errorf("cursor = %d on an empty table, want -1", got)
 	}
 	if !strings.Contains(m.View(), "nothing here") {
@@ -99,7 +95,7 @@ func TestMotionOnAnEmptyTable(t *testing.T) {
 func TestSelection(t *testing.T) {
 	m := newTable(10)
 	// space selects AND advances, so picking three in a row is three presses.
-	m = press(m, " ", " ", " ")
+	m = press(m, "ctrl+space", "ctrl+space", "ctrl+space")
 	if got := m.SelectionCount(); got != 3 {
 		t.Errorf("selected %d rows, want 3", got)
 	}
@@ -107,7 +103,7 @@ func TestSelection(t *testing.T) {
 		t.Errorf("selected keys = %v, want the first three", got)
 	}
 	// Toggling off.
-	m = press(m, "k", " ")
+	m = press(m, "ctrl+p", "ctrl+space")
 	if got := m.SelectionCount(); got != 2 {
 		t.Errorf("after toggling off, %d rows selected, want 2", got)
 	}
@@ -120,7 +116,7 @@ func TestSelection(t *testing.T) {
 // same gesture. But a status line must not claim a selection nobody made, which
 // is why the count is separate.
 func TestSelectedFallsBackToTheCursorButTheCountDoesNot(t *testing.T) {
-	m := press(newTable(10), "j", "j")
+	m := press(newTable(10), "ctrl+n", "ctrl+n")
 	if got := m.Selected(); len(got) != 1 || got[0] != 3 {
 		t.Errorf("with nothing selected, Selected() = %v, want the cursor row", got)
 	}
@@ -133,7 +129,7 @@ func TestSelectedFallsBackToTheCursorButTheCountDoesNot(t *testing.T) {
 // wrong thing.
 func TestSortKeepsTheCursorOnItsRow(t *testing.T) {
 	m := newTable(10)
-	m = press(m, "j", "j", "j")
+	m = press(m, "ctrl+n", "ctrl+n", "ctrl+n")
 	before, _ := m.Current()
 
 	m = press(m, "s")
@@ -306,8 +302,10 @@ func TestNumbersKeepTheirLeastSignificantEnd(t *testing.T) {
 
 func TestScrollingKeepsTheCursorOnScreen(t *testing.T) {
 	m := newTable(50).SetSize(80, 10)
-	for _, keys := range [][]string{{"G"}, {"g", "g"}, {"ctrl+d"}, {"ctrl+d", "ctrl+d"}, {"ctrl+u"}} {
-		m = press(m, keys...)
+	for _, gesture := range [][]string{
+		{"alt+>"}, {"alt+<"}, {"ctrl+v"}, {"ctrl+v", "ctrl+v"}, {"alt+v"},
+	} {
+		m = press(m, gesture...)
 		lines := strings.Split(strip(m.View()), "\n")
 		found := false
 		for _, line := range lines {
@@ -316,7 +314,7 @@ func TestScrollingKeepsTheCursorOnScreen(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Errorf("after %v the cursor is off screen:\n%s", keys, strip(m.View()))
+			t.Errorf("after %v the cursor is off screen:\n%s", gesture, strip(m.View()))
 		}
 	}
 }
@@ -324,13 +322,13 @@ func TestScrollingKeepsTheCursorOnScreen(t *testing.T) {
 // SetRows must not strand the cursor past the end, which is what happens when a
 // filter narrows the table under it.
 func TestReplacingRowsKeepsTheCursorInBounds(t *testing.T) {
-	m := press(newTable(20), "G")
+	m := press(newTable(20), "alt+>")
 	m = m.SetRows(rows(3))
 	if got := m.Cursor(); got != 2 {
 		t.Errorf("cursor = %d after the table shrank to 3 rows", got)
 	}
 	// And a selection of rows that are gone does not linger.
-	m = press(newTable(20), " ", " ").SetRows(rows(1))
+	m = press(newTable(20), "ctrl+space", "ctrl+space").SetRows(rows(1))
 	if got := m.SelectionCount(); got != 1 {
 		t.Errorf("%d rows selected after the table shrank; the others no longer exist", got)
 	}
@@ -345,7 +343,7 @@ func TestUnhandledKeysFallThrough(t *testing.T) {
 	if _, handled := m.Update(tea.KeyMsg{Type: tea.KeyEscape}); handled {
 		t.Error("the table swallowed esc with nothing selected")
 	}
-	withSelection := press(m, " ")
+	withSelection := press(m, "ctrl+space")
 	if _, handled := withSelection.Update(tea.KeyMsg{Type: tea.KeyEscape}); !handled {
 		t.Error("esc did not clear the selection")
 	}
@@ -353,13 +351,13 @@ func TestUnhandledKeysFallThrough(t *testing.T) {
 
 func TestColumnFocusMoves(t *testing.T) {
 	m := newTable(5)
-	if got := press(m, "l", "l").FocusedColumn(); got != 2 {
+	if got := press(m, "ctrl+f", "ctrl+f").FocusedColumn(); got != 2 {
 		t.Errorf("ll focused column %d, want 2", got)
 	}
-	if got := press(m, "h").FocusedColumn(); got != 0 {
+	if got := press(m, "ctrl+b").FocusedColumn(); got != 0 {
 		t.Errorf("h from the first column focused %d, want 0", got)
 	}
-	if got := press(m, "l", "l", "l", "l", "l", "l").FocusedColumn(); got != 3 {
+	if got := press(m, "ctrl+f", "ctrl+f", "ctrl+f", "ctrl+f", "ctrl+f", "ctrl+f").FocusedColumn(); got != 3 {
 		t.Errorf("l past the last column focused %d, want the last", got)
 	}
 }
@@ -394,7 +392,7 @@ func TestAdjacentRowsAreVisuallyDistinct(t *testing.T) {
 	// The cursor is parked on the last row, so the rows being compared carry
 	// only their banding. Leaving it on row 0 compares a bold row with a plain
 	// one and passes for the wrong reason.
-	lines := renderedRows(press(newTable(6), "G"))
+	lines := renderedRows(press(newTable(6), "alt+>"))
 	if len(lines) < 4 {
 		t.Fatalf("got %d rows", len(lines))
 	}
@@ -416,7 +414,7 @@ func TestASelectedRowIsMarkedBeyondItsGutter(t *testing.T) {
 	// Select rows 0 and 1 -- one on each band -- then park the cursor clear of
 	// both, so what is compared is selection against nothing rather than
 	// selection against the cursor.
-	m := press(newTable(8), " ", " ", "G")
+	m := press(newTable(8), "ctrl+space", "ctrl+space", "alt+>")
 	lines := renderedRows(m)
 
 	if !strings.Contains(strip(lines[0]), "*") {
@@ -446,7 +444,7 @@ func TestASelectedRowIsMarkedBeyondItsGutter(t *testing.T) {
 // the eye can reliably separate two.
 func TestSelectionIsNotJustAnotherShadeOfTheBanding(t *testing.T) {
 	defer withColour()()
-	m := press(newTable(8), " ", "G")
+	m := press(newTable(8), "ctrl+space", "alt+>")
 	lines := renderedRows(m)
 
 	selected := styleOf(lines[0])
@@ -563,7 +561,7 @@ func TestFacetsAndTextCompose(t *testing.T) {
 
 // A filter that moves the cursor makes you re-find your place every keystroke.
 func TestFilteringKeepsTheCursorOnItsRow(t *testing.T) {
-	m := press(filterable(), "j", "j", "j") // Cumin
+	m := press(filterable(), "ctrl+n", "ctrl+n", "ctrl+n") // Cumin
 	before, _ := m.Current()
 
 	m = m.SetFilter(table.Filter{Text: "cumin"})
@@ -579,20 +577,20 @@ func TestStepThroughMatchesWraps(t *testing.T) {
 	if got := m.Cursor(); got != 0 {
 		t.Fatalf("cursor = %d", got)
 	}
-	m = press(m, "n")
+	m = press(m, "alt+n")
 	if got := m.Cursor(); got != 1 {
 		t.Errorf("n moved to %d, want 1", got)
 	}
-	m = press(m, "n")
+	m = press(m, "alt+n")
 	if got := m.Cursor(); got != 0 {
 		t.Errorf("n at the last match moved to %d, want it to wrap to 0", got)
 	}
-	m = press(m, "N")
+	m = press(m, "alt+p")
 	if got := m.Cursor(); got != 1 {
 		t.Errorf("N at the first match moved to %d, want it to wrap to the last", got)
 	}
 	// j and k do NOT wrap, or they would be the same key.
-	m = press(filterable(), "G", "j")
+	m = press(filterable(), "alt+>", "ctrl+n")
 	if got := m.Cursor(); got != 3 {
 		t.Errorf("j at the bottom moved to %d; it wrapped", got)
 	}
@@ -617,8 +615,160 @@ func TestTheEmptyStateSaysWhy(t *testing.T) {
 // V picks what is SHOWN. Selecting rows a filter is hiding would mean acting on
 // a set nobody has looked at.
 func TestSelectAllPicksOnlyWhatIsShown(t *testing.T) {
-	m := press(filterable().SetFilter(table.Filter{Text: "ancho"}), "V")
+	m := press(filterable().SetFilter(table.Filter{Text: "ancho"}), "alt+h")
 	if got := m.SelectionCount(); got != 2 {
 		t.Errorf("V selected %d rows out of 4, want the 2 shown", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Path columns
+// ---------------------------------------------------------------------------
+
+// pathColumns is a holdings-shaped table whose LOCATION column has a fuller
+// hierarchical form behind each cell.
+func pathColumns() []table.Column {
+	return []table.Column{
+		{Title: "ITEM", Min: 8, Grow: true},
+		{Title: "LOCATION", Min: 8, Drop: 2, Elide: table.ElideStart, Path: true},
+	}
+}
+
+func pathRows() []table.Row {
+	return []table.Row{
+		{Key: 1, Cells: []string{"Ancho", "Shelf 2"},
+			Paths: []string{"", "Kitchen > Spice Cabinet > Shelf 2"}},
+		{Key: 2, Cells: []string{"Cumin", "Garage"},
+			Paths: []string{"", "Garage"}},
+	}
+}
+
+func pathTable(width int) table.Model {
+	return table.New(pathColumns()).SetRows(pathRows()).SetSize(width, 12)
+}
+
+// Given room, the column says where the shelf actually is. That is the whole
+// point of it: three rows of one item in three different Shelf 1s cannot be
+// told apart by the leaf alone.
+func TestAPathColumnShowsTheWholeTreeWhenItFits(t *testing.T) {
+	got := strip(pathTable(80).View())
+	if !strings.Contains(got, "Kitchen > Spice Cabinet > Shelf 2") {
+		t.Errorf("the full path is not shown in an 80-column terminal:\n%s", got)
+	}
+	// A root has no ancestors, and must not grow an ellipsis pretending it has.
+	if !strings.Contains(got, "Garage") || strings.Contains(got, "… > Garage") {
+		t.Errorf("a root location was rendered as though it had a parent:\n%s", got)
+	}
+}
+
+// Narrowed, it gives up ANCESTORS rather than characters. Eliding the string
+// reads "…t > Shelf 2", which cuts a name in half and spends a column on an
+// ellipsis to say so; eliding by segment leaves names.
+func TestAPathColumnGivesUpAncestorsNotCharacters(t *testing.T) {
+	// Wide enough for "… > Spice Cabinet > Shelf 2", not for the Kitchen.
+	got := strip(pathTable(38).View())
+	if !strings.Contains(got, "… > Spice Cabinet > Shelf 2") {
+		t.Errorf("the path did not shed its root cleanly:\n%s", got)
+	}
+	if strings.Contains(got, "n > Spice") {
+		t.Errorf("the path was cut mid-name:\n%s", got)
+	}
+}
+
+// The leaf is the floor. It is what the column held before it could show a path
+// at all, so a terminal with no room to spare loses nothing it used to have.
+func TestAPathColumnFallsBackToTheLeaf(t *testing.T) {
+	got := strip(pathTable(20).View())
+	if !strings.Contains(got, "Shelf 2") {
+		t.Errorf("the leaf was lost in a narrow terminal:\n%s", got)
+	}
+	if strings.Contains(got, "Cabinet") {
+		t.Errorf("a 20-column terminal found room for an ancestor:\n%s", got)
+	}
+	// And no ellipsis promising ancestors it did not have room to show.
+	if strings.Contains(got, "…") {
+		t.Errorf("the leaf alone was rendered with an ellipsis:\n%s", got)
+	}
+}
+
+// The ancestors are context: worth having when they cost nothing, never worth
+// taking the name column's room for.
+//
+// The natural width of a path column is its CELLS, so the growing column is
+// sized as though the paths were not there and only genuine slack reaches them.
+// Sizing on the paths instead is what dropped LOCATION and FLAGS from a
+// hundred-column terminal that had ample room for them.
+func TestAPathColumnTakesOnlySlack(t *testing.T) {
+	long := []table.Row{{
+		Key:   1,
+		Cells: []string{"An item with a name long enough to fill the terminal by itself", "Shelf 2"},
+		Paths: []string{"", "Kitchen > Spice Cabinet > Shelf 2"},
+	}}
+	withPath := table.New(pathColumns()).SetRows(long).SetSize(60, 12)
+
+	plain := pathColumns()
+	plain[1].Path = false
+	without := table.New(plain).SetRows(long).SetSize(60, 12)
+
+	if got, want := columnStart(strip(withPath.View())), columnStart(strip(without.View())); got != want {
+		t.Errorf("the path column moved LOCATION from column %d to %d; it took room the name needed",
+			want, got)
+	}
+}
+
+// columnStart is where LOCATION begins in the header, which is the width every
+// column before it was given.
+func columnStart(view string) int {
+	return strings.Index(strings.Split(view, "\n")[0], "LOCATION")
+}
+
+// Shown, never matched. Making the path the cell would quietly turn
+// `loc:garage` into "anywhere in the Garage" and sort the column by branch
+// rather than by name -- two behaviour changes hiding inside a rendering one.
+func TestAPathIsShownButNotMatched(t *testing.T) {
+	m := pathTable(80).SetFilter(table.Filter{
+		Facets: []table.FacetTest{{Column: 1, Value: "kitchen"}},
+	})
+	if shown, _ := m.Counts(); shown != 0 {
+		t.Errorf("a facet matched %d rows through the path; it may only see the cell", shown)
+	}
+
+	m = pathTable(80).SetFilter(table.Filter{
+		Facets: []table.FacetTest{{Column: 1, Value: "shelf"}},
+	})
+	if shown, _ := m.Counts(); shown != 1 {
+		t.Errorf("a facet on the cell matched %d rows, want 1", shown)
+	}
+}
+
+// An elided path earns its space only while it still names something.
+//
+// "… > Shelf 2" is worse than the "Shelf 2" it replaces: four columns spent to
+// say "this has a parent" without saying which. The column skips that form and
+// stays on the leaf until a real ancestor fits.
+func TestAPathColumnNeverSpendsSpaceOnAnEllipsisAlone(t *testing.T) {
+	for width := 20; width <= 36; width++ {
+		got := strip(pathTable(width).View())
+		if strings.Contains(got, "… > Shelf 2") {
+			t.Fatalf("at %d columns the path said only that it had a parent:\n%s", width, got)
+		}
+	}
+}
+
+// And it takes only the width it can actually USE.
+//
+// Handing it every spare column padded LOCATION out to the longest path in the
+// house while still drawing the short form of every row -- space taken from the
+// name column and spent on nothing.
+func TestAPathColumnDoesNotHoardWidthItCannotUse(t *testing.T) {
+	// 30 columns: too narrow for "… > Spice Cabinet > Shelf 2", so the path
+	// column should be sitting at its cell width and the rest should have gone
+	// to the growing column.
+	narrow := columnStart(strip(pathTable(30).View()))
+	wide := columnStart(strip(pathTable(36).View()))
+	if narrow >= wide {
+		t.Errorf("LOCATION starts at column %d in a 30-column terminal and %d in a 36-column one; "+
+			"the extra width was padded into the path column rather than given to the name",
+			narrow, wide)
 	}
 }

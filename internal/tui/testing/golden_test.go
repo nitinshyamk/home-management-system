@@ -71,7 +71,7 @@ func TestGoldenLocationTree(t *testing.T) {
 	s.AssertFrame("10b-locations-84")
 
 	// Collapsed is the overview, and it is a different layout question.
-	s.Send(sim.Press("z"), sim.Press("M"))
+	s.Send(sim.ShiftTab)
 	s.AssertFrame("10b-locations-collapsed")
 }
 
@@ -80,13 +80,13 @@ func TestGoldenFilterAndJumpDoNotLookAlike(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Resize(90, 20)
 
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("loc:tray"))
 	s.Send(sim.Enter)
 	s.AssertFrame("10c-filtered")
 
 	s.Send(sim.Esc)
-	s.Send(sim.CtrlP)
+	s.Send(sim.AltG)
 	s.Send(sim.Type("shelf"))
 	s.AssertFrame("10c-jump")
 }
@@ -102,7 +102,7 @@ func TestGoldenInlineEditor(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Resize(84, 20)
 	s.Send(sim.Press("2"))
-	s.Send(sim.Press("j"), sim.Press("j"))
+	s.Send(sim.CtrlN, sim.CtrlN)
 	s.Send(sim.Press("e"))
 	s.AssertFrame("10d-editor-inline")
 }
@@ -111,7 +111,7 @@ func TestGoldenTheConfirmation(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(92, 18)
-	s.Send(sim.Press("4"), sim.Press(":"))
+	s.Send(sim.Press("4"), sim.AltX)
 	s.Send(sim.Type("new item Turmeric counting measured unit g package 2000 category Spices"))
 	s.Send(sim.Enter)
 	s.AssertFrame("10d-confirmation")
@@ -121,7 +121,7 @@ func TestGoldenARefusal(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(64, 18)
-	s.Send(sim.Press("4"), sim.Press(":"))
+	s.Send(sim.Press("4"), sim.AltX)
 	s.Send(sim.Type("consume 5kg"))
 	s.Send(sim.Enter)
 	s.AssertFrame("10d-refusal-wrapped")
@@ -136,9 +136,9 @@ func TestGoldenTheRetirementConfirmation(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(92, 18)
-	s.Send(sim.Press("4"), sim.Press("/"))
+	s.Send(sim.Press("4"), sim.CtrlS)
 	s.Send(sim.Type("thunder"))
 	s.Send(sim.Enter)
-	s.Send(sim.Press("d"), sim.Press("d"))
+	s.Send(sim.CtrlK)
 	s.AssertFrame("10f-retire-confirmation")
 }

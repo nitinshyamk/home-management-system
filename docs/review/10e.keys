@@ -1,9 +1,17 @@
-# 10e — creation and confirmation.
-#
-#   ./bin/hms --db-path=hms.db --render docs/review/10e.keys --width 92 --height 22
+# 10e — creation, and the completion dropdown.
+##
+#   ./bin/hms --db-path=hms.db --render docs/review/10e.keys --width 92 --height 24
+##
+# A blank comment line is `##`, not `#`. A bare hash is the count KEY.
 
 3: the items view
 o: the creation panel
+C
+u
+m: the name warns about what already exists
+backspace
+backspace
+backspace: cleared
 T
 u
 r
@@ -11,40 +19,27 @@ m
 e
 r
 i
-c
+c: nothing like it, so nothing to warn about
 tab: onto the counting choice
-h: a pile I count
-h: one of a kind -- the measured fields go
-l
-l: something I measure -- they come back
-tab
-g
-tab
+ctrl+b: a pile I count
+ctrl+b: one of a kind -- the measured fields go
+ctrl+f
+ctrl+f: something I measure -- they come back
+tab: onto unit -- arriving opens the dropdown
+ctrl+n
+ctrl+n
+ctrl+n: walking the list with C-n
+tab: TAB takes what is highlighted
+tab: onto per package
 2
 0
 0
 0
-tab
+tab: onto category -- every category, offered
 s
 p
-i
-c: autocomplete offers, and does not apply
-tab: tab takes it
-s
-p
-i
-c: autocomplete offers, and does not apply
-tab: tab takes it
-enter: the permanent-fields confirmation
-esc: back to the panel, still filled in
-esc: back to the list, nothing created
-2: the locations tree
-j
-o: a location, fewer fields, no counting
-C
-e
-l
-l
-a
-r
-esc
+i: refined as you type
+esc: dismissed -- the field keeps what was typed
+x: and typing does not bring it back
+backspace
+tab: nothing to take, so TAB moves on

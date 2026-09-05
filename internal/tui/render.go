@@ -13,6 +13,7 @@ import (
 	"github.com/muesli/termenv"
 
 	"home-management-system/internal/app"
+	"home-management-system/internal/tui/keys"
 )
 
 // Render replays a key script and prints the frame after each step.
@@ -156,54 +157,14 @@ func isComment(line string) bool {
 	return strings.HasPrefix(rest, " ") || strings.HasPrefix(rest, "#")
 }
 
-func keyByName(name string) (tea.KeyMsg, bool) {
-	switch name {
-	case "enter":
-		return tea.KeyMsg{Type: tea.KeyEnter}, true
-	case "esc":
-		return tea.KeyMsg{Type: tea.KeyEscape}, true
-	case "tab":
-		return tea.KeyMsg{Type: tea.KeyTab}, true
-	case "space":
-		return tea.KeyMsg{Type: tea.KeySpace, Runes: []rune{' '}}, true
-	case "up":
-		return tea.KeyMsg{Type: tea.KeyUp}, true
-	case "down":
-		return tea.KeyMsg{Type: tea.KeyDown}, true
-	case "ctrl+d":
-		return tea.KeyMsg{Type: tea.KeyCtrlD}, true
-	case "ctrl+u":
-		return tea.KeyMsg{Type: tea.KeyCtrlU}, true
-	case "ctrl+b":
-		return tea.KeyMsg{Type: tea.KeyCtrlB}, true
-	case "ctrl+p":
-		return tea.KeyMsg{Type: tea.KeyCtrlP}, true
-	case "ctrl+n":
-		return tea.KeyMsg{Type: tea.KeyCtrlN}, true
-	case "backspace":
-		return tea.KeyMsg{Type: tea.KeyBackspace}, true
-	case "ctrl+f":
-		return tea.KeyMsg{Type: tea.KeyCtrlF}, true
-	case "ctrl+w":
-		return tea.KeyMsg{Type: tea.KeyCtrlW}, true
-	case "ctrl+a":
-		return tea.KeyMsg{Type: tea.KeyCtrlA}, true
-	case "ctrl+e":
-		return tea.KeyMsg{Type: tea.KeyCtrlE}, true
-	case "left":
-		return tea.KeyMsg{Type: tea.KeyLeft}, true
-	case "right":
-		return tea.KeyMsg{Type: tea.KeyRight}, true
-	case "home":
-		return tea.KeyMsg{Type: tea.KeyHome}, true
-	case "end":
-		return tea.KeyMsg{Type: tea.KeyEnd}, true
-	}
-	if len([]rune(name)) == 1 {
-		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(name)}, true
-	}
-	return tea.KeyMsg{}, false
-}
+// keyByName resolves a key the script names.
+//
+// It is the keymap's own answer now, rather than a second list kept beside it.
+// The second list is what let `ctrl+n` be a name a script could write and a key
+// the interface did not bind, and let a newly bound key be one no script could
+// press -- a format that cannot express the keys the interface uses is a format
+// that cannot photograph it.
+func keyByName(name string) (tea.KeyMsg, bool) { return keys.Named(name) }
 
 // RenderImport replays a script against the plan screen for a file, so the
 // highest-stakes screen in the system can be reviewed from frames like the

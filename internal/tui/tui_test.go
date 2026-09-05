@@ -12,6 +12,7 @@ import (
 	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
+	"home-management-system/internal/tui/keys"
 )
 
 // fakeController stands in for the real one. The Controller being a plain Go
@@ -31,23 +32,37 @@ type fakeController struct {
 	applyErr     error
 }
 
-func (f *fakeController) CategoryTree(context.Context) ([]app.TreeRow, error) {
+func (f *fakeController) CategoryTree(_ context.Context, withContents bool) ([]app.TreeRow, error) {
 	f.calls = append(f.calls, "CategoryTree")
-	return []app.TreeRow{
-		{ID: 1, Name: "Spices", Depth: 0, Count: 3},
-		{ID: 2, Name: "Dried Peppers", Depth: 1, Count: 1},
-	}, nil
+	rows := []app.TreeRow{
+		{ID: 1, Name: "Spices", Depth: 0, Count: 3, Kind: "Category"},
+		{ID: 2, Name: "Dried Peppers", Depth: 1, Count: 1, Kind: "Category"},
+	}
+	if withContents {
+		// Item 1 shares a number with Category 1 on purpose: they are numbered
+		// from different tables, and the tree has to tell them apart.
+		rows = append(rows, app.TreeRow{
+			ID: 1, Name: "Ancho Chile", Depth: 2, Kind: "Item", Measure: "280 g",
+		})
+	}
+	return rows, nil
 }
 
-func (f *fakeController) LocationTree(context.Context) ([]app.TreeRow, error) {
+func (f *fakeController) LocationTree(_ context.Context, withContents bool) ([]app.TreeRow, error) {
 	f.calls = append(f.calls, "LocationTree")
-	return []app.TreeRow{{ID: 1, Name: "Kitchen", Depth: 0, Count: 4}}, nil
+	rows := []app.TreeRow{{ID: 1, Name: "Kitchen", Depth: 0, Count: 4, Kind: "Location"}}
+	if withContents {
+		rows = append(rows, app.TreeRow{
+			ID: 9, Name: "Basmati Rice", Depth: 1, Kind: "Holding", Measure: "800 g",
+		})
+	}
+	return rows, nil
 }
 
 func (f *fakeController) Items(context.Context) ([]app.ItemRow, error) {
 	f.calls = append(f.calls, "Items")
 	return []app.ItemRow{
-		{ID: 1, Name: "Basmati Rice", Kind: "Bulk", Category: "Pantry", Measure: "g", OnHand: "4800 g"},
+		{ID: 1, Name: "Basmati Rice", Kind: "Bulk", Category: "Pantry", CategoryID: 1, Measure: "g", OnHand: "4800 g"},
 	}, nil
 }
 
@@ -90,6 +105,11 @@ func (f *fakeController) SearchIndex(context.Context) (*resolve.Index, error) {
 		{Kind: resolve.KindItem, ID: 3, Path: "Grains > Basmati Rice", Leaf: "Basmati Rice"},
 		{Kind: resolve.KindHolding, ID: 9, Path: "Basmati Rice > Shelf 1 (loose)", Leaf: "Basmati Rice"},
 	}), nil
+}
+
+// Units is the reference table, which is the same seven codes everywhere.
+func (f *fakeController) Units(context.Context) ([]string, error) {
+	return []string{"count", "g", "kg", "ml", "l", "cm", "m"}, nil
 }
 
 // The write surface. The fake records what it was ASKED to do and does none of
@@ -177,19 +197,14 @@ func run(t *testing.T, m Model, cmd tea.Cmd) Model {
 	return next.(Model)
 }
 
+// keyMsg names keys the way the keymap names them, so a test cannot press a
+// key the interface does not bind.
 func keyMsg(key string) tea.KeyMsg {
-	switch key {
-	case "enter":
-		return tea.KeyMsg{Type: tea.KeyEnter}
-	case "ctrl+n":
-		return tea.KeyMsg{Type: tea.KeyCtrlN}
-	case "ctrl+p":
-		return tea.KeyMsg{Type: tea.KeyCtrlP}
-	case "ctrl+b":
-		return tea.KeyMsg{Type: tea.KeyCtrlB}
-	default:
-		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
+	msg, ok := keys.Named(key)
+	if !ok {
+		panic(key + " is not a key")
 	}
+	return msg
 }
 
 func TestOpensOnHoldings(t *testing.T) {
@@ -227,10 +242,9 @@ func TestNumberKeysSwitchViews(t *testing.T) {
 // for: a Holding's events, in sequence order, reconstructed from the ledger.
 func TestEnterOpensTheSelectedHoldingsHistory(t *testing.T) {
 	fake := &fakeController{}
-	// Move to the second holding, then open it.
-	// j rather than the Emacs C-n v01 used: 10a adopts the plan's vim-like
-	// bindings, and the table widget is where motion now lives.
-	m, view := drive(t, fake, "j", "enter")
+	// Move to the second holding, then open it. The table widget is where
+	// motion lives, so C-n reaches it before the application sees it.
+	m, view := drive(t, fake, "ctrl+n", "enter")
 
 	if m.view != viewHistory {
 		t.Fatalf("view = %v, want history", m.view)
@@ -247,7 +261,7 @@ func TestEnterOpensTheSelectedHoldingsHistory(t *testing.T) {
 }
 
 func TestBackReturnsFromHistory(t *testing.T) {
-	m, _ := drive(t, &fakeController{}, "enter", "ctrl+b")
+	m, _ := drive(t, &fakeController{}, "enter", "esc")
 	if m.view != viewHoldings {
 		t.Errorf("view = %v, want holdings", m.view)
 	}
@@ -271,11 +285,11 @@ func TestIntegrityViewReportsWithoutRepairing(t *testing.T) {
 
 func TestCursorStaysInBounds(t *testing.T) {
 	// Far more downs than rows, then far more ups.
-	m, _ := drive(t, &fakeController{}, "j", "j", "j", "j")
+	m, _ := drive(t, &fakeController{}, "ctrl+n", "ctrl+n", "ctrl+n", "ctrl+n")
 	if m.cursor != 1 {
 		t.Errorf("cursor = %d, want 1 (two rows)", m.cursor)
 	}
-	m, _ = drive(t, &fakeController{}, "k", "k")
+	m, _ = drive(t, &fakeController{}, "ctrl+p", "ctrl+p")
 	if m.cursor != 0 {
 		t.Errorf("cursor = %d, want 0", m.cursor)
 	}
@@ -284,7 +298,7 @@ func TestCursorStaysInBounds(t *testing.T) {
 // TestTheUIMakesNoWrites is the v01 scope stated as a test.
 func TestTheUIMakesNoWrites(t *testing.T) {
 	fake := &fakeController{}
-	drive(t, fake, "1", "2", "3", "4", "5", "enter", "ctrl+b", "j", "s", " ", "r")
+	drive(t, fake, "1", "2", "3", "4", "5", "enter", "esc", "ctrl+n", "s", "ctrl+space", "g")
 
 	for _, call := range fake.calls {
 		switch call {

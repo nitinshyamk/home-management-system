@@ -21,6 +21,7 @@ import (
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/creator"
 	"home-management-system/internal/tui/editor"
+	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
 	"home-management-system/internal/tui/planview"
 	"home-management-system/internal/tui/table"
@@ -36,6 +37,10 @@ const (
 	viewHoldings
 	viewIntegrity
 	viewHistory
+	// viewHelp is reached by `help` on the command line rather than by a
+	// number, and left the way History is. It has no tab: a view you cannot
+	// get to by pressing a digit should not claim one of the digits.
+	viewHelp
 )
 
 var viewNames = map[view]string{
@@ -45,6 +50,7 @@ var viewNames = map[view]string{
 	viewHoldings:   "Holdings",
 	viewIntegrity:  "Integrity",
 	viewHistory:    "History",
+	viewHelp:       "Help",
 }
 
 var (
@@ -119,6 +125,27 @@ type Model struct {
 	// density decisions are not made twice.
 	jump       table.Model
 	candidates []resolve.Candidate
+	// units is the unit vocabulary, cached beside the candidates because both
+	// are read together and neither changes while a panel is open.
+	units []string
+	// folds is each tree's collapsed nodes, kept here rather than on the tree
+	// because the tree is rebuilt from scratch on every load.
+	//
+	// Per view, and surviving a view switch -- unlike the cursor, which does
+	// not. A cursor carried across views restores a position nobody was in; a
+	// fold is a statement about the SHAPE of one tree, and it is still true
+	// when you come back to it.
+	folds map[view]map[int64]bool
+	// helpTopic is the command `help` was asked about, or "" for all of it.
+	helpTopic string
+	// contents is which trees are showing what their nodes contain.
+	//
+	// It lives here rather than on the tree because the tree is rebuilt from
+	// scratch on every load, and a display mode that forgot itself whenever
+	// anything was written would not be a mode. Per view, because the two
+	// trees are asking different questions -- one shows Items, one Holdings --
+	// and wanting one is no reason to want the other.
+	contents map[view]bool
 	// pending is where a jump is going, held until the destination view has
 	// loaded and there is a row to put the cursor on.
 	pending *resolve.Candidate
@@ -136,9 +163,8 @@ type Model struct {
 	// identifiers behind its row through this rather than through the display
 	// strings, which is what lets it build a Command without resolving a name.
 	holdingRows map[int64]app.HoldingRow
-	// yanked is a row waiting for a p. pendingD is the first d of a dd.
-	yanked   *app.HoldingRow
-	pendingD bool
+	// copied is a row waiting for a put.
+	copied *app.HoldingRow
 
 	// The import flow. importing swaps the whole screen for the plan review,
 	// because a file proposing a batch of changes is not something to look at
@@ -168,6 +194,8 @@ func New(ctx context.Context, ctrl app.Controller) Model {
 		creator:  creator.New(),
 		settling: -1,
 		jump:     table.New(jumpColumns).Fixed(),
+		contents: map[view]bool{},
+		folds:    map[view]map[int64]bool{},
 	}
 }
 
@@ -210,7 +238,11 @@ func columnsFor(v view) []table.Column {
 			// Quantity is never dropped: a holdings table that does not say how
 			// much is a list of things you own, which you already knew.
 			{Title: "QTY", Min: 5, Align: table.Right},
-			{Title: "LOCATION", Min: 12, Drop: 2, Elide: table.ElideStart},
+			// Path: the cell is the shelf's own name, and the ancestors above
+			// it appear when the terminal has room to spare for them. Three
+			// rows of one item in three different Shelf 1s is the case the
+			// holdings table exists to answer, and the leaf alone cannot.
+			{Title: "LOCATION", Min: 12, Drop: 2, Elide: table.ElideStart, Path: true},
 			{Title: "FLAGS", Min: 6, Drop: 3},
 		}
 	case viewItems:
@@ -241,8 +273,15 @@ type loadedMsg struct {
 
 type errMsg struct{ err error }
 
-// candidatesMsg carries the flat index the jump palette searches.
-type candidatesMsg struct{ candidates []resolve.Candidate }
+// candidatesMsg carries the flat index the jump palette searches, and the unit
+// vocabulary the creation panel completes against.
+//
+// Both in one message because both are read when a panel opens and neither is
+// worth a round trip of its own -- the units are seven rows of reference data.
+type candidatesMsg struct {
+	candidates []resolve.Candidate
+	units      []string
+}
 
 func (m Model) loadCandidates() tea.Cmd {
 	return func() tea.Msg {
@@ -250,7 +289,11 @@ func (m Model) loadCandidates() tea.Cmd {
 		if err != nil {
 			return errMsg{err}
 		}
-		return candidatesMsg{candidates: index.All()}
+		units, err := m.ctrl.Units(m.ctx)
+		if err != nil {
+			return errMsg{err}
+		}
+		return candidatesMsg{candidates: index.All(), units: units}
 	}
 }
 
@@ -334,7 +377,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				wasOn = row.Key
 			}
 			if node, ok := m.tree.Current(); ok && forest(msg.view) {
-				wasOn = node.ID
+				wasOn = node.Key()
 			}
 		}
 
@@ -345,7 +388,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.table = table.New(columnsFor(msg.view)).SetRows(msg.cells).SetSize(m.width, m.bodyHeight())
 		}
 		if forest(msg.view) {
+			// The folds come back, because the tree is rebuilt after every
+			// write and every toggle and one that sprang open each time would
+			// make collapsing it pointless. They are kept per view: the two
+			// trees fold different things, and a fold is still true when you
+			// come back to the tree that has it.
+			// Saved under the view being LEFT, which is the case that loses
+			// them: switching away and back is the reload that does not
+			// mention the tree it is replacing.
+			if forest(was) {
+				m.folds[was] = m.tree.Folds()
+			}
 			m.tree = tree.New(unitFor(msg.view)).
+				WithFolds(m.folds[msg.view]).
 				SetNodes(msg.nodes).SetSize(m.width, m.bodyHeight())
 		}
 		// And the filter, which lives on the omnibox rather than on the
@@ -415,7 +470,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.reloadKeepingStatus()
 
 	case candidatesMsg:
-		m.candidates = msg.candidates
+		m.candidates, m.units = msg.candidates, msg.units
+		m.creator = m.creator.WithUnits(msg.units)
 		m = m.refreshJump()
 		if m.creator.IsOpen() {
 			m = m.suggest()
@@ -432,8 +488,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Innermost mode first, and this ORDER is the whole answer to the old
 		// interface's defect. Every mode gets the keystroke before the one that
-		// contains it, so esc leaves exactly one -- never two, and never
-		// depending on how you got there.
+		// contains it, so esc -- and C-g, which is the same escape by the name
+		// emacs gives it -- leaves exactly one, never two, and never depending
+		// on how you got there.
 		if next, cmd, handled := m.handleConfirm(msg); handled {
 			return next, cmd
 		}
@@ -458,10 +515,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleKey uses Emacs bindings, matching the previous system so muscle memory
-// carries over.
+// handleKey is the application underneath every mode: views, leaders, quit, and
+// the verbs that act on a row.
+//
+// It runs last, after every mode that could be open, and it is the only place
+// that sees a keystroke nothing else wanted.
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// The table sees motion, selection, and sorting first. It reports what it
+	// The surface sees motion, selection, and sorting first. It reports what it
 	// did not use, so the keys that belong to the application -- views, quit,
 	// enter -- still reach it.
 	if tabular(m.view) {
@@ -478,66 +538,71 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// The single-key actions come before the generic keys, so that c, m, t, and
-	// # mean what the plan says rather than falling through to motion. Each one
-	// decides for itself which views it applies to.
+	// The verbs come before the generic keys, so that consume, count, move and
+	// custody mean what the plan says rather than falling through to motion.
+	// Each one decides for itself which views it applies to.
 	if next, cmd, handled := m.handleAction(msg); handled {
 		return next, cmd
 	}
 
-	switch msg.String() {
-	case "q", "ctrl+c":
+	switch keys.Lookup(keys.Browse, msg) {
+	case keys.Quit:
 		return m, tea.Quit
 
-	// The two leaders. They feel identical for exactly one keystroke and then
-	// diverge completely, which is why the omnibox renders them differently
-	// before a word has been read.
-	case "/":
+	// The three leaders. C-s and M-g feel identical for exactly one keystroke
+	// and then diverge completely, which is why the omnibox renders them
+	// differently before a word has been read.
+	//
+	// C-s opens the line whether or not a filter is already on, because Open
+	// prefills it with the applied filter -- so refining a filter is the same
+	// gesture as making one. Stepping through the matches is M-n and M-p, in
+	// the table.
+	case keys.Search:
 		m.problem = nil
 		m.box = m.box.Open(omnibox.Filter)
 		m = m.applyLive()
 		return m, nil
-	case "ctrl+p":
+	case keys.Jump:
 		m.box = m.box.Open(omnibox.Jump)
 		m = m.refreshJump()
 		return m, m.loadCandidates()
-	case ":":
+	case keys.CommandLine:
 		m.problem = nil
 		m.box = m.box.Open(omnibox.Command)
 		return m, nil
 
-	// e renames whatever the cursor is on, in place.
-	case "e":
+	// Renames whatever the cursor is on, in place.
+	case keys.EditInPlace:
 		return m.openEditor(), nil
 
-	// o creates a new one of whatever this view holds, inside what the cursor
-	// is on. Creating inside what you are looking at is what o means.
-	case "o":
+	// Creates a new one of whatever this view holds, inside what the cursor is
+	// on. Creating inside what you are looking at is what it means.
+	case keys.Create:
 		return m.openCreator(), m.loadCandidates()
 
-	// The Emacs aliases v01 carried are gone: C-p is the jump leader now, and
-	// two motion idioms in one application is one too many.
-	case "down", "j":
+	// Motion for the two views that are neither a table nor a tree. Both of
+	// those consume it above, so this is Integrity and History only.
+	case keys.MoveDown:
 		if m.cursor < len(m.rows)-1 {
 			m.cursor++
 			m.viewport.SetContent(m.body())
 		}
-	case "up", "k":
+	case keys.MoveUp:
 		if m.cursor > 0 {
 			m.cursor--
 			m.viewport.SetContent(m.body())
 		}
-	case "home", "g":
+	case keys.Top:
 		m.cursor = 0
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoTop()
-	case "end", "G":
+	case keys.Bottom:
 		m.cursor = max(0, len(m.rows)-1)
 		m.viewport.SetContent(m.body())
 		m.viewport.GotoBottom()
 
-	case "ctrl+f", "enter", "right":
-		// In a table, h and l move between columns, so Enter is the only way
+	case keys.Confirm:
+		// In a table C-f and C-b move between columns, so enter is the only way
 		// down into a row -- which is also what it means everywhere else.
 		if m.view == viewHoldings {
 			if row, ok := m.table.Current(); ok {
@@ -545,28 +610,38 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, m.loadHistory(domain.HoldingID(row.Key))
 			}
 		}
-	case "ctrl+b", "esc", "left", "h":
-		// esc in the LIST clears an applied filter -- a different escape from
-		// the one that closes the input line.
-		if msg.String() == "esc" && m.box.Applied() != "" {
+	case keys.Cancel:
+		// Escaping in the LIST clears an applied filter -- a different escape
+		// from the one that closes the input line.
+		if m.box.Applied() != "" {
 			m.box = m.box.Clear()
 			return m.filterWith(omnibox.Query{}), nil
 		}
-		if m.view == viewHistory {
+		// History and Help are both entered from somewhere and left back to
+		// it. Neither has a number, so escaping is the only way out.
+		if m.view == viewHistory || m.view == viewHelp {
 			return m, m.load(m.fromView)
 		}
 
-	case "1":
+	case keys.ViewCategories:
 		return m, m.load(viewCategories)
-	case "2":
+	case keys.ViewLocations:
 		return m, m.load(viewLocations)
-	case "3":
+	case keys.ViewItems:
 		return m, m.load(viewItems)
-	case "4":
+	case keys.ViewHoldings:
 		return m, m.load(viewHoldings)
-	case "5":
+	case keys.ViewIntegrity:
 		return m, m.load(viewIntegrity)
-	case "r":
+	case keys.Refresh:
+		return m, m.load(m.view)
+	case keys.ShowContents:
+		// A tree only. The tables already show what they hold -- that is what
+		// a table is -- so the key has nothing to say there.
+		if !forest(m.view) {
+			return m, nil
+		}
+		m.contents[m.view] = !m.contents[m.view]
 		return m, m.load(m.view)
 	}
 	return m, nil
@@ -742,7 +817,7 @@ func (m Model) land(target resolve.Candidate) Model {
 		}
 	}
 	if forest(viewFor(target.Kind)) {
-		m.tree = m.tree.Focus(target.ID)
+		m.tree = m.tree.Focus(tree.Node{ID: target.ID, Kind: string(target.Kind)}.Key())
 	}
 	return m
 }
@@ -764,10 +839,10 @@ func (m Model) header() string {
 			rendered = append(rendered, dimStyle.Render(" "+label+" "))
 		}
 	}
-	if m.view == viewHistory {
-		suffix := "History"
+	if m.view == viewHistory || m.view == viewHelp {
+		suffix := viewNames[m.view]
 		if !names {
-			suffix = "H"
+			suffix = suffix[:1]
 		}
 		rendered = append(rendered, titleStyle.Render("["+suffix+"]"))
 	}
@@ -814,8 +889,36 @@ func (m Model) tabLabels(withName bool) string {
 	return s
 }
 
+// fit joins as many hints as the width allows, dropping from the end.
+func fit(width int, parts []string) string {
+	line := ""
+	for _, part := range parts {
+		next := part
+		if line != "" {
+			next = line + " - " + part
+		}
+		if len([]rune(next)) > width {
+			break
+		}
+		line = next
+	}
+	return line
+}
+
 func (m Model) footer() string {
-	help := "j/k move - h/l column - s sort - space select - enter history - 1-5 views - q quit"
+	// Named in the order they would be given up, most useful first, and cut to
+	// the terminal rather than allowed to wrap. A line wider than the screen
+	// wraps, and one wrapped line shifts every row below it -- which is the
+	// same reason the table drops columns instead of overflowing.
+	help := fit(m.width, []string{
+		keys.Hint(keys.Table,
+			[]keys.Action{keys.MoveDown, keys.MoveUp},
+			[]keys.Action{keys.MoveLeft, keys.MoveRight}),
+		"1-5 views",
+		keys.Hint(keys.Browse, []keys.Action{keys.Confirm}),
+		keys.Hint(keys.Table, []keys.Action{keys.ToggleSelect}, []keys.Action{keys.Sort}),
+		keys.Hint(keys.Browse, []keys.Action{keys.Quit}),
+	})
 	rule := dimStyle.Render(strings.Repeat("-", max(10, m.width)))
 
 	// Assembled as PARTS and joined once, rather than concatenated piece by
@@ -832,7 +935,8 @@ func (m Model) footer() string {
 	if m.box.Mode() == omnibox.Jump {
 		shown, _ := m.jump.Counts()
 		return rule + "\n" + dimStyle.Render(fmt.Sprintf(
-			"%d matches across every kind - enter go - esc cancel", shown))
+			"%d matches across every kind - %s go - %s cancel",
+			shown, keys.Show(keys.Line, keys.Confirm), keys.Show(keys.Line, keys.Cancel)))
 	}
 
 	var parts []string
@@ -876,32 +980,22 @@ func (m Model) body() string {
 
 // render turns controller data into display rows. The Controller returns flat,
 // display-ready rows, so this stays formatting rather than logic.
+//
+// Categories and Locations are NOT here. They were, formatted as flat strings,
+// and had been unreachable since they became trees -- load sends a forest to
+// renderTree before it ever gets this far. Kept "in case", they would have
+// needed a contents flag they could never be given, which is how a second
+// answer to one question starts.
 func (m Model) render(v view, subject domain.HoldingID) ([]string, []domain.HoldingID, string, error) {
 	switch v {
 
-	case viewCategories:
-		rows, err := m.ctrl.CategoryTree(m.ctx)
-		if err != nil {
-			return nil, nil, "", err
+	case viewHelp:
+		lines := m.helpLines(m.helpTopic)
+		status := "every key and every command"
+		if m.helpTopic != "" {
+			status = m.helpTopic
 		}
-		out := make([]string, 0, len(rows))
-		for _, r := range rows {
-			out = append(out, fmt.Sprintf("%s%-30s %s",
-				strings.Repeat("  ", r.Depth), r.Name, dimStyle.Render(fmt.Sprintf("%d items", r.Count))))
-		}
-		return out, nil, fmt.Sprintf("%d categories", len(rows)), nil
-
-	case viewLocations:
-		rows, err := m.ctrl.LocationTree(m.ctx)
-		if err != nil {
-			return nil, nil, "", err
-		}
-		out := make([]string, 0, len(rows))
-		for _, r := range rows {
-			out = append(out, fmt.Sprintf("%s%-30s %s",
-				strings.Repeat("  ", r.Depth), r.Name, dimStyle.Render(fmt.Sprintf("%d holdings", r.Count))))
-		}
-		return out, nil, fmt.Sprintf("%d locations", len(rows)), nil
+		return lines, nil, status, nil
 
 	case viewItems:
 		rows, err := m.ctrl.Items(m.ctx)
@@ -1038,6 +1132,10 @@ func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, map[int64]a
 			cells = append(cells, table.Row{
 				Key:   int64(r.ID),
 				Cells: []string{r.Item, r.State, r.Location, r.Note},
+				// Shown, never matched: the filter and the sort read Cells, so
+				// `loc:` keeps meaning the place itself rather than the branch
+				// it hangs from.
+				Paths: []string{"", "", r.LocationPath, ""},
 			})
 			ids = append(ids, r.ID)
 			byKey[int64(r.ID)] = r
@@ -1077,18 +1175,28 @@ func (m Model) renderTree(v view) ([]tree.Node, string, error) {
 	var rows []app.TreeRow
 	var err error
 	if v == viewCategories {
-		rows, err = m.ctrl.CategoryTree(m.ctx)
+		rows, err = m.ctrl.CategoryTree(m.ctx, m.contents[v])
 	} else {
-		rows, err = m.ctrl.LocationTree(m.ctx)
+		rows, err = m.ctrl.LocationTree(m.ctx, m.contents[v])
 	}
 	if err != nil {
 		return nil, "", err
 	}
 	nodes := make([]tree.Node, 0, len(rows))
 	for _, r := range rows {
-		nodes = append(nodes, tree.Node{ID: r.ID, Name: r.Name, Depth: r.Depth, Count: r.Count})
+		nodes = append(nodes, tree.Node{
+			ID: r.ID, Name: r.Name, Depth: r.Depth,
+			Count: r.Count, Kind: r.Kind, Measure: r.Measure,
+		})
 	}
-	return nodes, "za fold - zR expand all - zM collapse all", nil
+	// Only the fold keys and the contents toggle. Ascend and descend are the
+	// same C-b and C-f as everywhere else and the footer already carries them
+	// -- and this line has to fit a 60-column terminal, where naming all four
+	// wrapped it.
+	return nodes, keys.Hint(keys.Tree,
+		[]keys.Action{keys.FoldToggle},
+		[]keys.Action{keys.FoldCycleAll}) + " - " +
+		keys.Hint(keys.Browse, []keys.Action{keys.ShowContents}), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1105,21 +1213,34 @@ func (m Model) handleOmnibox(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if m.box.Mode() == omnibox.Closed {
 		return m, nil, false
 	}
-	switch msg.Type {
-	case tea.KeyEsc:
+	switch keys.Lookup(keys.Line, msg) {
+	case keys.Cancel:
 		m.box = m.box.Cancel()
 		// Restoring the ACCEPTED filter, not merely closing the line. Rows
 		// narrow as you type, so an abandoned edit leaves the half-typed filter
 		// on the table -- which showed up as "0 of 12 holdings" under a jump
 		// palette, long after the filter that produced it had been cancelled.
 		return m.applyFilter(), nil, true
-	case tea.KeyEnter:
+	case keys.Confirm:
 		if m.box.Mode() == omnibox.Jump {
 			return m.acceptJump()
 		}
 		if m.box.Mode() == omnibox.Command {
 			line := m.box.Input()
 			m.box = m.box.Accept()
+			// help is answered here rather than bound and planned, because it
+			// is the one line that acts on the INTERFACE instead of on the
+			// house. Sending it through Bind would need a Command that writes
+			// nothing, and a write path with a no-op in it is a write path
+			// somebody will one day give something to do.
+			if topic, ok := helpAsked(line); ok {
+				m.problem, m.status = nil, ""
+				m.helpTopic = topic
+				if m.view != viewHelp {
+					m.fromView = m.view
+				}
+				return m, m.load(viewHelp), true
+			}
 			m.status = "working..."
 			return m, m.runLine(line), true
 		}

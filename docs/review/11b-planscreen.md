@@ -64,15 +64,15 @@ make reseed
 | 1 | — | The plan opens. **Can you tell ready from blocked without reading?** |
 | 2 | read the counts | "3 ready, 2 need confirming, 1 blocked". Does it add up to the file? |
 | 3 | `A` | Refused, and it says why. |
-| 4 | `j` onto the suggested row | The issue is stated in full: *did you mean Turmeric?* |
-| 5 | `tab` | Accept the suggestion. The row goes ready. |
-| 6 | `j` onto the row that would create | The creation panel opens — **the same one `o` opens**. |
+| 4 | `C-n` onto the suggested row | The issue is stated in full: *did you mean Turmeric?* |
+| 5 | `enter` | Accept the suggestion. The row goes ready. |
+| 6 | `C-n` onto the row that would create, then `enter` | The creation panel opens — **the same one `o` opens**. |
 | 7 | `enter` | The permanent-fields confirmation, the same one everywhere else. |
 | 8 | `e` on **any** row, ready or not | It opens as the command it is, spliced onto the row. Every row is editable — see below. |
-| 8a | `ctrl+w`, then retype | Takes back one token at a time. `←`/`→`, `ctrl+a`/`ctrl+e` move; `ctrl+u` clears. |
+| 8a | `ctrl+w`, then retype | Takes back one token at a time. `C-b`/`C-f` move by character, `M-b`/`M-f` by word, `C-a`/`C-e` to the ends; `C-u` clears, `C-k` kills to the end. |
 | 8b | type a partial name in `at` | Completes **Locations only**, because that is the slot the parser will read it in. |
 | 8c | `esc` | The row is exactly as it was. A line that will not parse is refused and changes nothing. |
-| 9 | `j` onto the last blocked row, `d` | Drop it. Does the count change? |
+| 9 | `C-n` onto the last blocked row, `d` | Drop it. Does the count change? |
 | 10 | `A` | Now it applies. **One transaction.** |
 | 11 | check the Items view | Two rows named one new item; there is **one** Turmeric. |
 | 12 | `q` from a plan with unresolved rows | Nothing was applied. |
@@ -81,7 +81,7 @@ make reseed
 
 ## `e` edits the row, not one field of it
 
-A row here **is a command** — the same sentence a CSV column set and a typed `:`
+A row here **is a command** — the same sentence a CSV column set and a typed `M-x`
 line both spell — so editing it means editing that sentence. It opens as a line,
 goes back through the same `Parse` and `Bind` a right-first-time row went
 through, and `Parse(Line(raw)) == raw` is asserted over every op, so opening a

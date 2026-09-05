@@ -1,0 +1,37 @@
+# 11d -- the help, and folds that stay folded.
+##
+#   ./bin/hms --db-path=hms.db --render docs/review/11d-help.keys --width 92 --height 34
+##
+# A blank comment line is `##`, not `#`. A bare hash is the count KEY.
+
+2: the locations tree
+ctrl+n: onto the Garage
+tab: the Garage, shut
+ctrl+n: onto the Kitchen
+ctrl+f: into it
+tab: the Spice Cabinet, shut too
+v: contents -- neither one springs open, and the rest show what they hold
+1: the categories tree, folded independently
+2: back, and the Locations folds are still here
+alt+x
+h
+e
+l
+p
+enter: every key and every command
+esc: back where you were
+alt+x
+h
+e
+l
+p
+space
+a
+c
+q
+u
+i
+r
+e
+enter: one command, from the same declaration Bind reads
+esc: back again
