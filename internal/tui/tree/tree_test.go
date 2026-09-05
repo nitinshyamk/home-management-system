@@ -4,8 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
-
+	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/tree"
 )
 
@@ -42,16 +41,13 @@ func newTree() tree.Model {
 	return tree.New("holdings").SetNodes(house()).SetSize(70, 14)
 }
 
-func press(m tree.Model, keys ...string) tree.Model {
-	for _, k := range keys {
-		var msg tea.KeyMsg
-		switch k {
-		case "esc":
-			msg = tea.KeyMsg{Type: tea.KeyEscape}
-		case " ":
-			msg = tea.KeyMsg{Type: tea.KeySpace, Runes: []rune{' '}}
-		default:
-			msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
+// press names keys the way the keymap names them, so a test cannot press a key
+// the interface does not bind.
+func press(m tree.Model, names ...string) tree.Model {
+	for _, name := range names {
+		msg, ok := keys.Named(name)
+		if !ok {
+			panic(name + " is not a key")
 		}
 		m, _ = m.Update(msg)
 	}
@@ -80,7 +76,7 @@ func contains(m tree.Model, name string) bool {
 }
 
 func TestFoldingHidesTheSubtreeAndNothingElse(t *testing.T) {
-	m := press(newTree(), "j", "z", "a") // cursor on Garage, fold it
+	m := press(newTree(), "ctrl+n", "tab") // cursor on Garage, fold it
 
 	for _, gone := range []string{"Metal Shelving Unit", "Bay 3", "Blue Crate", "Small Parts Tray"} {
 		if contains(m, gone) {
@@ -97,7 +93,7 @@ func TestFoldingHidesTheSubtreeAndNothingElse(t *testing.T) {
 // A folded node with four descendants and a leaf with none must not look alike.
 // That is the one tree failure that silently hides data.
 func TestFoldedIsDistinguishableFromALeaf(t *testing.T) {
-	m := press(newTree(), "j", "z", "a")
+	m := press(newTree(), "ctrl+n", "tab")
 	lines := shown(m)
 
 	var folded, leaf string
@@ -123,36 +119,36 @@ func TestFoldedIsDistinguishableFromALeaf(t *testing.T) {
 // Folding removes rows beneath the cursor, so a cursor that followed its INDEX
 // would slide onto whatever moved up under it.
 func TestFoldingKeepsTheCursorOnItsNode(t *testing.T) {
-	m := press(newTree(), "j") // Garage
+	m := press(newTree(), "ctrl+n") // Garage
 	before, _ := m.Current()
 
-	m = press(m, "z", "a")
+	m = press(m, "tab")
 	if after, _ := m.Current(); after.ID != before.ID {
 		t.Errorf("after folding the cursor is on %q, want %q", after.Name, before.Name)
 	}
-	m = press(m, "z", "a")
+	m = press(m, "tab")
 	if after, _ := m.Current(); after.ID != before.ID {
 		t.Errorf("after unfolding the cursor is on %q, want %q", after.Name, before.Name)
 	}
 }
 
 func TestCollapseAllAndExpandAll(t *testing.T) {
-	m := press(newTree(), "z", "M")
+	m := press(newTree(), "shift+tab")
 	if got := len(shown(m)); got != 3 {
-		t.Errorf("zM left %d rows, want the 3 roots: %v", got, shown(m))
+		t.Errorf("collapsing everything left %d rows, want the 3 roots: %v", got, shown(m))
 	}
-	m = press(m, "z", "R")
+	m = press(m, "shift+tab")
 	if got := len(shown(m)); got != len(house()) {
-		t.Errorf("zR left %d rows, want all %d", got, len(house()))
+		t.Errorf("expanding everything left %d rows, want all %d", got, len(house()))
 	}
 }
 
-// h tidies away a subtree far more often than it travels, so it collapses
+// C-b tidies away a subtree far more often than it travels, so it collapses
 // first and only then moves up.
 func TestAscendCollapsesBeforeItTravels(t *testing.T) {
-	m := press(newTree(), "j") // Garage, expanded
+	m := press(newTree(), "ctrl+n") // Garage, expanded
 
-	m = press(m, "h")
+	m = press(m, "ctrl+b")
 	if current, _ := m.Current(); current.Name != "Garage" {
 		t.Errorf("h moved to %q; it should have collapsed Garage first", current.Name)
 	}
@@ -161,38 +157,38 @@ func TestAscendCollapsesBeforeItTravels(t *testing.T) {
 	}
 	// Now there is nothing to close, so it travels -- and Garage is a root, so
 	// there is nowhere to go.
-	m = press(m, "h")
+	m = press(m, "ctrl+b")
 	if current, _ := m.Current(); current.Name != "Garage" {
 		t.Errorf("h from a collapsed root moved to %q", current.Name)
 	}
 	// From a child, it reaches the parent.
-	m = press(m, "z", "R", "j", "j") // Garage > Metal Shelving Unit > Bay 3
+	m = press(m, "shift+tab", "ctrl+n", "ctrl+n") // Garage > Metal Shelving Unit > Bay 3
 	deep, _ := m.Current()
 	if deep.Name != "Bay 3" {
 		t.Fatalf("expected to be on Bay 3, on %q", deep.Name)
 	}
-	m = press(m, "h", "h") // collapse Bay 3, then ascend
+	m = press(m, "ctrl+b", "ctrl+b") // collapse Bay 3, then ascend
 	if current, _ := m.Current(); current.Name != "Metal Shelving Unit" {
 		t.Errorf("h from a collapsed Bay 3 moved to %q, want its parent", current.Name)
 	}
 }
 
 func TestDescendOpensThenSteps(t *testing.T) {
-	m := press(newTree(), "j", "z", "a") // Garage, folded
-	m = press(m, "l")
+	m := press(newTree(), "ctrl+n", "tab") // Garage, folded
+	m = press(m, "ctrl+f")
 	if current, _ := m.Current(); current.Name != "Garage" {
 		t.Errorf("l moved to %q; it should have opened Garage first", current.Name)
 	}
 	if !contains(m, "Metal Shelving Unit") {
 		t.Error("l did not open the subtree")
 	}
-	m = press(m, "l")
+	m = press(m, "ctrl+f")
 	if current, _ := m.Current(); current.Name != "Metal Shelving Unit" {
 		t.Errorf("l from an open node moved to %q, want its first child", current.Name)
 	}
 	// A leaf has nowhere to go.
-	m = press(m, "z", "M", "g", "g") // Attic
-	if current, _ := press(m, "l").Current(); current.Name != "Attic" {
+	m = press(m, "shift+tab", "alt+<") // Attic
+	if current, _ := press(m, "ctrl+f").Current(); current.Name != "Attic" {
 		t.Errorf("l from a leaf moved somewhere")
 	}
 }
@@ -213,21 +209,21 @@ func TestATreeIsNotSortable(t *testing.T) {
 
 // The tree is the table underneath, so the gestures the table owns still work.
 func TestTheTableUnderneathStillWorks(t *testing.T) {
-	m := press(newTree(), "j", " ")
+	m := press(newTree(), "ctrl+n", "ctrl+space")
 	if got := m.SelectionCount(); got != 1 {
 		t.Errorf("space selected %d rows", got)
 	}
 	if got := len(m.Selected()); got != 1 {
 		t.Errorf("Selected() = %v", m.Selected())
 	}
-	m = press(m, "G")
+	m = press(m, "alt+>")
 	if current, _ := m.Current(); current.Name != "Spice Cabinet" {
-		t.Errorf("G landed on %q, want the last row", current.Name)
+		t.Errorf("M-> landed on %q, want the last row", current.Name)
 	}
-	// zz centres rather than being eaten by the fold gestures.
-	m = press(m, "z", "z")
+	// C-l centres. It used to be zz, which the fold gestures nearly ate.
+	m = press(m, "ctrl+l")
 	if current, _ := m.Current(); current.Name != "Spice Cabinet" {
-		t.Errorf("zz moved the cursor to %q", current.Name)
+		t.Errorf("recentring moved the cursor to %q", current.Name)
 	}
 }
 
@@ -302,13 +298,13 @@ func strip(s string) string {
 
 // TestCollapseAllKeepsYouWhereYouWere is the defect the break-the-guard pass
 // found: folding at the CURSOR never changes the cursor's own index, because it
-// only removes rows below it. zM and zR move rows above it, and neither put the
+// only removes rows below it. Folding everything at once moves rows above it, and neither put the
 // cursor back.
 //
-// zM from five levels down landed on whatever row inherited that index, and zR
+// Collapsing from five levels down landed on whatever row inherited that index, and expanding
 // from a root landed on its own grandchild.
 func TestCollapseAllKeepsYouWhereYouWere(t *testing.T) {
-	m := press(newTree(), "j", "j", "j", "j", "j")
+	m := press(newTree(), "ctrl+n", "ctrl+n", "ctrl+n", "ctrl+n", "ctrl+n")
 	if current, _ := m.Current(); current.Name != "Small Parts Tray" {
 		t.Fatalf("expected to be on Small Parts Tray, on %q", current.Name)
 	}
@@ -316,31 +312,31 @@ func TestCollapseAllKeepsYouWhereYouWere(t *testing.T) {
 	// The node itself is folded away, so the nearest ancestor still on screen
 	// is the useful answer -- the root of the branch being read, not the row
 	// that inherited the index.
-	m = press(m, "z", "M")
+	m = press(m, "shift+tab")
 	if current, _ := m.Current(); current.Name != "Garage" {
-		t.Errorf("zM from Small Parts Tray landed on %q, want its visible ancestor Garage",
+		t.Errorf("collapsing from Small Parts Tray landed on %q, want its visible ancestor Garage",
 			current.Name)
 	}
 
 	// Expanding again, the cursor's own node is visible, so it keeps it.
-	m = press(m, "z", "R")
+	m = press(m, "shift+tab")
 	if current, _ := m.Current(); current.Name != "Garage" {
-		t.Errorf("zR moved the cursor from Garage to %q", current.Name)
+		t.Errorf("expanding moved the cursor from Garage to %q", current.Name)
 	}
 }
 
-// zR needs its own case, because the obvious one passes by luck: expanding from
+// Expanding needs its own case, because the obvious one passes by luck: expanding from
 // the SECOND root leaves that root's index unchanged. What moves the cursor is
 // expanding a subtree ABOVE it -- Kitchen is row 2 collapsed and row 6
 // expanded, so an index-following cursor lands four rows short.
 func TestExpandAllKeepsYouWhereYouWere(t *testing.T) {
-	m := press(newTree(), "z", "M", "j", "j")
+	m := press(newTree(), "shift+tab", "ctrl+n", "ctrl+n")
 	if current, _ := m.Current(); current.Name != "Kitchen" {
 		t.Fatalf("expected to be on Kitchen, on %q", current.Name)
 	}
-	m = press(m, "z", "R")
+	m = press(m, "shift+tab")
 	if current, _ := m.Current(); current.Name != "Kitchen" {
-		t.Errorf("zR moved the cursor from Kitchen to %q; the rows above it expanded under it",
+		t.Errorf("expanding moved the cursor from Kitchen to %q; the rows above it expanded under it",
 			current.Name)
 	}
 }

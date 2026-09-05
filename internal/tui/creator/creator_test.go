@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"home-management-system/internal/tui/creator"
+	"home-management-system/internal/tui/keys"
 )
 
 func press(m creator.Model, keys ...tea.KeyMsg) creator.Model {
@@ -29,12 +30,20 @@ func typed(s string) []tea.KeyMsg {
 }
 
 var (
-	tab   = tea.KeyMsg{Type: tea.KeyTab}
-	left  = tea.KeyMsg{Type: tea.KeyLeft}
-	right = tea.KeyMsg{Type: tea.KeyRight}
+	tab   = named("tab")
+	left  = named("ctrl+b")
+	right = named("ctrl+f")
 )
 
-// The panel builds a `:` LINE, not a Command. Everything the interface writes
+func named(name string) tea.KeyMsg {
+	msg, ok := keys.Named(name)
+	if !ok {
+		panic(name + " is not a key")
+	}
+	return msg
+}
+
+// The panel builds a COMMAND LINE, not a Command. Everything the interface writes
 // goes through Parse and Bind, so the panel cannot validate differently from
 // the typed line or from a CSV row.
 func TestThePanelBuildsACommandLine(t *testing.T) {
@@ -110,23 +119,32 @@ func TestAllThreePresetsAreVisible(t *testing.T) {
 	}
 }
 
-// Typing a letter on the counting field must not vanish. h and l choose,
-// matching the motion keys everywhere else.
-func TestLettersOnTheChoiceMoveRatherThanDisappear(t *testing.T) {
+// The counting field is a choice, not a field, so the motion keys move between
+// the three answers -- and a letter, which has nowhere to go, goes nowhere.
+//
+// It used to be h and l that chose, and they had to, because h and l were the
+// motion keys. Now that motion is C-b and C-f, a letter here is just a letter:
+// what matters is that it is SWALLOWED rather than typed into a value nobody
+// can see, which is how it behaved before either binding existed.
+func TestTheChoiceMovesAndSwallowsWhatItCannotUse(t *testing.T) {
 	m := creator.New().Open(creator.KindItem, "")
 	m = press(m, tab)
 	before := m.Counting()
-	m = press(m, typed("h")...)
+	m = press(m, left)
 	if m.Counting() == before {
-		t.Error("h did not move the choice")
+		t.Error("C-b did not move the choice")
 	}
-	m = press(m, typed("l")...)
+	m = press(m, right)
 	if m.Counting() != before {
-		t.Error("l did not move it back")
+		t.Error("C-f did not move it back")
 	}
-	// And nothing was typed into a value.
+	// And a letter did not land in a value.
+	m = press(m, typed("hl")...)
 	if strings.Contains(m.Line(), "hl") {
 		t.Errorf("letters landed in a field: %q", m.Line())
+	}
+	if m.Counting() != before {
+		t.Error("a letter moved the choice")
 	}
 }
 
@@ -250,7 +268,7 @@ func TestASuggestionIsOfferedNotApplied(t *testing.T) {
 	if !strings.Contains(view, "Garage > Tool Bench") {
 		t.Errorf("the alternatives are not shown:\n%s", view)
 	}
-	if !strings.Contains(view, "tab to take it") {
+	if !strings.Contains(view, "TAB to take it") {
 		t.Errorf("nothing says how to take it:\n%s", view)
 	}
 }

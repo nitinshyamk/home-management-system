@@ -1,5 +1,5 @@
 # 11b -- the import plan screen, and editing a row in place.
-#
+##
 # The three row states, then `e` on the two kinds of row the earlier version
 # refused to open at all: a READY row, and a row whose only business is
 # creating something. The cursor starts on a ready one, so the first `e` a
@@ -16,9 +16,9 @@ e: .
 l: shel -- the completion is for `at`, so it offers Locations
 tab: tab takes it
 enter: enter re-checks the row
-j: j
-j: j
-j: j
-j: j onto a row that would create an item
+ctrl+n: .
+ctrl+n: .
+ctrl+n: .
+ctrl+n: onto a row that would create an item
 e: e opens that one too, which it would not before
 esc: esc leaves the field and nothing else

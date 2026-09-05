@@ -12,6 +12,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"home-management-system/internal/tui/complete"
+	"home-management-system/internal/tui/keys"
+	"home-management-system/internal/tui/line"
 )
 
 // Model is one field being edited.
@@ -29,9 +33,10 @@ type Model struct {
 	// differs is only what the caller does with the answer, so that is what is
 	// carried rather than three near-identical widgets.
 	purpose string
-	// suggestions complete a destination, offered and never applied. Empty for
-	// the fields that are free text.
-	suggestions []string
+	// list is the completion dropdown over the field -- the same one the
+	// creation panel uses, so the keys mean the same thing in both. Offered
+	// and never applied.
+	list complete.Model
 	// cursor is where the next character goes, as a rune index into value.
 	//
 	// A field holding one short value barely needs one -- backspace reaches
@@ -77,7 +82,7 @@ func (m Model) Open(kind string, subject int64, label, current string) Model {
 func (m Model) OpenFor(purpose, kind string, subject int64, label, current string) Model {
 	m.open, m.purpose, m.kind, m.subject = true, purpose, kind, subject
 	m.label, m.value, m.initial = label, current, current
-	m.suggestions, m.keep = nil, ""
+	m.list, m.keep = complete.Model{}.Arrive(), ""
 	m.cursor = len([]rune(current))
 	return m
 }
@@ -86,35 +91,29 @@ func (m Model) OpenFor(purpose, kind string, subject int64, label, current strin
 func (m Model) Purpose() string { return m.purpose }
 
 // SetSuggestions offers completions for the whole value. Offered, never applied.
-func (m Model) SetSuggestions(s []string) Model { m.suggestions, m.keep = s, ""; return m }
-
-// Suggestions are what is on offer.
-func (m Model) Suggestions() []string { return m.suggestions }
-
-// Completion is what tab would take, if taking one would change anything.
-func (m Model) Completion() (string, bool) {
-	if len(m.suggestions) == 0 || m.suggestions[0] == strings.TrimSpace(m.value) {
-		return "", false
-	}
-	return m.suggestions[0], true
-}
-
-// Take fills the field with the top suggestion.
-func (m Model) Take() Model {
-	if suggestion, ok := m.Completion(); ok {
-		m.value = m.keep + suggestion
-		m.suggestions = nil
-		m.cursor = len([]rune(m.value))
-	}
+func (m Model) SetSuggestions(s []string) Model {
+	m.keep = ""
+	m.list = m.list.Offer(s, strings.TrimSpace(m.value))
 	return m
 }
 
 // SetSuggestionsAfter offers completions for the last token of a line, keeping
 // everything before it.
+//
+// The typed text handed to the list is the TOKEN, not the whole line -- the
+// list uses it to tell when taking an option would change nothing, and a line
+// never equals one of its own tokens.
 func (m Model) SetSuggestionsAfter(keep string, s []string) Model {
-	m.keep, m.suggestions = keep, s
+	m.keep = keep
+	m.list = m.list.Offer(s, strings.TrimPrefix(strings.TrimSpace(m.value), strings.TrimSpace(keep)))
 	return m
 }
+
+// Suggestions are what is on offer.
+func (m Model) Suggestions() []string { return m.list.Options() }
+
+// Completion is what tab would take, if taking one would change anything.
+func (m Model) Completion() (string, bool) { return m.list.Selected() }
 
 func (m Model) IsOpen() bool   { return m.open }
 func (m Model) Subject() int64 { return m.subject }
@@ -131,68 +130,34 @@ func (m Model) Close() Model  { m.open = false; return m }
 // While a field is open a keystroke is a CHARACTER. That is what makes an
 // inline editor usable at all, and it is why the parent consults this before
 // anything else.
+// Update handles a keystroke, reporting whether it was consumed.
+//
+// The dropdown goes first, for the same reason it does in the creation panel:
+// while a list is open Tab takes the highlighted option and C-n moves the
+// highlight, and with nothing open those keys belong to whatever contains the
+// field. The list reports what it did not use, so neither layer has to ask.
 func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	if !m.open {
 		return m, false
 	}
-	switch msg.Type {
-	case tea.KeyRunes:
-		return m.insert(string(msg.Runes)), true
-	case tea.KeySpace:
-		return m.insert(" "), true
-	case tea.KeyBackspace:
-		if m.cursor > 0 {
-			r := []rune(m.value)
-			m.value = string(r[:m.cursor-1]) + string(r[m.cursor:])
-			m.cursor--
+	if next, taken, handled := m.list.Update(msg); handled {
+		m.list = next
+		if taken != "" {
+			// keep is what a taken option leaves alone: for a field holding a
+			// whole command line, only the last token is being completed.
+			m.value = m.keep + taken
+			m.cursor = len([]rune(m.value))
 		}
 		return m, true
-	case tea.KeyDelete:
-		if r := []rune(m.value); m.cursor < len(r) {
-			m.value = string(r[:m.cursor]) + string(r[m.cursor+1:])
-		}
+	}
+	if value, cursor, ok := line.Edit(m.value, m.cursor, msg); ok {
+		m.value, m.cursor = value, cursor
 		return m, true
-	case tea.KeyLeft:
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, true
-	case tea.KeyRight:
-		if m.cursor < len([]rune(m.value)) {
-			m.cursor++
-		}
-		return m, true
-	case tea.KeyHome, tea.KeyCtrlA:
-		m.cursor = 0
-		return m, true
-	case tea.KeyEnd, tea.KeyCtrlE:
-		m.cursor = len([]rune(m.value))
-		return m, true
-	case tea.KeyCtrlU:
-		// To the start of the line, as readline has it. With the cursor at the
-		// end -- where it is unless someone moved it -- that clears the field,
-		// which is what it has always done here.
-		m.value = string([]rune(m.value)[m.cursor:])
-		m.cursor = 0
-		return m, true
-	case tea.KeyCtrlW:
-		// The word before the cursor, which on a command line is usually the
-		// token that is wrong.
-		r := []rune(m.value)
-		end := m.cursor
-		for end > 0 && r[end-1] == ' ' {
-			end--
-		}
-		for end > 0 && r[end-1] != ' ' {
-			end--
-		}
-		m.value = string(r[:end]) + string(r[m.cursor:])
-		m.cursor = end
-		return m, true
-	case tea.KeyTab:
-		if _, ok := m.Completion(); ok {
-			return m.Take(), true
-		}
+	}
+	// Tab with no list is still the editor's: there is nowhere else in a
+	// single field for it to go, and letting it through would move the plan
+	// screen's cursor out from under the row being edited.
+	if keys.Lookup(keys.Line, msg) == keys.Complete {
 		return m, true
 	}
 	return m, false
@@ -216,22 +181,15 @@ func (m Model) Lines() []string {
 		labelStyle.Render(head),
 		"  " + m.renderValue(),
 	}
-	for i, suggestion := range m.suggestions {
-		if i == 0 {
-			out = append(out, "  "+valueStyle.Render(suggestion)+hintStyle.Render("   tab to take it"))
-			continue
-		}
-		out = append(out, hintStyle.Render("  "+suggestion))
+	out = append(out, m.list.Lines("  ", m.width)...)
+	if m.list.IsOpen() {
+		// While a list is up the keys mean what they mean inside it, and a
+		// footer naming only the field's keys would be wrong for as long as it
+		// was showing.
+		return append(out, hintStyle.Render("  "+complete.Hint()))
 	}
-	return append(out, hintStyle.Render("  enter "+m.verb()+"   esc discard"))
-}
-
-// insert puts text at the cursor and moves past it.
-func (m Model) insert(text string) Model {
-	r := []rune(m.value)
-	m.value = string(r[:m.cursor]) + text + string(r[m.cursor:])
-	m.cursor += len([]rune(text))
-	return m
+	return append(out, hintStyle.Render("  "+keys.Show(keys.Line, keys.Confirm)+" "+m.verb()+
+		"   "+keys.Show(keys.Line, keys.Cancel)+" discard"))
 }
 
 // renderValue draws the value with the block cursor sitting IN it rather than

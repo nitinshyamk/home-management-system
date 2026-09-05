@@ -91,7 +91,7 @@ func TestAcceptingASuggestion(t *testing.T) {
 	s.Import(receipt(t, messy))
 
 	s.ShowsText("did you mean")
-	s.Send(sim.Press("j"), sim.Press("j"))
+	s.Send(sim.CtrlN, sim.CtrlN)
 	s.Send(sim.Enter)
 
 	s.HidesText("did you mean")
@@ -105,7 +105,7 @@ func TestDroppingAndUndropping(t *testing.T) {
 	kitchen(t, s)
 	s.Import(receipt(t, messy))
 
-	s.Send(sim.Press("G")) // the blocked row
+	s.Send(sim.AltGreat) // the blocked row
 	s.Send(sim.Press("d"))
 	s.ShowsText("1 dropped")
 	s.ShowsText("0 blocked")
@@ -414,7 +414,7 @@ acquire,Basmati Rice,100,Nowhere At All
 	s.Send(sim.CtrlU)
 	s.Send(sim.Type("acquire \"Basmati Rice\" 100 at shel"))
 	s.ShowsText("Shelf 1")
-	s.ShowsText("tab to take it")
+	s.ShowsText("TAB to take it")
 
 	s.Send(sim.Tab)
 	s.Send(sim.Enter)
@@ -439,7 +439,7 @@ acquire,Basmati Rice,100,Shelf 1
 	s.Send(sim.CtrlU)
 	// The same letters in the AT slot offer no item, because `at` is a Location.
 	s.Send(sim.Type("acquire \"Basmati Rice\" 100 at Cum"))
-	s.HidesText("tab to take it")
+	s.HidesText("TAB to take it")
 }
 
 // While a field is open, the plan's own keys are not the plan's. `ctrl+u` is
@@ -469,7 +469,7 @@ consume,Basmati Rice,lots,Shelf 1,dinner
 // The review screen consumes every key it does not use.
 //
 // It used to fall through to the browse keystrokes, so `#` opened a count
-// prompt, `c` a consume prompt and `dd` a retirement -- each against whatever
+// prompt, `c` a consume prompt and C-k a retirement -- each against whatever
 // the browse view had selected, which is not what the person is looking at. A
 // review screen that can write outside its own plan is not a review screen.
 func TestThePlanScreenDoesNotFallThroughToBrowseKeys(t *testing.T) {
@@ -486,7 +486,7 @@ consume,Basmati Rice,10,Shelf 1,dinner
 		s.HidesText("new item")
 		s.ShowsText("enter settle")
 	}
-	s.Send(sim.Press("d"), sim.Press("d"))
+	s.Send(sim.CtrlK)
 
 	// Nothing was applied, and nothing was written outside the plan.
 	s.OnHand(rice, 500*domain.Scale)

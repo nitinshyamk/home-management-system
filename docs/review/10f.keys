@@ -1,5 +1,5 @@
 # 10f -- keystroke actions.
-#
+##
 #   ./bin/hms --db-path=hms.db --render docs/review/10f.keys --width 92 --height 20
 
 4: the holdings table
@@ -17,7 +17,7 @@ a
 r
 tab: take the suggestion
 enter: it moves
-/
+ctrl+s
 c
 a
 b
@@ -27,5 +27,4 @@ enter: down to the cable
 c: refused, in terms of the thing
 t: toggle custody -- one key, the state decides
 t: and back
-d: the first d of dd -- nothing yet
-d: retire
+ctrl+k: retire -- the confirmation is the guard, not a second keystroke

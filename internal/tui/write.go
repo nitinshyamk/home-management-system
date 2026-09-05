@@ -8,7 +8,9 @@ import (
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
+	"home-management-system/internal/tui/complete"
 	"home-management-system/internal/tui/creator"
+	"home-management-system/internal/tui/keys"
 )
 
 // The first place the interface writes anything.
@@ -159,17 +161,17 @@ func (m Model) subjects() []command.Subject {
 		return out
 	}
 
-	kind := "Category"
-	if m.view == viewLocations {
-		kind = "Location"
-	}
 	for _, key := range m.tree.Selected() {
 		picked[key] = true
 	}
 	var out []command.Subject
 	for _, node := range m.tree.Nodes() {
-		if picked[node.ID] {
-			out = append(out, command.Subject{Kind: kind, Name: node.Name})
+		// Keyed and kinded by the NODE, not the view. Selection is delegated
+		// to the table underneath, so a contained row is selectable the moment
+		// it is on screen -- and one mislabelled subject in a batch is a batch
+		// that acts on something nobody named.
+		if picked[node.Key()] {
+			out = append(out, command.Subject{Kind: node.Kind, Name: node.Name})
 		}
 	}
 	return out
@@ -203,11 +205,11 @@ func (m Model) subject() command.Subject {
 		if !ok {
 			return command.Subject{}
 		}
-		kind := "Category"
-		if m.view == viewLocations {
-			kind = "Location"
-		}
-		return command.Subject{Kind: kind, Name: node.Name}
+		// The node says what it IS. Taking the kind from the VIEW was safe
+		// while a tree held only its own kind, and stopped being safe the
+		// moment a Category could show its Items: `e` on an item row would
+		// have asked to rename a Category that does not exist.
+		return command.Subject{Kind: node.Kind, Name: node.Name}
 	}
 	return command.Subject{}
 }
@@ -218,6 +220,9 @@ func (m Model) subject() command.Subject {
 
 // openEditor starts renaming whatever the cursor is on.
 func (m Model) openEditor() Model {
+	if node, ok := m.tree.Current(); ok && forest(m.view) && node.Contained() {
+		return m.refuseContained(node.Kind, "rename")
+	}
 	subject := m.subject()
 	if subject.Name == "" {
 		m.status = "nothing selected"
@@ -245,12 +250,28 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if !m.editor.IsOpen() {
 		return m, nil, false
 	}
-	switch msg.Type {
-	case tea.KeyEsc:
+	// The field, INCLUDING the dropdown over it, goes first.
+	//
+	// It has to: esc puts a list away before it closes the field, which is the
+	// same rule as everywhere else here -- one escape leaves exactly one mode.
+	// Consulting the field second meant esc closed the whole prompt while a
+	// list was showing, so the list could be opened and never dismissed.
+	if next, handled := m.editor.Update(msg); handled {
+		m.editor = next
+		// Recomputed after every keystroke, because a suggestion that lags the
+		// input is a suggestion for something else.
+		m = m.suggestForPrompt()
+		if len(m.candidates) == 0 {
+			return m, m.loadCandidates(), true
+		}
+		return m, nil, true
+	}
+	switch keys.Lookup(keys.Line, msg) {
+	case keys.Cancel:
 		m.editor = m.editor.Close()
 		m.status = "unchanged"
 		return m, nil, true
-	case tea.KeyEnter:
+	case keys.Confirm:
 		// A field opened for an ACTION answers to that action; only a rename
 		// goes back through the command line, because only a rename is text.
 		if m.editor.Purpose() == "row" {
@@ -273,16 +294,6 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		_ = kind
 		return m, m.runLine(fmt.Sprintf("rename %q %q", name, value)), true
 	}
-	if next, handled := m.editor.Update(msg); handled {
-		m.editor = next
-		// Recomputed after every keystroke, because a suggestion that lags the
-		// input is a suggestion for something else.
-		m = m.suggestForPrompt()
-		if len(m.candidates) == 0 {
-			return m, m.loadCandidates(), true
-		}
-		return m, nil, true
-	}
 	return m, nil, true
 }
 
@@ -295,12 +306,12 @@ func (m Model) handleConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if m.confirm == nil {
 		return m, nil, false
 	}
-	switch msg.Type {
-	case tea.KeyEsc:
+	switch keys.Lookup(keys.Line, msg) {
+	case keys.Cancel:
 		m.confirm = nil
 		m.status = "nothing was created"
 		return m, nil, true
-	case tea.KeyEnter:
+	case keys.Confirm:
 		pending := *m.confirm
 		m.confirm = nil
 		return m, m.apply(pending.plan, pending.summary), true
@@ -341,7 +352,9 @@ func (m Model) confirmView() string {
 	if plan.Creates() {
 		verb = "create"
 	}
-	lines = append(lines, "", dimStyle.Render("  [enter] "+verb+"    [esc] back"))
+	lines = append(lines, "", dimStyle.Render(
+		"  ["+keys.Show(keys.Line, keys.Confirm)+"] "+verb+
+			"    ["+keys.Show(keys.Line, keys.Cancel)+"] back"))
 	return strings.Join(lines, "\n")
 }
 
@@ -371,6 +384,11 @@ func (m Model) openCreator() Model {
 	}
 	parent := ""
 	if node, ok := m.tree.Current(); ok && forest(m.view) {
+		// A contained row is not somewhere to create INSIDE. Offering its name
+		// as the parent would file a new category under an item.
+		if node.Contained() {
+			return m.refuseContained(node.Kind, "create inside")
+		}
 		parent = node.Name
 	}
 	m.problem = nil
@@ -379,43 +397,73 @@ func (m Model) openCreator() Model {
 }
 
 // suggest offers completions for whatever field the creation panel has focused.
+// suggest refreshes the creation panel's dropdown and its warnings.
+//
+// Three sources, because a field wants one of three things: a closed
+// vocabulary it was handed (units), an entity kind the resolver knows
+// (categories, locations), or nothing at all.
 func (m Model) suggest() Model {
+	if choices, typed := m.creator.Choices(); len(choices) > 0 {
+		m.creator = m.creator.SetSuggestions(complete.Options(asMatches(choices), typed))
+		return m.warnInPanel()
+	}
 	kind, typed := m.creator.Resolving()
-	return m.withSuggestions(m.completions(kind, typed))
+	m.creator = m.creator.SetSuggestions(m.completions(kind, typed))
+	return m.warnInPanel()
 }
 
-// completions are the names of a KIND that a typed fragment could become.
+// warnInPanel shows what already exists under a field that warns.
 //
-// One function for every field that resolves a name -- the creation panel's
-// parent and category, and the move prompt's destination -- because a second
-// completer would be a second opinion about what a name nearly is. It goes
-// through the resolve index, which is the same index behind the jump palette,
-// the `:` line, and the bulk importer.
-func (m Model) completions(kind, typed string) []string {
-	if kind == "" || typed == "" || len(m.candidates) == 0 {
-		// Everything matches an empty field, and a list of everything is not a
-		// suggestion -- it is the tree, which is one keystroke away already.
+// Near rather than Options: a warning is read, not chosen, so only the tiers
+// where the name itself matched are worth naming.
+func (m Model) warnInPanel() Model {
+	kind, typed := m.creator.Warning()
+	m.creator = m.creator.SetWarnings(complete.Near(m.matchesOf(kind), typed))
+	return m
+}
+
+// matchesOf is the live vocabulary of one kind.
+func (m Model) matchesOf(kind string) []complete.Match {
+	if kind == "" {
 		return nil
 	}
-	var out []string
+	var out []complete.Match
 	for _, candidate := range m.candidates {
 		if string(candidate.Kind) != kind || candidate.Archived {
 			continue
 		}
-		// Already exactly a name: there is nothing to suggest, and a list that
-		// says "tab to take it" when tab will move on is a list that lies.
-		if strings.EqualFold(candidate.Path, typed) {
-			return nil
-		}
-		if !fuzzyContains(strings.ToLower(candidate.Path), strings.ToLower(typed)) {
-			continue
-		}
-		out = append(out, candidate.Path)
-		if len(out) == 3 {
-			break
-		}
+		out = append(out, complete.Match{Path: candidate.Path, Leaf: candidate.Leaf})
 	}
 	return out
+}
+
+// asMatches wraps a closed vocabulary for the matcher. A unit code has no
+// hierarchy, so its leaf is itself.
+func asMatches(options []string) []complete.Match {
+	out := make([]complete.Match, 0, len(options))
+	for _, option := range options {
+		out = append(out, complete.Match{Path: option, Leaf: option})
+	}
+	return out
+}
+
+// completions ranks the vocabulary of one kind against what has been typed.
+//
+// One function for every field that resolves a name -- the creation panel's
+// parent and category, and the move prompt's destination -- because a second
+// completer would be a second opinion about what a name nearly is. It reads the
+// resolve index, which is the same index behind the jump palette, the command
+// line, and the bulk importer.
+//
+// The RANKING lives in the complete package, and it is the whole reason this is
+// not a filter: the old version took the first three subsequence matches in
+// index order, so `gar` could offer two things merely containing g-a-r ahead of
+// the Garage.
+func (m Model) completions(kind, typed string) []string {
+	if len(m.candidates) == 0 {
+		return nil
+	}
+	return complete.Options(m.matchesOf(kind), typed)
 }
 
 // suggestForPrompt offers completions for the inline field a keystroke opened.
@@ -480,11 +528,6 @@ func promptResolves(purpose string) (string, bool) {
 	return "", false
 }
 
-func (m Model) withSuggestions(suggestions []string) Model {
-	m.creator = m.creator.SetSuggestions(suggestions)
-	return m
-}
-
 // handleCreator takes the keystroke while the panel is open.
 //
 // Before the omnibox and the list, for the same reason the editor does: while a
@@ -493,20 +536,12 @@ func (m Model) handleCreator(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if !m.creator.IsOpen() {
 		return m, nil, false
 	}
-	switch msg.Type {
-	case tea.KeyEsc:
-		m.creator = m.creator.Close()
-		m.status = "nothing was created"
-		return m, nil, true
-	case tea.KeyEnter:
-		if name := m.creator.Value("name"); name == "" {
-			return m.refuse("a name is required"), nil, true
-		}
-		// Through the `:` line's own path -- the same Parse, the same Bind, the
-		// same confirmation. A panel that took a shortcut would be a second way
-		// to create things, validating differently from the first.
-		return m, m.runLine(m.creator.Line()), true
-	}
+	// The panel, INCLUDING the dropdown over its focused field, goes first.
+	//
+	// It has to: esc puts a list away before it closes the panel, which is the
+	// same rule as everywhere else here -- one escape leaves exactly one mode.
+	// Consulting the panel second meant esc threw away a half-filled form while
+	// a list was showing, so the list could be opened and never dismissed.
 	if next, handled := m.creator.Update(msg); handled {
 		m.creator = next
 		// Recomputed after every keystroke, because a suggestion that lags the
@@ -519,7 +554,44 @@ func (m Model) handleCreator(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		}
 		return m, nil, true
 	}
+	switch keys.Lookup(keys.Creator, msg) {
+	case keys.Cancel:
+		m.creator = m.creator.Close()
+		m.status = "nothing was created"
+		return m, nil, true
+	case keys.Confirm:
+		if name := m.creator.Value("name"); name == "" {
+			return m.refuse("a name is required"), nil, true
+		}
+		// Through the command line's own path -- the same Parse, the same Bind,
+		// the same confirmation. A panel that took a shortcut would be a second
+		// way to create things, validating differently from the first.
+		return m, m.runLine(m.creator.Line()), true
+	}
 	return m, nil, true
+}
+
+// refuseContained says why a row that is only being SHOWN here cannot be acted
+// on, in terms of the thing rather than the keystroke.
+//
+// The trees show what their nodes contain so that you can see where things are.
+// Acting on them from here would make the Locations tree a second holdings
+// screen -- with its own idea of selection, its own verbs, and its own bugs.
+func (m Model) refuseContained(kind, verb string) Model {
+	where := "the Items view"
+	if kind == "Holding" {
+		where = "the Holdings view"
+	}
+	return m.refuse("that is %s the tree is showing you -- %s it from %s",
+		strings.ToLower(article(kind)), verb, where)
+}
+
+// article is "an Item" or "a Holding", so a refusal reads as a sentence.
+func article(kind string) string {
+	if strings.ContainsAny(kind[:1], "AEIOU") {
+		return "an " + kind
+	}
+	return "a " + kind
 }
 
 // runCommands plans already-built Commands and merges them into one unit of

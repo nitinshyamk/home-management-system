@@ -11,4 +11,4 @@
             Small Parts Tray                                                       2
     Left Pantry                                                                    1
 ------------------------------------------------------------------------------------
-6 locations - za fold - zR expand all - zM collapse all
+6 locations - TAB fold - S-TAB fold all - v contents

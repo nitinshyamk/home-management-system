@@ -22,7 +22,7 @@ func TestFilteringNarrowsAndSaysSo(t *testing.T) {
 		t.Fatalf("expected 3 Ancho rows to start, got %d", before)
 	}
 
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("thunder"))
 	s.Send(sim.Enter)
 
@@ -31,13 +31,13 @@ func TestFilteringNarrowsAndSaysSo(t *testing.T) {
 	// The count says what it did AND what it is a fraction of.
 	s.ShowsText("of 4")
 	// And the filter is visible while it is in force.
-	s.ShowsText("/thunder")
+	s.ShowsText("thunder")
 
 	// esc in the LIST clears it -- a different escape from the one that closes
 	// the input line.
 	s.Send(sim.Esc)
 	s.ShowsText("Ancho Chile")
-	s.HidesText("/thunder")
+	s.HidesText("thunder")
 }
 
 // A facet restricts a field. It must not reach the other columns, or `loc:` is
@@ -47,7 +47,7 @@ func TestAFacetRestrictsItsFieldOnly(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Send(sim.Press("4"))
 
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:garage"))
 	s.Send(sim.Enter)
 	s.ShowsText("of 4")
@@ -57,7 +57,7 @@ func TestAFacetRestrictsItsFieldOnly(t *testing.T) {
 
 	// Facet and text together, one line.
 	s.Send(sim.Esc)
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:tray thunder"))
 	s.Send(sim.Enter)
 	s.ShowsText("Thunderbolt")
@@ -70,12 +70,12 @@ func TestFilterAndJumpAreVisiblyDifferent(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Send(sim.Press("4"))
 
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("shelf"))
 	filtering := s.PlainView()
 
 	s.Send(sim.Esc)
-	s.Send(sim.CtrlP)
+	s.Send(sim.AltG)
 	s.Send(sim.Type("shelf"))
 	jumping := s.PlainView()
 
@@ -98,7 +98,7 @@ func TestJumpingGoesToTheThing(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Send(sim.Press("4")) // start in Holdings
 
-	s.Send(sim.CtrlP)
+	s.Send(sim.AltG)
 	s.Send(sim.Type("blue crate"))
 	s.Send(sim.Enter)
 
@@ -121,12 +121,12 @@ func TestCancellingAJumpChangesNothing(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Send(sim.Press("4"))
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
 	before := s.PlainView()
 
-	s.Send(sim.CtrlP)
+	s.Send(sim.AltG)
 	s.Send(sim.Type("garage"))
 	s.Send(sim.Esc)
 
@@ -135,22 +135,22 @@ func TestCancellingAJumpChangesNothing(t *testing.T) {
 	}
 }
 
-// While the line is open a keystroke is a CHARACTER. A `j` that moved the
-// cursor while someone was typing "jar" is the classic way a modal interface
-// betrays the person using it.
+// While the line is open a keystroke is a CHARACTER, and that is the classic
+// way a modal interface betrays the person using it: the `q` in a search for
+// "quinoa" quitting, or the `2` in "2mm" changing the view.
 func TestTypingIsNotNavigation(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Send(sim.Press("4"))
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("jar"))
 
-	if !strings.Contains(s.PlainView(), "/jar") {
+	if !strings.Contains(s.PlainView(), "I-search: jar") {
 		t.Errorf("typing jar did not reach the input line:\n%s", s.PlainView())
 	}
 	// And q did not quit, and 2 did not change view.
 	s.Send(sim.Type("q2"))
-	if !strings.Contains(s.PlainView(), "/jarq2") {
+	if !strings.Contains(s.PlainView(), "I-search: jarq2") {
 		t.Errorf("q and 2 were taken as commands while typing:\n%s", s.PlainView())
 	}
 }
@@ -161,7 +161,7 @@ func TestFilteringATreeKeepsThePath(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Send(sim.Press("2"))
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("small parts"))
 	s.Send(sim.Enter)
 
@@ -180,12 +180,12 @@ func TestSearchingWritesNothing(t *testing.T) {
 
 	for _, view := range []string{"1", "2", "3", "4"} {
 		s.Send(sim.Press(view))
-		s.Send(sim.Press("/"))
+		s.Send(sim.CtrlS)
 		s.Send(sim.Type("a"))
 		s.Send(sim.Enter)
-		s.Send(sim.Press("n"), sim.Press("N"))
+		s.Send(sim.AltN, sim.AltP)
 		s.Send(sim.Esc)
-		s.Send(sim.CtrlP)
+		s.Send(sim.AltG)
 		s.Send(sim.Type("shelf"))
 		s.Send(sim.Esc)
 	}
@@ -200,12 +200,12 @@ func TestSearchFitsNarrowTerminals(t *testing.T) {
 	awkwardHouse(t, s)
 	for _, width := range []int{60, 80, 120} {
 		s.Resize(width, 24)
-		s.Send(sim.Press("4"), sim.Press("/"))
+		s.Send(sim.Press("4"), sim.CtrlS)
 		s.Send(sim.Type("loc:garage ancho"))
 		s.FitsWidth(width)
 		s.Send(sim.Enter)
 		s.FitsWidth(width)
-		s.Send(sim.CtrlP)
+		s.Send(sim.AltG)
 		s.Send(sim.Type("shelf"))
 		s.FitsWidth(width)
 		s.Send(sim.Esc, sim.Esc)
@@ -221,20 +221,20 @@ func TestAbandoningAFilterEditRestoresTheOldOne(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Send(sim.Press("4"))
 
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
 	s.ShowsText("3 of 4")
 
 	// Start refining, change your mind.
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("zzzz"))
 	s.HidesText("Ancho Chile") // narrowing as you type
 	s.Send(sim.Esc)
 
 	s.ShowsText("3 of 4")
 	s.ShowsText("Ancho Chile")
-	s.ShowsText("/ancho")
+	s.ShowsText("ancho")
 }
 
 // With no filter to restore, abandoning an edit leaves the list whole.
@@ -243,7 +243,7 @@ func TestAbandoningAFirstFilterLeavesEverything(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Send(sim.Press("4"))
 
-	s.Send(sim.Press("/"))
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("zzzz"))
 	s.Send(sim.Esc)
 
@@ -257,7 +257,7 @@ func TestTheFooterDescribesThePaletteWhileJumping(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Send(sim.Press("4"))
-	s.Send(sim.CtrlP)
+	s.Send(sim.AltG)
 	s.Send(sim.Type("shelf"))
 
 	s.ShowsText("matches across every kind")

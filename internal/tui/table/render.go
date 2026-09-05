@@ -2,6 +2,8 @@ package table
 
 import (
 	"strings"
+
+	"home-management-system/internal/tui/keys"
 )
 
 // Rendering, and the width arithmetic that decides what a narrow terminal
@@ -92,7 +94,11 @@ func (m Model) line(r Row, index int, isCursor bool, widths []int, visible []int
 
 	cells := make([]string, 0, len(visible))
 	for n, i := range visible {
-		cells = append(cells, pad(fit(cell(r, i), widths[n], m.cols[i].Elide), widths[n], m.cols[i].Align))
+		text := fit(cell(r, i), widths[n], m.cols[i].Elide)
+		if m.cols[i].Path {
+			text = fitPath(path(r, i), cell(r, i), widths[n], m.cols[i].Elide)
+		}
+		cells = append(cells, pad(text, widths[n], m.cols[i].Align))
 	}
 	text := cursorMark + selectMark + strings.Join(cells, separator)
 
@@ -143,6 +149,26 @@ func (m Model) layout() (widths []int, visible []int) {
 		visible = append(visible[:at:at], visible[at+1:]...)
 	}
 
+	// A path column takes what it needs for its fullest form BEFORE the growing
+	// column takes the rest, and only out of what is genuinely spare.
+	//
+	// Before the grower, because the grower asks for everything: offered the
+	// slack second, a path column never widened at all. Only out of the spare,
+	// because the ancestors are context -- worth having when they cost nothing,
+	// never worth taking a name column's room for.
+	for n, i := range visible {
+		slack := available - total(widths)
+		if slack <= 0 {
+			break
+		}
+		if !m.cols[i].Path {
+			continue
+		}
+		if want := m.pathTarget(i, widths[n]+slack); want > widths[n] {
+			widths[n] = want
+		}
+	}
+
 	// Hand any leftover to whoever asked to grow.
 	if slack := available - total(widths); slack > 0 {
 		for n, i := range visible {
@@ -153,6 +179,25 @@ func (m Model) layout() (widths []int, visible []int) {
 		}
 	}
 	return widths, visible
+}
+
+// pathTarget is the widest width no wider than ceiling at which the column
+// would draw something it cannot draw already.
+//
+// Only widths that CHANGE a row are worth taking. Handing the column every
+// spare column it could absorb padded it out to the longest path in the house
+// while still drawing the short form of every row -- space taken from the name
+// column and spent on nothing.
+func (m Model) pathTarget(i, ceiling int) int {
+	best := 0
+	for _, r := range m.rows {
+		for _, form := range pathForms(path(r, i)) {
+			if n := len([]rune(form)); n <= ceiling && n > best {
+				best = n
+			}
+		}
+	}
+	return best
 }
 
 // squeeze narrows the widest column repeatedly until it fits or nothing can
@@ -182,7 +227,8 @@ func (m Model) squeeze(widths []int, visible []int, available int) []int {
 // what you typed" are different facts about the house.
 func (m Model) emptyMessage() string {
 	if m.Filtered() && len(m.rows) > 0 {
-		return "  (nothing matches this filter -- esc to clear it)"
+		return "  (nothing matches this filter -- " +
+			keys.Show(keys.Table, keys.Cancel) + " to clear it)"
 	}
 	return "  (nothing here)"
 }
@@ -236,6 +282,51 @@ func fit(s string, width int, elide Elide) string {
 	}
 	return string(runes[:width-1]) + "…"
 }
+
+// pathForms is every way a path can be drawn, widest first, down to the last
+// one still worth its space.
+//
+// A path gives up ANCESTORS, not characters: "Garage > Bay 3 > Blue Crate"
+// narrowed by character elision reads "…3 > Blue Crate", which cuts a name in
+// half and spends a column on an ellipsis to say so. Narrowed by segment it
+// reads "… > Blue Crate" -- the same information lost, and what is left is
+// still names.
+//
+// The list stops before "… > Blue Crate" would become "… > " plus the leaf
+// alone. That form is worse than the leaf it replaces: four columns spent to
+// say "this has a parent" without saying which. An elided path earns its space
+// only while it still NAMES something.
+func pathForms(full string) []string {
+	segments := strings.Split(full, pathSeparator)
+	forms := []string{full}
+	for at := 1; at <= len(segments)-2; at++ {
+		forms = append(forms, "…"+pathSeparator+strings.Join(segments[at:], pathSeparator))
+	}
+	return forms
+}
+
+// fitPath draws the widest form that fits.
+//
+// The leaf is the floor. It is what the column held before it could show a path
+// at all, so a terminal with no room to spare loses nothing it used to have --
+// and a column too narrow even for the leaf falls back to eliding the leaf
+// itself, there being nothing more specific to keep.
+func fitPath(full, leaf string, width int, elide Elide) string {
+	if width <= 0 {
+		return ""
+	}
+	for _, form := range pathForms(full) {
+		if len([]rune(form)) <= width {
+			return form
+		}
+	}
+	return fit(leaf, width, elide)
+}
+
+// pathSeparator joins the segments of a path. It is resolve.PathSeparator, and
+// the table cannot import resolve to say so -- a widget that knew about the
+// resolver would be a widget that knows about the domain.
+const pathSeparator = " > "
 
 func pad(s string, width int, align Align) string {
 	n := width - len([]rune(stripANSI(s)))

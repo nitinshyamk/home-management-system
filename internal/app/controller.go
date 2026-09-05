@@ -14,6 +14,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"home-management-system/internal/annotate"
@@ -30,13 +31,19 @@ import (
 // operations, which exist so the application makes sense; the TUI does not call
 // them.
 type Controller interface {
-	CategoryTree(ctx context.Context) ([]TreeRow, error)
-	LocationTree(ctx context.Context) ([]TreeRow, error)
+	// The trees, optionally with what they CONTAIN spliced in beneath each
+	// node -- a Category's Items, a Location's Holdings.
+	CategoryTree(ctx context.Context, withContents bool) ([]TreeRow, error)
+	LocationTree(ctx context.Context, withContents bool) ([]TreeRow, error)
 	Items(ctx context.Context) ([]ItemRow, error)
 	Holdings(ctx context.Context) ([]HoldingRow, error)
 	HoldingHistory(ctx context.Context, id domain.HoldingID) ([]EventRow, error)
 	Integrity(ctx context.Context) (IntegrityRow, error)
 	SearchIndex(ctx context.Context) (*resolve.Index, error)
+	// Units is the unit vocabulary, in the reference table's own order --
+	// grouped by dimension, smallest first. Seven rows of reference data, so
+	// the UI can offer them as a closed choice rather than free text.
+	Units(ctx context.Context) ([]string, error)
 
 	// The write surface. A Plan holds an unexported Batch, so the interface can
 	// show what will happen and commit it without ever being able to assemble a
@@ -66,6 +73,18 @@ type TreeRow struct {
 	Name  string
 	Depth int
 	Count int64 // rollup over the subtree
+	// Kind says what this row IS: "Category", "Location", "Item", "Holding".
+	//
+	// A tree used to hold only its own kind, so the view could say what a row
+	// was. It cannot any more -- the Locations tree shows Holdings when asked
+	// -- and the difference is not cosmetic: the put destination reads a row's
+	// ID as a LocationID, so a row whose kind is assumed rather than known is a
+	// silent write to whatever place shares that number.
+	Kind string
+	// Measure is what a contained row says for itself in the count column --
+	// "120 g" for a holding, "280 g" on hand for an item. Empty for a
+	// container, which shows its rollup instead.
+	Measure string
 }
 
 // ItemRow is one Item.
@@ -74,8 +93,12 @@ type ItemRow struct {
 	Name     string
 	Kind     string
 	Category string
-	Measure  string // "g, 2 kg packages" or "one of a kind"
-	OnHand   string
+	// CategoryID is the identifier behind Category, which the name cannot
+	// stand in for: two categories at different paths may share a name, so
+	// grouping items by the name puts some of them under the wrong parent.
+	CategoryID domain.CategoryID
+	Measure    string // "g, 2 kg packages" or "one of a kind"
+	OnHand     string
 }
 
 // HoldingRow is one Holding.
@@ -92,6 +115,16 @@ type HoldingRow struct {
 	ItemID   domain.ItemID
 	Kind     string
 	Location string
+	// LocationPath is the same place with its ancestors, root first
+	// ("Garage > Bay 3 > Blue Crate"). It is what the table shows when the
+	// column is wide enough for it, so that three rows of one item in three
+	// different Shelf 1s can be told apart without leaving the table.
+	//
+	// Carried ALONGSIDE Location rather than replacing it, because the table
+	// filters and sorts on the cell it is given: making the path the cell would
+	// quietly turn `loc:garage` into "anywhere in the Garage" and sort the
+	// column by branch instead of by name.
+	LocationPath string
 	// LocationID is where it is STOWED, which is what the stock commands mean
 	// by a place -- not where a checked-out thing happens to be.
 	LocationID domain.LocationID
@@ -165,11 +198,30 @@ func Open(conn *sql.DB) Controller {
 	return c
 }
 
-func (c *controller) CategoryTree(ctx context.Context) ([]TreeRow, error) {
+// CategoryTree is the classification, optionally with each category's own Items
+// spliced in beneath it.
+//
+// The items are grouped by CategoryID rather than by the category NAME, because
+// two categories at different paths may share a name and grouping by it would
+// file some items under the wrong parent. They are read in one pass -- Items()
+// already returns every one -- rather than a query per node, which is one N+1
+// more than the counts above already cost.
+func (c *controller) CategoryTree(ctx context.Context, withContents bool) ([]TreeRow, error) {
 	nodes, err := c.read.CategoryForest(ctx)
 	if err != nil {
 		return nil, err
 	}
+	contained := map[domain.CategoryID][]ItemRow{}
+	if withContents {
+		items, err := c.Items(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range items {
+			contained[item.CategoryID] = append(contained[item.CategoryID], item)
+		}
+	}
+
 	out := make([]TreeRow, 0, len(nodes))
 	for _, n := range nodes {
 		count, err := c.read.CountItemsInCategoryTree(ctx, n.Category.ID)
@@ -177,17 +229,42 @@ func (c *controller) CategoryTree(ctx context.Context) ([]TreeRow, error) {
 			return nil, err
 		}
 		out = append(out, TreeRow{
-			ID: int64(n.Category.ID), Name: n.Category.Name, Depth: n.Depth, Count: count,
+			ID: int64(n.Category.ID), Name: n.Category.Name, Depth: n.Depth,
+			Count: count, Kind: string(domain.EntityCategory),
 		})
+		for _, item := range contained[n.Category.ID] {
+			out = append(out, TreeRow{
+				ID: int64(item.ID), Name: item.Name, Depth: n.Depth + 1,
+				Kind: string(domain.EntityItem), Measure: item.OnHand,
+			})
+		}
 	}
 	return out, nil
 }
 
-func (c *controller) LocationTree(ctx context.Context) ([]TreeRow, error) {
+// LocationTree is the house, optionally with each place's own Holdings spliced
+// in beneath it.
+//
+// Holdings() already carries the LocationID of every row, so the grouping is a
+// bucket in memory and there is no query to add. That matters: there is no
+// "holdings in this location" query at any layer, and adding one to render a
+// display mode would be a schema-level answer to a screen-level question.
+func (c *controller) LocationTree(ctx context.Context, withContents bool) ([]TreeRow, error) {
 	nodes, err := c.read.LocationForest(ctx)
 	if err != nil {
 		return nil, err
 	}
+	contained := map[domain.LocationID][]HoldingRow{}
+	if withContents {
+		holdings, err := c.Holdings(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, h := range holdings {
+			contained[h.LocationID] = append(contained[h.LocationID], h)
+		}
+	}
+
 	out := make([]TreeRow, 0, len(nodes))
 	for _, n := range nodes {
 		count, err := c.read.CountHoldingsInLocationTree(ctx, n.Location.ID)
@@ -195,8 +272,15 @@ func (c *controller) LocationTree(ctx context.Context) ([]TreeRow, error) {
 			return nil, err
 		}
 		out = append(out, TreeRow{
-			ID: int64(n.Location.ID), Name: n.Location.Name, Depth: n.Depth, Count: count,
+			ID: int64(n.Location.ID), Name: n.Location.Name, Depth: n.Depth,
+			Count: count, Kind: string(domain.EntityLocation),
 		})
+		for _, h := range contained[n.Location.ID] {
+			out = append(out, TreeRow{
+				ID: int64(h.ID), Name: h.Item, Depth: n.Depth + 1,
+				Kind: string(domain.EntityHolding), Measure: h.State,
+			})
+		}
 	}
 	return out, nil
 }
@@ -217,12 +301,13 @@ func (c *controller) Items(ctx context.Context) ([]ItemRow, error) {
 			return nil, err
 		}
 		out = append(out, ItemRow{
-			ID:       item.Base().ID,
-			Name:     item.Base().Name,
-			Kind:     string(item.Kind()),
-			Category: category.Name,
-			Measure:  describeMeasure(item),
-			OnHand:   onHand,
+			ID:         item.Base().ID,
+			Name:       item.Base().Name,
+			Kind:       string(item.Kind()),
+			Category:   category.Name,
+			CategoryID: item.Base().Category,
+			Measure:    describeMeasure(item),
+			OnHand:     onHand,
 		})
 	}
 	return out, nil
@@ -236,7 +321,7 @@ func (c *controller) Holdings(ctx context.Context) ([]HoldingRow, error) {
 	// Where a checked-out thing went is a NAME, not the identifier the ledger
 	// records. Reading the location tree once is cheaper than a lookup per row
 	// and gives every row the same answer.
-	where, err := c.locationNames(ctx)
+	where, paths, err := c.locationNames(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -244,15 +329,16 @@ func (c *controller) Holdings(ctx context.Context) ([]HoldingRow, error) {
 	for _, d := range details {
 		base := d.Holding.Base()
 		row := HoldingRow{
-			ID:         base.ID,
-			Item:       d.ItemName,
-			ItemID:     base.Item,
-			Kind:       string(d.Holding.Kind()),
-			Location:   d.LocationName,
-			LocationID: base.StowedLocation,
-			State:      describeState(d, where),
-			Note:       describeFlags(d),
-			Retired:    base.RetiredAt != nil,
+			ID:           base.ID,
+			Item:         d.ItemName,
+			ItemID:       base.Item,
+			Kind:         string(d.Holding.Kind()),
+			Location:     d.LocationName,
+			LocationPath: paths[int64(base.StowedLocation)],
+			LocationID:   base.StowedLocation,
+			State:        describeState(d, where),
+			Note:         describeFlags(d),
+			Retired:      base.RetiredAt != nil,
 		}
 		if u, ok := d.Holding.(domain.UniqueHolding); ok {
 			row.Custody = string(u.Custody)
@@ -272,16 +358,29 @@ func (n locationNames) Label(kind domain.EntityKind, id int64) string {
 	return n[id]
 }
 
-func (c *controller) locationNames(ctx context.Context) (locationNames, error) {
+// locationNames reads the tree once and returns both the leaf names and the
+// full paths, because the two come from the same walk and a second pass over
+// the forest to get the second of them would be a second answer to keep in
+// step with the first.
+//
+// The path is assembled from Depth with a stack, which is the same walk
+// resolve.Build does to give a Candidate its Path -- and it has to stay the
+// same, because a path the table shows and a path the resolver accepts that
+// disagreed would be two names for one shelf.
+func (c *controller) locationNames(ctx context.Context) (locationNames, map[int64]string, error) {
 	nodes, err := c.read.LocationForest(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out := make(locationNames, len(nodes))
+	paths := make(map[int64]string, len(nodes))
+	var stack []string
 	for _, n := range nodes {
+		stack = append(stack[:min(n.Depth, len(stack))], n.Location.Name)
 		out[int64(n.Location.ID)] = n.Location.Name
+		paths[int64(n.Location.ID)] = strings.Join(stack, resolve.PathSeparator)
 	}
-	return out, nil
+	return out, paths, nil
 }
 
 func (c *controller) HoldingHistory(ctx context.Context, id domain.HoldingID) ([]EventRow, error) {
@@ -331,6 +430,24 @@ func (c *controller) Integrity(ctx context.Context) (IntegrityRow, error) {
 // line, and the bulk importer. If bulk import matched names differently from
 // the interface, a CSV row and the equivalent typed command would resolve to
 // different things, and the claim that they are one contract would be false.
+// Units reads the unit codes, in the order the reference table declares.
+//
+// Straight off the read path rather than through Vocabulary, which holds them
+// in a map -- and a map has no order to offer. It is also the whole vocabulary,
+// which is a great deal of reading for seven rows the browse flow otherwise has
+// no use for.
+func (c *controller) Units(ctx context.Context) ([]string, error) {
+	units, err := c.read.Units(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(units))
+	for _, u := range units {
+		out = append(out, string(u.Code))
+	}
+	return out, nil
+}
+
 func (c *controller) SearchIndex(ctx context.Context) (*resolve.Index, error) {
 	return resolve.Build(ctx, c.read)
 }

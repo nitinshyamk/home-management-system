@@ -24,29 +24,8 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-31
---------------------------------------------------------------------------------------------
-12 holdings - enter for history - sorted by item a-z
-
-===== #  (92x20) =========================================================================
- 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
---------------------------------------------------------------------------------------------
-  ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
-  how much is actually there ─────────────────────────────────────────────────────────────
-   
-  enter count   esc discard
-  Ancho Chile                                       120 g  Garage                           
-  Ancho Chile                                        40 g  Small Parts Tray                 
-  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
-  Basmati Rice                                      800 g  Shelf 1                          
-  Brass Thumbtack                                82 count  Desk Drawer 2                    
-  Cumin                                              90 g  Shelf 2                          
-  Empty Computer Box                              at rest  Attic                            
-  Forever Stamp                                   3 count  Desk Drawer 2                    
-  Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -55,9 +34,6 @@ the selection tint, and the red on a refusal.
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
 > Ancho Chile                                       120 g  Shelf 2                          
-  how much is actually there ─────────────────────────────────────────────────────────────
-  4 
-  enter count   esc discard
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -67,7 +43,8 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -76,9 +53,9 @@ the selection tint, and the red on a refusal.
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
 > Ancho Chile                                       120 g  Shelf 2                          
-  how much is actually there ─────────────────────────────────────────────────────────────
-  4c 
-  enter count   esc discard
+  how much ───────────────────────────────────────────────────────────────────────────────
+   
+  enter consume   esc discard
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -88,7 +65,7 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -97,9 +74,9 @@ the selection tint, and the red on a refusal.
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
 > Ancho Chile                                       120 g  Shelf 2                          
-  how much is actually there ─────────────────────────────────────────────────────────────
-  4c1 
-  enter count   esc discard
+  how much ───────────────────────────────────────────────────────────────────────────────
+  1 
+  enter consume   esc discard
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -109,7 +86,7 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -118,9 +95,9 @@ the selection tint, and the red on a refusal.
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
 > Ancho Chile                                       120 g  Shelf 2                          
-  how much is actually there ─────────────────────────────────────────────────────────────
-  4c10 
-  enter count   esc discard
+  how much ───────────────────────────────────────────────────────────────────────────────
+  10 
+  enter consume   esc discard
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -130,7 +107,7 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -138,7 +115,7 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
+> Ancho Chile                                       110 g  Shelf 2                          
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
@@ -148,17 +125,16 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-31
-  a unit needs the command line, which knows how to convert it: try :consume 4c10
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
 --------------------------------------------------------------------------------------------
-12 holdings - sorted by item a-z
+12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
 ===== count -- the same shape of prompt  (92x20) =========================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
+> Ancho Chile                                       110 g  Shelf 2                          
   how much is actually there ─────────────────────────────────────────────────────────────
    
   enter count   esc discard
@@ -171,15 +147,15 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
 --------------------------------------------------------------------------------------------
-12 holdings - sorted by item a-z
+12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
 ===== 5  (92x20) =========================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
+> Ancho Chile                                       110 g  Shelf 2                          
   how much is actually there ─────────────────────────────────────────────────────────────
   5 
   enter count   esc discard
@@ -192,15 +168,15 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
 --------------------------------------------------------------------------------------------
-12 holdings - sorted by item a-z
+12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
 ===== fifty  (92x20) =====================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                       120 g  Shelf 2                          
+> Ancho Chile                                       110 g  Shelf 2                          
   how much is actually there ─────────────────────────────────────────────────────────────
   50 
   enter count   esc discard
@@ -213,9 +189,9 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
 --------------------------------------------------------------------------------------------
-12 holdings - sorted by item a-z
+12 holdings - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
 ===== recorded, and corrected  (92x20) ===================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
@@ -231,8 +207,8 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-31
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
@@ -243,17 +219,17 @@ the selection tint, and the red on a refusal.
 > Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
    
-  enter move   esc discard
+  Attic   TAB to take it
+  Garage
+  Garage > Metal Shelving Unit
+  Garage > Metal Shelving Unit > Bay 3
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray
+  Kitchen
+  Kitchen > Spice Cabinet
+  TAB take   C-n/C-p choose   S-TAB dismiss
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
-  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
-  Basmati Rice                                      800 g  Shelf 1                          
-  Brass Thumbtack                                82 count  Desk Drawer 2                    
-  Cumin                                              90 g  Shelf 2                          
-  Empty Computer Box                              at rest  Attic                            
-  Forever Stamp                                   3 count  Desk Drawer 2                    
-  Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
 --------------------------------------------------------------------------------------------
 12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
@@ -264,17 +240,17 @@ the selection tint, and the red on a refusal.
 > Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
   g 
-  Garage   tab to take it
+  Garage   TAB to take it
   Garage > Metal Shelving Unit
   Garage > Metal Shelving Unit > Bay 3
-  enter move   esc discard
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray
+  TAB take   C-n/C-p choose   S-TAB dismiss
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                      800 g  Shelf 1                          
   Brass Thumbtack                                82 count  Desk Drawer 2                    
-  Cumin                                              90 g  Shelf 2                          
-  Empty Computer Box                              at rest  Attic                            
 --------------------------------------------------------------------------------------------
 12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
@@ -285,17 +261,17 @@ the selection tint, and the red on a refusal.
 > Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
   ga 
-  Garage   tab to take it
+  Garage   TAB to take it
   Garage > Metal Shelving Unit
   Garage > Metal Shelving Unit > Bay 3
-  enter move   esc discard
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray
+  TAB take   C-n/C-p choose   S-TAB dismiss
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                      800 g  Shelf 1                          
   Brass Thumbtack                                82 count  Desk Drawer 2                    
-  Cumin                                              90 g  Shelf 2                          
-  Empty Computer Box                              at rest  Attic                            
 --------------------------------------------------------------------------------------------
 12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
@@ -306,17 +282,17 @@ the selection tint, and the red on a refusal.
 > Ancho Chile                                        50 g  Shelf 2                          
   where to ───────────────────────────────────────────────────────────────────────────────
   gar 
-  Garage   tab to take it
+  Garage   TAB to take it
   Garage > Metal Shelving Unit
   Garage > Metal Shelving Unit > Bay 3
-  enter move   esc discard
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray
+  TAB take   C-n/C-p choose   S-TAB dismiss
   Ancho Chile                                       120 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                      800 g  Shelf 1                          
   Brass Thumbtack                                82 count  Desk Drawer 2                    
-  Cumin                                              90 g  Shelf 2                          
-  Empty Computer Box                              at rest  Attic                            
 --------------------------------------------------------------------------------------------
 12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
@@ -337,7 +313,7 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
 --------------------------------------------------------------------------------------------
 12 holdings - count Ancho Chile > Shelf 2 (loose) and find 50 - sorted by item a-z
 
@@ -355,12 +331,12 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-31
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
-===== /  (92x20) =========================================================================
+===== ctrl+s  (92x20) ====================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
@@ -374,9 +350,9 @@ the selection tint, and the red on a refusal.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-31
-/_  enter apply   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
+I-search:    enter apply   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
@@ -391,12 +367,12 @@ the selection tint, and the red on a refusal.
   Ancho Chile                                        40 g  Small Parts Tray                 
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Brass Thumbtack                                82 count  Desk Drawer 2                    
-  Winter Coat                                     at rest  Garage            gone 2026-05-31
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
   Basmati Rice                                      800 g  Shelf 1                          
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-/c_  enter apply   esc cancel
+I-search: c   enter apply   esc cancel
 --------------------------------------------------------------------------------------------
 12 of 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
@@ -405,15 +381,15 @@ the selection tint, and the red on a refusal.
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
 > Empty Computer Box                              at rest  Attic                            
-  Winter Coat                                     at rest  Garage            gone 2026-05-31
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
   Ancho Chile                                       170 g  Garage                           
   Ancho Chile                                        40 g  Small Parts Tray                 
   Forever Stamp                                   3 count  Desk Drawer 2                    
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
   Brass Thumbtack                                82 count  Desk Drawer 2                    
   Basmati Rice                        3 packages (6000 g)  Shelf 1                          
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-/ca_  enter apply   esc cancel
+I-search: ca   enter apply   esc cancel
 --------------------------------------------------------------------------------------------
 9 of 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
@@ -421,9 +397,9 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-/cab_  enter apply   esc cancel
+I-search: cab   enter apply   esc cancel
 --------------------------------------------------------------------------------------------
 2 of 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
@@ -431,9 +407,9 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
+> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-/cabl_  enter apply   esc cancel
+I-search: cabl   enter apply   esc cancel
 --------------------------------------------------------------------------------------------
 2 of 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
@@ -441,8 +417,8 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-/cable_  enter apply   esc cancel
+> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+I-search: cable   enter apply   esc cancel
 --------------------------------------------------------------------------------------------
 1 of 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
@@ -450,8 +426,8 @@ the selection tint, and the red on a refusal.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-filtered /cable   esc clear
+> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+filtered cable   esc clear
 --------------------------------------------------------------------------------------------
 1 of 12 holdings - move all of Ancho Chile > Shelf 2 (loose) to Garage - sorted by item a-z
 
@@ -459,8 +435,8 @@ filtered /cable   esc clear
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-filtered /cable   esc clear
+> USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+filtered cable   esc clear
   "USB-C to HDMI Cable 2m" is one of a kind -- there is no amount to consume
 --------------------------------------------------------------------------------------------
 1 of 12 holdings - sorted by item a-z
@@ -470,7 +446,7 @@ filtered /cable   esc clear
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
 > USB-C to HDMI Cable 2m       at rest: the good 100W one  Desk Drawer 2                    
-filtered /cable   esc clear
+filtered cable   esc clear
 --------------------------------------------------------------------------------------------
 1 of 12 holdings - put USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one) back - sorted by item a-z
 
@@ -479,20 +455,11 @@ filtered /cable   esc clear
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
 > USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2                    
-filtered /cable   esc clear
+filtered cable   esc clear
 --------------------------------------------------------------------------------------------
 1 of 12 holdings - take USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one) out - sorted by item a-z
 
-===== the first d of dd -- nothing yet  (92x20) ==========================================
- 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
---------------------------------------------------------------------------------------------
-  ITEM ^                                              QTY  LOCATION          FLAGS          
-> USB-C to HDMI Cable 2m         out, whereabouts unknown  Desk Drawer 2                    
-filtered /cable   esc clear
---------------------------------------------------------------------------------------------
-1 of 12 holdings - take USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one) out - sorted by item a-z
-
-===== retire  (92x20) ====================================================================
+===== retire -- the confirmation is the guard, not a second keystroke  (92x20) ===========
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   retire USB-C to HDMI Cable 2m > Desk Drawer 2 (the good 100W one)?
@@ -501,7 +468,7 @@ filtered /cable   esc clear
                 the history stays; the holding does not
 
   [enter] go ahead    [esc] back
-filtered /cable   esc clear
+filtered cable   esc clear
 --------------------------------------------------------------------------------------------
 1 of 12 holdings - sorted by item a-z
 ```

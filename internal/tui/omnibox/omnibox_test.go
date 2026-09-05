@@ -29,7 +29,7 @@ func TestTheTwoModesLookDifferent(t *testing.T) {
 	}
 	// Different in their PROMPT, not merely in some styling a monochrome
 	// terminal would drop.
-	if !strings.HasPrefix(strip(filter.View()), "/") {
+	if !strings.HasPrefix(strip(filter.View()), "I-search:") {
 		t.Errorf("the filter has no distinguishing prompt: %q", strip(filter.View()))
 	}
 	if !strings.Contains(strip(jump.View()), "JUMP") {
@@ -144,7 +144,8 @@ func TestAllThreeModesLookDifferent(t *testing.T) {
 		}
 		seen[view] = mode
 	}
-	if got := strip(typeInto(omnibox.New().Open(omnibox.Command), "consume 100g").View()); !strings.Contains(got, ":") {
+	// The command line spells its own key, the way emacs does.
+	if got := strip(typeInto(omnibox.New().Open(omnibox.Command), "consume 100g").View()); !strings.Contains(got, "M-x") {
 		t.Errorf("the command line has no leader: %q", got)
 	}
 }

@@ -10,9 +10,10 @@ import (
 	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
+	"home-management-system/internal/tui/keys"
 )
 
-// The six actions worth a single key. Everything else is `:`.
+// The handful of actions worth a key of their own. Everything else is M-x.
 //
 // A keystroke on a selected row ALREADY HOLDS AN IDENTIFIER, so it builds the
 // Command directly and never goes through Bind. That is not an optimisation:
@@ -71,17 +72,17 @@ func (m Model) selectedHoldings() []app.HoldingRow {
 	return out
 }
 
-// handleAction takes the single-key actions.
+// handleAction takes the keys that act on whatever the cursor is on.
 //
 // Each key states its own scope rather than the whole set being gated to one
-// view. `p` is why: you yank in the Holdings table and put in the Locations
+// view. Paste is why: you copy in the Holdings table and put in the Locations
 // tree, so a gate around the lot meant the second half of the gesture never
 // fired.
 func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	key := msg.String()
+	action := keys.Lookup(keys.Browse, msg)
 
-	// p puts wherever the cursor is, which is usually somewhere else.
-	if key == "p" {
+	// Paste puts wherever the cursor is, which is usually somewhere else.
+	if action == keys.Paste {
 		return m.put()
 	}
 	// Everything else acts on a Holding, so it needs the view that has them.
@@ -89,30 +90,29 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m, nil, false
 	}
 
-	switch key {
-	case "c":
+	switch action {
+	case keys.Consume:
 		return m.promptFor("consume", "how much", ""), nil, true
-	case "#":
+	case keys.Count:
 		return m.promptFor("count", "how much is actually there", ""), nil, true
-	case "m":
+	case keys.MoveTo:
 		// The vocabulary is loaded alongside the prompt, so the first
 		// keystroke into it already has something to complete against.
 		return m.promptFor("move", "where to", ""), m.loadCandidates(), true
-	case "t":
+	case keys.ToggleCustody:
 		return m.toggleCustody()
-	case "y":
-		return m.yank(), nil, true
-	case "d":
-		// dd, because a single d is the start of an operator in every editor
-		// that has one, and retiring on a slip is not a thing to allow.
-		if m.pendingD {
-			m.pendingD = false
-			return m.retire()
-		}
-		m.pendingD = true
-		return m, nil, true
+	case keys.Copy:
+		return m.copy(), nil, true
+	case keys.Kill:
+		// One key, where retiring used to take two.
+		//
+		// The doubled key was the guard against retiring on a slip, and it was
+		// never the real one: a retirement is a permanent change, so its plan
+		// carries a Permanent fact and the confirmation panel opens on it
+		// regardless. The guard is the panel. Asking twice before the thing
+		// that asks was two answers to one question.
+		return m.retire()
 	}
-	m.pendingD = false
 	return m, nil, false
 }
 
@@ -210,10 +210,12 @@ func (m Model) amountFor(row app.HoldingRow, text string) (domain.Quantity, erro
 		return domain.Zero, err
 	}
 	if written.Packages {
-		return domain.Zero, fmt.Errorf("counting in packages needs the command line: try :consume %s", text)
+		return domain.Zero, fmt.Errorf("counting in packages needs the command line: try %s, then consume %s",
+			keys.Show(keys.Browse, keys.CommandLine), text)
 	}
 	if written.Unit != "" {
-		return domain.Zero, fmt.Errorf("a unit needs the command line, which knows how to convert it: try :consume %s", text)
+		return domain.Zero, fmt.Errorf("a unit needs the command line, which knows how to convert it: try %s, then consume %s",
+			keys.Show(keys.Browse, keys.CommandLine), text)
 	}
 	return written.Value, nil
 }
@@ -276,33 +278,34 @@ func (m Model) retire() (tea.Model, tea.Cmd, bool) {
 	return m, m.runCommands(commands), true
 }
 
-// yank remembers a row so p can put it somewhere.
+// copy remembers a row so a put can move it somewhere.
 //
-// The fastest idiom here, and vim muscle memory doing real work: it is how you
-// relocate something when you would rather look for the destination than name
-// it.
-func (m Model) yank() Model {
+// M-w and C-y, which is emacs's copy and paste -- and note that the words swap
+// sides coming from vim, where yank is the COPY. It is how you relocate
+// something when you would rather look for the destination than name it.
+func (m Model) copy() Model {
 	row, ok := m.currentHolding()
 	if !ok {
-		return m.refuse("nothing to yank here")
+		return m.refuse("nothing to copy here")
 	}
-	m.yanked = &row
-	m.status = fmt.Sprintf("yanked %s -- p puts it where you are", row.Item)
+	m.copied = &row
+	m.status = fmt.Sprintf("copied %s -- %s puts it where you are",
+		row.Item, keys.Show(keys.Browse, keys.Paste))
 	return m
 }
 
-// put moves what was yanked to wherever the cursor is now.
+// put moves what was copied to wherever the cursor is now.
 func (m Model) put() (tea.Model, tea.Cmd, bool) {
-	if m.yanked == nil {
-		return m.refuse("nothing yanked"), nil, true
+	if m.copied == nil {
+		return m.refuse("nothing copied"), nil, true
 	}
 	to, ok := m.destination()
 	if !ok {
 		return m.refuse("put somewhere that is a place -- try the Locations view"), nil, true
 	}
-	yanked := *m.yanked
-	m.yanked = nil
-	return m, m.runCommands([]command.Command{command.Move{Holding: yanked.ID, To: to}}), true
+	copied := *m.copied
+	m.copied = nil
+	return m, m.runCommands([]command.Command{command.Move{Holding: copied.ID, To: to}}), true
 }
 
 // destination is the place the cursor is on, which is where a put goes.
@@ -311,6 +314,14 @@ func (m Model) destination() (domain.LocationID, bool) {
 	case m.view == viewLocations:
 		node, ok := m.tree.Current()
 		if !ok {
+			return 0, false
+		}
+		// A CONTAINED row is not a place. Without this the cursor sitting on a
+		// holding would hand its identifier over as a LocationID and the put
+		// would land in whatever location happens to share that number -- a
+		// silent write to the wrong shelf, which is the worst kind of wrong
+		// this interface can be.
+		if node.Contained() {
 			return 0, false
 		}
 		return domain.LocationID(node.ID), true

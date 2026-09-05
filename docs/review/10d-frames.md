@@ -24,8 +24,8 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage            gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage            gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -47,7 +47,7 @@ Add `--color` and pipe to `less -R` for that.
   ▾ Office                                                                                 3
       Desk Drawer 2                                                                        3
 --------------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== onto the Garage  (92x20) ===========================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -67,7 +67,7 @@ Add `--color` and pipe to `less -R` for that.
   ▾ Office                                                                                 3
       Desk Drawer 2                                                                        3
 --------------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== rename, in place  (92x20) ==========================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -88,7 +88,7 @@ Add `--color` and pipe to `less -R` for that.
     ▾ Left Pantry                                                                          2
         Shelf 1                                                                            2
 --------------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== space  (92x20) =====================================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -109,7 +109,7 @@ Add `--color` and pipe to `less -R` for that.
     ▾ Left Pantry                                                                          2
         Shelf 1                                                                            2
 --------------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== T  (92x20) =========================================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -130,7 +130,7 @@ Add `--color` and pipe to `less -R` for that.
     ▾ Left Pantry                                                                          2
         Shelf 1                                                                            2
 --------------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== w  (92x20) =========================================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -151,7 +151,7 @@ Add `--color` and pipe to `less -R` for that.
     ▾ Left Pantry                                                                          2
         Shelf 1                                                                            2
 --------------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== o  (92x20) =========================================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
@@ -172,14 +172,14 @@ Add `--color` and pipe to `less -R` for that.
     ▾ Left Pantry                                                                          2
         Shelf 1                                                                            2
 --------------------------------------------------------------------------------------------
-13 locations - za fold - zR expand all - zM collapse all
+13 locations - TAB fold - S-TAB fold all - v contents
 
 ===== saved  (92x20) =====================================================================
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
   NAME                                                                              HOLDINGS
->   Attic                                                                                  1
-  ▾ Garage Two                                                                             3
+    Attic                                                                                  1
+> ▾ Garage Two                                                                             3
     ▾ Metal Shelving Unit                                                                  2
       ▾ Bay 3                                                                              2
         ▾ Blue Crate                                                                       2
@@ -198,11 +198,11 @@ Add `--color` and pipe to `less -R` for that.
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
   NAME                                                                              HOLDINGS
->   Attic                                                                                  1
+    Attic                                                                                  1
+> ▾ Garage Two                                                                             3
   rename ─────────────────────────────────────────────────────────────────────────────────
-  Attic 
+  Garage Two 
   enter save   esc discard
-  ▾ Garage Two                                                                             3
     ▾ Metal Shelving Unit                                                                  2
       ▾ Bay 3                                                                              2
         ▾ Blue Crate                                                                       2
@@ -219,11 +219,11 @@ Add `--color` and pipe to `less -R` for that.
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
   NAME                                                                              HOLDINGS
->   Attic                                                                                  1
+    Attic                                                                                  1
+> ▾ Garage Two                                                                             3
   rename ─────────────────────────────────────────────────────────────────────────────────
-  Attic  
+  Garage Two  
   enter save   esc discard
-  ▾ Garage Two                                                                             3
     ▾ Metal Shelving Unit                                                                  2
       ▾ Bay 3                                                                              2
         ▾ Blue Crate                                                                       2
@@ -240,11 +240,11 @@ Add `--color` and pipe to `less -R` for that.
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
   NAME                                                                              HOLDINGS
->   Attic                                                                                  1
+    Attic                                                                                  1
+> ▾ Garage Two                                                                             3
   rename ─────────────────────────────────────────────────────────────────────────────────
-  Attic X 
+  Garage Two X 
   enter save   esc discard
-  ▾ Garage Two                                                                             3
     ▾ Metal Shelving Unit                                                                  2
       ▾ Bay 3                                                                              2
         ▾ Blue Crate                                                                       2
@@ -261,8 +261,8 @@ Add `--color` and pipe to `less -R` for that.
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 --------------------------------------------------------------------------------------------
   NAME                                                                              HOLDINGS
->   Attic                                                                                  1
-  ▾ Garage Two                                                                             3
+    Attic                                                                                  1
+> ▾ Garage Two                                                                             3
     ▾ Metal Shelving Unit                                                                  2
       ▾ Bay 3                                                                              2
         ▾ Blue Crate                                                                       2
@@ -291,8 +291,8 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -310,9 +310,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x     enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -330,9 +330,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  c_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  c   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -350,9 +350,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  co_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  co   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -370,9 +370,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  con_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  con   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -390,9 +390,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  cons_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  cons   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -410,9 +410,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consu_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consu   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -430,9 +430,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consum_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consum   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -450,9 +450,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -470,9 +470,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -490,9 +490,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume 1_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume 1   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -510,9 +510,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume 10_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume 10   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -530,9 +530,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume 100_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume 100   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
@@ -550,12 +550,12 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
-===== :  (92x20) =========================================================================
+===== alt+x  (92x20) =====================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
@@ -569,9 +569,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x     enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -589,9 +589,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  c_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  c   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -609,9 +609,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  co_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  co   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -629,9 +629,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  con_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  con   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -649,9 +649,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  cons_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  cons   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -669,9 +669,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consu_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consu   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -689,9 +689,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consum_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consum   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -709,9 +709,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -729,9 +729,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -749,9 +749,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume 5_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume 5   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -769,9 +769,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume 5k_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume 5k   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -789,9 +789,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume 5kg_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume 5kg   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - use 100 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 
@@ -809,14 +809,14 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
   not enough on hand: only 20 g of "Ancho Chile" here, and 5000 g was asked for -- it does
   not come in packages to open
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
-===== :  (92x20) =========================================================================
+===== alt+x  (92x20) =====================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
@@ -830,9 +830,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x     enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -850,9 +850,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  n_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  n   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -870,9 +870,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  ne_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  ne   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -890,9 +890,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -910,9 +910,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -930,9 +930,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new i_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new i   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -950,9 +950,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new it_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new it   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -970,9 +970,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new ite_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new ite   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -990,9 +990,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1010,9 +1010,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1030,9 +1030,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item T_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item T   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1050,9 +1050,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Tu_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Tu   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1070,9 +1070,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Tur_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Tur   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1090,9 +1090,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turm_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turm   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1110,9 +1110,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turme_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turme   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1130,9 +1130,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmer_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmer   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1150,9 +1150,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeri_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeri   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1170,9 +1170,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1190,9 +1190,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1210,9 +1210,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric c_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric c   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1230,9 +1230,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric co_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric co   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1250,9 +1250,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric cou_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric cou   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1270,9 +1270,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric coun_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric coun   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1290,9 +1290,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric count_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric count   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1310,9 +1310,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counti_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counti   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1330,9 +1330,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric countin_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric countin   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1350,9 +1350,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1370,9 +1370,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1390,9 +1390,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting m_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting m   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1410,9 +1410,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting me_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting me   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1430,9 +1430,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting mea_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting mea   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1450,9 +1450,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting meas_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting meas   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1470,9 +1470,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measu_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measu   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1490,9 +1490,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measur_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measur   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1510,9 +1510,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measure_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measure   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1530,9 +1530,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1550,9 +1550,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1570,9 +1570,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured u_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured u   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1590,9 +1590,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured un_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured un   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1610,9 +1610,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured uni_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured uni   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1630,9 +1630,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1650,9 +1650,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1670,9 +1670,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1690,9 +1690,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1710,9 +1710,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g p_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g p   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1730,9 +1730,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g pa_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g pa   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1750,9 +1750,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g pac_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g pac   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1770,9 +1770,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g pack_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g pack   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1790,9 +1790,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g packa_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g packa   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1810,9 +1810,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g packag_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g packag   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1830,9 +1830,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1850,9 +1850,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1870,9 +1870,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1890,9 +1890,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 20_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 20   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1910,9 +1910,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 200_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 200   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1930,9 +1930,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1950,9 +1950,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1970,9 +1970,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 c_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 c   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -1990,9 +1990,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 ca_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 ca   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2010,9 +2010,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 cat_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 cat   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2030,9 +2030,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 cate_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 cate   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2050,9 +2050,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 categ_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 categ   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2070,9 +2070,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 catego_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 catego   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2090,9 +2090,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 categor_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 categor   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2110,9 +2110,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 category_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 category   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2130,9 +2130,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 category _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 category    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2150,9 +2150,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 category S_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 category S   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2170,9 +2170,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 category Sp_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 category Sp   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2190,9 +2190,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 category Spi_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 category Spi   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2210,9 +2210,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 category Spic_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 category Spic   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2230,9 +2230,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 category Spice_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 category Spice   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2250,9 +2250,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Turmeric counting measured unit g package 2000 category Spices_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Turmeric counting measured unit g package 2000 category Spices   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
 
@@ -2261,8 +2261,8 @@ Add `--color` and pipe to `less -R` for that.
 --------------------------------------------------------------------------------------------
   create "Turmeric" as measured in g, 2000 per package in Spices?
 
-  permanent   kind = Bulk   unit = g   package = 2000
-              changing these later replaces every holding
+  permanent     kind = Bulk   unit = g   package = 2000
+                changing these later replaces every holding
 
   [enter] create    [esc] back
 --------------------------------------------------------------------------------------------
@@ -2282,12 +2282,12 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
-===== :  (92x20) =========================================================================
+===== alt+x  (92x20) =====================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
@@ -2301,9 +2301,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x     enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2321,9 +2321,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  n_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  n   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2341,9 +2341,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  ne_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  ne   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2361,9 +2361,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2381,9 +2381,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2401,9 +2401,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new i_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new i   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2421,9 +2421,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new it_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new it   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2441,9 +2441,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new ite_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new ite   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2461,9 +2461,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2481,9 +2481,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2501,9 +2501,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item C_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item C   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2521,9 +2521,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Ca_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Ca   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2541,9 +2541,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Car_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Car   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2561,9 +2561,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Card_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Card   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2581,9 +2581,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Carda_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Carda   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2601,9 +2601,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardam_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardam   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2621,9 +2621,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamo_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamo   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2641,9 +2641,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2661,9 +2661,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2681,9 +2681,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom c_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom c   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2701,9 +2701,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom co_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom co   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2721,9 +2721,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom cou_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom cou   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2741,9 +2741,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom coun_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom coun   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2761,9 +2761,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom count_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom count   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2781,9 +2781,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counti_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counti   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2801,9 +2801,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom countin_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom countin   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2821,9 +2821,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2841,9 +2841,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2861,9 +2861,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting m_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting m   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2881,9 +2881,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting me_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting me   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2901,9 +2901,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting mea_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting mea   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2921,9 +2921,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting meas_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting meas   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2941,9 +2941,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measu_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measu   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2961,9 +2961,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measur_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measur   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -2981,9 +2981,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measure_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measure   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3001,9 +3001,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measured_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measured   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3021,9 +3021,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measured _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measured    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3041,9 +3041,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measured u_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measured u   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3061,9 +3061,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measured un_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measured un   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3081,9 +3081,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measured uni_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measured uni   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3101,9 +3101,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measured unit_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measured unit   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3121,9 +3121,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measured unit _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measured unit    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3141,9 +3141,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  new item Cardamom counting measured unit g_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  new item Cardamom counting measured unit g   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - nothing was created - sorted by item a-z
 
@@ -3161,8 +3161,8 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
   category: is required (where to file it)
 --------------------------------------------------------------------------------------------
 12 holdings - sorted by item a-z
@@ -3181,13 +3181,13 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
   category: is required (where to file it)
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z
 
-===== space  (92x20) =====================================================================
+===== ctrl+space  (92x20) ================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
@@ -3201,13 +3201,13 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
   category: is required (where to file it)
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 1 selected
 
-===== space  (92x20) =====================================================================
+===== ctrl+space  (92x20) ================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
@@ -3221,8 +3221,8 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
   category: is required (where to file it)
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 2 selected
@@ -3241,13 +3241,13 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
   category: is required (where to file it)
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
-===== :  (92x20) =========================================================================
+===== alt+x  (92x20) =====================================================================
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
@@ -3261,9 +3261,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x     enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3281,9 +3281,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  c_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  c   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3301,9 +3301,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  co_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  co   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3321,9 +3321,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  con_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  con   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3341,9 +3341,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  cons_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  cons   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3361,9 +3361,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consu_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consu   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3381,9 +3381,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consum_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consum   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3401,9 +3401,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3421,9 +3421,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume _  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume    enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3441,9 +3441,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume 1_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume 1   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3461,9 +3461,9 @@ Add `--color` and pipe to `less -R` for that.
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
- :  consume 10_  enter run   esc cancel
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
+ M-x  consume 10   enter run   esc cancel
 --------------------------------------------------------------------------------------------
 12 holdings - enter for history - sorted by item a-z - 3 selected
 
@@ -3471,18 +3471,18 @@ Add `--color` and pipe to `less -R` for that.
  1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
 --------------------------------------------------------------------------------------------
   ITEM ^                                              QTY  LOCATION          FLAGS          
-> Ancho Chile                                        10 g  Shelf 2                          
+  Ancho Chile                                        10 g  Shelf 2                          
   Ancho Chile                                       110 g  Garage Two                       
   Ancho Chile                                        30 g  Small Parts Tray                 
-  Basmati Rice                        3 packages (6000 g)  Shelf 1                          
+> Basmati Rice                        3 packages (6000 g)  Shelf 1                          
   Basmati Rice                                      800 g  Shelf 1                          
   Brass Thumbtack                                82 count  Desk Drawer 2                    
   Cumin                                              90 g  Shelf 2                          
   Empty Computer Box                              at rest  Attic                            
   Forever Stamp                                   3 count  Desk Drawer 2                    
   Thunderbolt 4 to Dual Displa…  at rest: boxed, unopened  Small Parts Tray                 
-  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 83d        
-  Winter Coat                                     at rest  Garage Two        gone 2026-05-30
+  USB-C to HDMI Cable 2m                    out at Office  Desk Drawer 2     out 84d        
+  Winter Coat                                     at rest  Garage Two        gone 2026-06-02
 --------------------------------------------------------------------------------------------
 12 holdings - 3 rows - use 10 of Spices > Dried Peppers > Ancho Chile - sorted by item a-z
 ```

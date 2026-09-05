@@ -19,6 +19,7 @@ import (
 
 	"home-management-system/internal/command"
 	"home-management-system/internal/importer"
+	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/table"
 )
 
@@ -96,16 +97,17 @@ func (m Model) Current() (importer.Entry, int, bool) {
 
 // Update handles a keystroke, reporting whether it was consumed.
 func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
-	switch msg.String() {
-	case "d":
+	switch keys.Lookup(keys.Plan, msg) {
+	case keys.Drop:
 		// Dropping is how a row gets settled without being fixed. It is
-		// reversible right up until A, which is why it does not ask.
+		// reversible right up until the whole plan is applied, which is why it
+		// does not ask.
 		if entry, at, ok := m.Current(); ok && entry.State != importer.Dropped {
 			m.plan.Entries[at].State = importer.Dropped
 			return m.refresh(), true
 		}
 		return m, true
-	case "u":
+	case keys.Undrop:
 		if _, at, ok := m.Current(); ok {
 			m.plan.Entries[at] = importer.Rebind(m.plan.Entries[at])
 			return m.refresh(), true
@@ -212,18 +214,24 @@ func (m Model) View() string {
 		counts = append(counts, droppedStyle.Render(fmt.Sprintf("%d dropped", dropped)))
 	}
 
+	apply := keys.Show(keys.Plan, keys.ApplyAll)
 	footer := strings.Join(counts, "   ")
 	if reason := m.plan.Why(); reason != "" {
-		footer += hintStyle.Render("   -- A is unavailable: " + reason)
+		footer += hintStyle.Render("   -- " + apply + " is unavailable: " + reason)
 	} else {
-		footer += headingStyle.Render("   A applies all of it, in one transaction")
+		footer += headingStyle.Render("   " + apply + " applies all of it, in one transaction")
 	}
 
 	return strings.Join([]string{
 		heading,
 		m.tbl.View(),
 		footer,
-		hintStyle.Render("enter settle   d drop   u undrop   A apply   q cancel"),
+		hintStyle.Render(keys.Hint(keys.Plan,
+			[]keys.Action{keys.Confirm},
+			[]keys.Action{keys.Drop},
+			[]keys.Action{keys.Undrop},
+			[]keys.Action{keys.ApplyAll},
+			[]keys.Action{keys.Quit})),
 	}, "\n")
 }
 

@@ -1,26 +1,25 @@
 # 10a — the table widget.
-#
+##
 # One keystroke per line, `#` for a comment, `key: label` to name the frame.
 # Replayed by:  ./bin/hms --db-path=hms.db --render docs/review/10a.keys
-#
+##
 # The steps are the walkthrough in 10a-table.md, in order.
 
 4: the holdings table
-j: cursor down
-j
-j: three rows down
-G: jump to the end
-g
-g: back to the top
-l: focus the next column
-l: focus QTY
+ctrl+n: cursor down
+ctrl+n
+ctrl+n: three rows down
+alt+>: jump to the end
+alt+<: back to the top
+ctrl+f: focus the next column
+ctrl+f: focus QTY
 s: sort by the focused column
 s: reverse it
-space: select this row
-j
-space
-j
-space: three rows selected
+ctrl+space: select this row
+ctrl+n
+ctrl+space
+ctrl+n
+ctrl+space: three rows selected
 esc: selection cleared
 3: the items table
 4: back to holdings

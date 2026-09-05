@@ -101,9 +101,9 @@ func TestSortingAndSelectingWriteNothing(t *testing.T) {
 	before := s.CountHoldings()
 
 	s.Send(sim.Press("4"))
-	s.Send(sim.Press("s"), sim.Press("s"), sim.Press("l"), sim.Press("s"))
-	s.Send(sim.Space, sim.Space, sim.Press("V"), sim.Esc)
-	s.Send(sim.Press("G"), sim.Press("g"), sim.Press("g"))
+	s.Send(sim.Press("s"), sim.Press("s"), sim.CtrlF, sim.Press("s"))
+	s.Send(sim.Space, sim.Space, sim.AltH, sim.Esc)
+	s.Send(sim.AltGreat, sim.AltLess)
 
 	if after := s.CountHoldings(); after != before {
 		t.Errorf("browsing changed the holdings from %d to %d", before, after)
@@ -120,8 +120,8 @@ func TestTheCursorIsAlwaysVisible(t *testing.T) {
 		s.Resize(100, height)
 		s.Send(sim.Press("4"))
 		for _, script := range [][]any{
-			{sim.Press("G")},
-			{sim.Press("g"), sim.Press("g")},
+			{sim.AltGreat},
+			{sim.AltLess},
 			{sim.CtrlD},
 			{sim.CtrlD, sim.CtrlD},
 			{sim.CtrlU},
@@ -167,4 +167,60 @@ func stripEscapes(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// The LOCATION column says WHERE, not just which shelf.
+//
+// Three rows of Ancho Chile in three different places is the question the
+// holdings table exists to answer, and the leaf name cannot: two of them read
+// "Garage" and "Small Parts Tray" with nothing to say the tray is inside the
+// garage. Given a terminal with room to spare, the column says so.
+//
+// Through the Simulator rather than against the widget, because the widget
+// tests supply the path themselves -- what is being checked here is that the
+// controller assembles one at all, and that it agrees with the tree.
+func TestTheLocationColumnShowsTheWholeTreeWhenThereIsRoom(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(220, 24)
+	s.Send(sim.Press("4"))
+
+	s.ShowsText("Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray")
+
+	// A root has no ancestors and must not grow an ellipsis pretending it has.
+	if strings.Contains(s.PlainView(), "… > Left Pantry") {
+		t.Errorf("a root location was rendered as though it had a parent:\n%s", s.PlainView())
+	}
+}
+
+// Narrow, it is the leaf again -- so a cramped terminal loses nothing it used
+// to have, and the ancestors cost nothing when there is no room for them.
+func TestTheLocationColumnGivesBackTheTreeWhenThereIsNot(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(80, 24)
+	s.Send(sim.Press("4"))
+
+	s.ShowsText("Small Parts Tray")
+	s.HidesText("Metal Shelving Unit")
+}
+
+// The path is shown, never matched. `loc:garage` means the Garage itself, not
+// everything hanging beneath it -- the cell is what the filter reads, and the
+// path is only how the cell is drawn.
+func TestTheLocationPathIsNotFiltered(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(220, 24)
+	s.Send(sim.Press("4"))
+
+	s.Send(sim.CtrlS)
+	s.Send(sim.Type("loc:garage"))
+	s.Send(sim.Enter)
+
+	// One Ancho is IN the Garage; another is in a tray five levels beneath it,
+	// and its path says "Garage" on screen without that making it a match.
+	if got := strings.Count(s.PlainView(), "Ancho Chile"); got != 1 {
+		t.Errorf("loc:garage matched %d Ancho rows through the path, want the 1 in the Garage itself", got)
+	}
 }

@@ -13,7 +13,7 @@ Written before the substage is built.
 > produce the same `Command`.
 
 If they diverge, the command line is a second interface rather than the same one
-— and the whole argument for `:`, CSV, and the agent speaking one language
+— and the whole argument for `M-x`, CSV, and the agent speaking one language
 collapses, because the fastest path through the interface would not speak it.
 
 ## And the way they get there is deliberately different
@@ -43,7 +43,7 @@ make reseed && ./bin/hms
 
 | # | Keys | What to look at |
 |---|---|---|
-| 1 | `4`, `j`, `c` | Consume. A quantity field opens **at the row**. |
+| 1 | `4`, `C-n`, `c` | Consume. A quantity field opens **at the row**. |
 | 2 | type `10`, `enter` | It happens. Does the feedback name the row you were on? |
 | 3 | `c`, `esc` | Abandoned. Nothing happened. |
 | 4 | `m` | Move. A destination field with autocomplete. |
@@ -51,8 +51,8 @@ make reseed && ./bin/hms
 | 6 | navigate to the cable, `t` | Toggle custody. It is `Out` now. |
 | 7 | `t` again | And back. **One key, not two** — the state decides. |
 | 8 | `#`, type `5`, `enter` | Count. Does it say what it recorded *and* what it corrected? |
-| 9 | `dd` | Retire. It asks. Is the reason it gives the right one? |
-| 10 | `y` on a row, navigate elsewhere, `p` | Yank and put. Same as `m`, different idiom. |
+| 9 | `C-k` | Retire. It asks. Is the reason it gives the right one? |
+| 10 | `M-w` on a row, navigate elsewhere, `C-y` | Copy and put. Same as `m`, different idiom. |
 | 11 | `space` ×3, `c`, `10`, `enter` | Three rows. Does it say three, and act on three? |
 | 12 | `c` on a Unique row | Refused, in a sentence. |
 | 13 | From every state above, `esc` | One mode at a time, always. |
@@ -77,7 +77,7 @@ make reseed && ./bin/hms
    the ledger are two events, and a count that silently overwrites destroys the
    only evidence that the two ever disagreed.
 
-5. **`dd` asks, and the reason is not the write path.** Step 9. My first
+5. **`C-k` asks, and the reason is not the write path.** Step 9. My first
    version did not ask, on the grounds that retiring is a *recording* and
    recordings are reversible by a compensating event. That was wrong: `Gone` is
    the single lifecycle terminal and nothing in the fold ever clears
@@ -91,7 +91,7 @@ make reseed && ./bin/hms
 6. **A refusal is about the thing, not the keystroke.** Step 12. "You cannot
    consume a cable" beats "invalid operation".
 
-7. **Three rows means three.** Step 11. Already true for the `:` line; the
+7. **Three rows means three.** Step 11. Already true for the `M-x` line; the
    keystrokes must not have their own answer.
 
 ---

@@ -14,35 +14,75 @@ package testing
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+
+	"home-management-system/internal/tui/keys"
 )
 
 // Key is one keyboard event.
 type Key struct{ msg tea.KeyMsg }
 
+// named is the harness's way of saying a key, and it goes through the keymap
+// rather than keeping a list beside it.
+//
+// The list beside it is what drifted: `ctrl+n` sat in this file for a release
+// while nothing bound it, and keys the interface did bind could not be pressed
+// from a test at all.
+func named(name string) Key {
+	msg, ok := keys.Named(name)
+	if !ok {
+		panic("tui/testing: " + name + " is not a key")
+	}
+	return Key{msg}
+}
+
 // The keys with no printable form.
 var (
-	Up        = Key{tea.KeyMsg{Type: tea.KeyUp}}
-	Down      = Key{tea.KeyMsg{Type: tea.KeyDown}}
-	Left      = Key{tea.KeyMsg{Type: tea.KeyLeft}}
-	Right     = Key{tea.KeyMsg{Type: tea.KeyRight}}
-	Enter     = Key{tea.KeyMsg{Type: tea.KeyEnter}}
-	Esc       = Key{tea.KeyMsg{Type: tea.KeyEscape}}
-	Tab       = Key{tea.KeyMsg{Type: tea.KeyTab}}
-	ShiftTab  = Key{tea.KeyMsg{Type: tea.KeyShiftTab}}
-	Backspace = Key{tea.KeyMsg{Type: tea.KeyBackspace}}
-	Delete    = Key{tea.KeyMsg{Type: tea.KeyDelete}}
-	Space     = Key{tea.KeyMsg{Type: tea.KeySpace, Runes: []rune{' '}}}
-	CtrlA     = Key{tea.KeyMsg{Type: tea.KeyCtrlA}}
-	CtrlC     = Key{tea.KeyMsg{Type: tea.KeyCtrlC}}
-	CtrlD     = Key{tea.KeyMsg{Type: tea.KeyCtrlD}}
-	CtrlU     = Key{tea.KeyMsg{Type: tea.KeyCtrlU}}
-	CtrlW     = Key{tea.KeyMsg{Type: tea.KeyCtrlW}}
-	Home      = Key{tea.KeyMsg{Type: tea.KeyHome}}
-	End       = Key{tea.KeyMsg{Type: tea.KeyEnd}}
-	CtrlP     = Key{tea.KeyMsg{Type: tea.KeyCtrlP}}
-	CtrlN     = Key{tea.KeyMsg{Type: tea.KeyCtrlN}}
-	CtrlF     = Key{tea.KeyMsg{Type: tea.KeyCtrlF}}
-	CtrlB     = Key{tea.KeyMsg{Type: tea.KeyCtrlB}}
+	Up        = named("up")
+	Down      = named("down")
+	Left      = named("left")
+	Right     = named("right")
+	Enter     = named("enter")
+	Esc       = named("esc")
+	Tab       = named("tab")
+	ShiftTab  = named("shift+tab")
+	Backspace = named("backspace")
+	Delete    = named("delete")
+	Space     = named("space")
+	PgUp      = named("pgup")
+	PgDown    = named("pgdown")
+	Home      = named("home")
+	End       = named("end")
+
+	CtrlSpace = named("ctrl+space")
+	CtrlA     = named("ctrl+a")
+	CtrlB     = named("ctrl+b")
+	CtrlC     = named("ctrl+c")
+	CtrlD     = named("ctrl+d")
+	CtrlE     = named("ctrl+e")
+	CtrlF     = named("ctrl+f")
+	CtrlG     = named("ctrl+g")
+	CtrlK     = named("ctrl+k")
+	CtrlL     = named("ctrl+l")
+	CtrlN     = named("ctrl+n")
+	CtrlP     = named("ctrl+p")
+	CtrlS     = named("ctrl+s")
+	CtrlU     = named("ctrl+u")
+	CtrlV     = named("ctrl+v")
+	CtrlW     = named("ctrl+w")
+	CtrlY     = named("ctrl+y")
+
+	AltB     = named("alt+b")
+	AltN     = named("alt+n")
+	AltP     = named("alt+p")
+	AltD     = named("alt+d")
+	AltF     = named("alt+f")
+	AltG     = named("alt+g")
+	AltH     = named("alt+h")
+	AltV     = named("alt+v")
+	AltW     = named("alt+w")
+	AltX     = named("alt+x")
+	AltLess  = named("alt+<")
+	AltGreat = named("alt+>")
 )
 
 // Press is one printable keystroke, named for what a person does.
