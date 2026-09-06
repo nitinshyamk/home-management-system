@@ -23,7 +23,94 @@ import (
 )
 
 // Batch is a reviewed unit of work: every Step commits, or none does.
-type Batch struct{ Steps []Step }
+type Batch struct {
+	Steps []Step
+
+	// fills is which H8 slots this Batch puts a Holding into, and which
+	// Holding ends up in each.
+	//
+	// It exists because a Batch is planned against a SNAPSHOT, and two Batches
+	// merged into one unit of work were each planned against a photograph taken
+	// before either ran. Plan.filled solves exactly this problem inside one
+	// plan; nothing solved it between them, so moving two jars of rice onto one
+	// shelf in a single gesture planned two whole moves onto a slot that was
+	// free in both photographs, and produced two active Holdings on one H8 key
+	// -- silently, with the integrity report as the only witness.
+	//
+	// Carried on the Batch rather than recomputed, because only the planner
+	// knows which slot an operation lands in: the basis and the expiry come
+	// from the Holding being moved, not from the request.
+	fills map[slot]occupant
+}
+
+// occupant is who ends up in an H8 slot: a Holding that already exists, or one
+// the Batch will create, whose identifier is not knowable until it runs.
+type occupant struct {
+	id      domain.HoldingID
+	created bool
+}
+
+// Absorb takes another Batch's Steps and its slot claims, which is what merging
+// two units of work into one has to mean: the claims travel with the Steps, or
+// a third Batch merged afterwards would be compared against only the first.
+func (b Batch) Absorb(other Batch) Batch {
+	b.Steps = append(b.Steps, other.Steps...)
+	return b.filling(other.fills)
+}
+
+// filling records that this Batch puts an occupant into a slot.
+//
+// A fresh map every time, never a write into the one already there. A Batch is
+// a value and is copied freely, so mutating its map in place would reach every
+// copy -- and merging a plan into two different batches would quietly give both
+// of them the other's claims.
+func (b Batch) filling(fills map[slot]occupant) Batch {
+	if len(fills) == 0 {
+		return b
+	}
+	merged := make(map[slot]occupant, len(b.fills)+len(fills))
+	for k, v := range b.fills {
+		merged[k] = v
+	}
+	for k, v := range fills {
+		merged[k] = v
+	}
+	b.fills = merged
+	return b
+}
+
+// ConflictsWith reports two Batches that cannot be merged into one unit of
+// work, because between them they would put two different Holdings on one H8
+// key.
+//
+// Two Batches filling the same slot with the SAME existing Holding is not a
+// conflict and must not be reported as one: two receipts of the same rice onto
+// the same shelf are two Acquired events against one Holding, which is what
+// they should be. The conflict is two DIFFERENT Holdings, and a Holding that
+// does not exist yet is different from everything -- there is no way to say
+// "the one the previous step is about to create" in a plan, because a reference
+// resolves against the Step that made it.
+//
+// This is a refusal rather than a merge, and the difference matters. O1 says a
+// write that would violate H8 merges into the existing Holding, and that is
+// what happens WITHIN a plan. Doing it across plans needs a reference that
+// spans Steps, which the execution model does not have. Refusing is the honest
+// half: nothing is corrupted, and the person is told to do it in two goes.
+func (b Batch) ConflictsWith(other Batch) (string, bool) {
+	for k, mine := range b.fills {
+		theirs, both := other.fills[k]
+		if !both {
+			continue
+		}
+		if !mine.created && !theirs.created && mine.id == theirs.id {
+			continue
+		}
+		return "two of these would end up as one holding -- the same thing, " +
+			"in the same place, on the same basis. Do them one at a time, or " +
+			"send one of them somewhere else", true
+	}
+	return "", false
+}
 
 // Step is one intent.
 //

@@ -396,6 +396,12 @@ func PlanMove(s Snapshot, req MoveRequest) (Plan, error) {
 	// Whole move onto a free slot: the Holding itself relocates, keeping its
 	// identity, its expiry, and its history.
 	if whole && !occupied {
+		// Recorded as a fill even though nothing was created and nothing was
+		// looked up: this branch is the only place a slot becomes occupied
+		// without going through holdingFor, and it was therefore the only place
+		// a plan could occupy a slot without saying so. Two of these merged
+		// into one unit of work is where H8 broke.
+		p.fill(destinationSlot, existing(req.Holding))
 		p.record(existing(req.Holding), func(id domain.HoldingID) domain.Event {
 			return domain.Moved{EventBase: s.base(), Holding: id, From: b.StowedLocation, To: req.To}
 		})

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 
 	"home-management-system/internal/command"
 	"home-management-system/internal/ops"
@@ -93,13 +94,29 @@ func (c *controller) PlanCommand(ctx context.Context, cmd command.Command) (Plan
 // a command is a batch" has to mean: three rows either all move or none do.
 // Applying them one at a time would leave a half-done batch on any refusal, and
 // the half would be silent.
-func (p Plan) Merge(other Plan) Plan {
+//
+// It returns an error because merging is not always possible, and the one case
+// where it is not is the one this function existed to create. Each plan is
+// worked out against a snapshot taken before it began, so two plans in a batch
+// are two photographs of the same moment: neither sees the other, and two
+// commands sending the same thing to the same place both found the destination
+// free. What committed was two active Holdings on one H8 key -- an invariant
+// the whole ops layer is built to uphold, broken by the layer that staples
+// plans together.
+//
+// This is the only place both callers of a batch meet -- PlanAll for the import
+// screen and the command line, runCommands for the keystroke path -- so it is
+// the only place the check cannot be forgotten.
+func (p Plan) Merge(other Plan) (Plan, error) {
+	if why, clash := p.batch.ConflictsWith(other.batch); clash {
+		return Plan{}, errors.New(why)
+	}
 	p.Summary = append(p.Summary, other.Summary...)
 	p.Confirm = append(p.Confirm, other.Confirm...)
 	p.Permanent = append(p.Permanent, other.Permanent...)
 	p.Irreversible = append(p.Irreversible, other.Irreversible...)
-	p.batch.Steps = append(p.batch.Steps, other.batch.Steps...)
-	return p
+	p.batch = p.batch.Absorb(other.batch)
+	return p, nil
 }
 
 // PlanAll works out a whole batch of Commands as ONE unit of work, and
@@ -118,7 +135,11 @@ func (c *controller) PlanAll(ctx context.Context, commands []command.Command) (P
 		if err != nil {
 			return Plan{}, i, err
 		}
-		combined = combined.Merge(plan)
+		merged, err := combined.Merge(plan)
+		if err != nil {
+			return Plan{}, i, err
+		}
+		combined = merged
 	}
 	return combined, -1, nil
 }

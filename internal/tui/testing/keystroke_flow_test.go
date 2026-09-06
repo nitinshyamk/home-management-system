@@ -598,8 +598,8 @@ func TestTheMoveKeyDoesNotCarryASelection(t *testing.T) {
 	rice, _ := stocked(t, s)
 	garage := s.HasLocation("Garage")
 	// Two DIFFERENT measured items, so that moving both to one place is two
-	// moves and not a merge. Two holdings of the same item sent to the same
-	// shelf in one batch is a separate problem, and not this test's.
+	// moves and not a merge. Two holdings of the SAME item sent to one shelf is
+	// its own thing, and TestABatchThatWouldMergeIsRefused is where it lives.
 	s.Apply(p.NewItem(ctx, ops.NewItemRequest{
 		Name: "Wild Rice", Category: s.HasCategory("Grains"),
 		Counting: ops.CountingMeasured, ContentUnit: "g",
@@ -629,4 +629,44 @@ func TestTheMoveKeyDoesNotCarryASelection(t *testing.T) {
 	s.Send(sim.Type("Shed"))
 	s.Send(sim.Enter)
 	s.ShowsText("2 rows")
+}
+
+// Moving two holdings of one item onto one shelf is refused, and says why.
+//
+// This is the gesture that found the defect: select both rows of rice, press m,
+// name the Shed. Each command was planned against a snapshot taken before the
+// batch began, so both found the destination free and both moved -- leaving two
+// active Holdings on one H8 key, which nothing but the integrity report would
+// ever have mentioned.
+//
+// Refused rather than merged. Merging is what O1 asks for and what happens
+// inside a single plan; doing it across plans needs a reference that spans
+// Steps, and the execution model has none. The refusal is the honest half.
+func TestABatchThatWouldMergeIsRefused(t *testing.T) {
+	s := sim.New(t)
+	p, ctx := s.Planner(), s.Context()
+	rice, _ := stocked(t, s)
+	garage := s.HasLocation("Garage")
+	s.Apply(p.Receive(ctx, ops.ReceiveRequest{
+		Item: rice, Location: garage, Basis: domain.BasisContent,
+		Amount: domain.FromMilli(500 * domain.Scale), Source: "shop",
+	}))
+	s.Apply(p.NewLocation(ctx, ops.NewLocationRequest{Name: "Shed"}))
+
+	s.Send(sim.Press("4"), sim.CtrlS)
+	s.Send(sim.Type("rice"))
+	s.Send(sim.Enter)
+	s.Send(sim.AltLess)
+	s.Send(sim.Space, sim.Space)
+	s.ShowsText("2 selected")
+
+	s.Send(sim.Press("m"))
+	s.Send(sim.Type("Shed"))
+	s.Send(sim.Enter)
+
+	s.ShowsText("one holding")
+	s.HidesText("Shed  ") // no row landed there
+	// The harness verifies every holding against its events on the way out, so
+	// the assertion that matters most is made for us.
+	s.OnHand(rice, 1000*domain.Scale)
 }
