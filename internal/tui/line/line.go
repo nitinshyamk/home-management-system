@@ -17,6 +17,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"home-management-system/internal/tui/keys"
+	"home-management-system/internal/tui/style"
 )
 
 // Edit applies a keystroke to a line, reporting whether it was consumed.
@@ -122,4 +123,30 @@ func wordEnd(r []rune, from int) int {
 		at++
 	}
 	return at
+}
+
+// Render draws a line with the block cursor sitting IN it rather than always
+// after it, so a cursor that has been moved is visible where it is.
+//
+// The drawing half of what Edit is the editing half. It lived three times --
+// once in the input line, once in the inline field, once per field of the
+// creation panel -- as twelve identical lines under three names, which is one
+// per owner of a cursor and exactly the count this package exists to reduce.
+func Render(value string, cursor int) string {
+	r := []rune(value)
+	at := cursor
+	if at < 0 {
+		at = 0
+	}
+	if at > len(r) {
+		at = len(r)
+	}
+	// Past the end there is no character to reverse, so the cursor is drawn on
+	// the space where the next one will go.
+	if at == len(r) {
+		return style.Strong.Render(value) + style.Cursor.Render(" ")
+	}
+	return style.Strong.Render(string(r[:at])) +
+		style.Cursor.Render(string(r[at])) +
+		style.Strong.Render(string(r[at+1:]))
 }

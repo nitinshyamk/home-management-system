@@ -15,12 +15,15 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"home-management-system/internal/command"
 	"home-management-system/internal/importer"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/table"
+
+	"home-management-system/internal/tui/style"
+
+	"home-management-system/internal/tui/text"
 )
 
 // Model is the review screen.
@@ -37,14 +40,7 @@ type Namer interface {
 	Describe(row importer.Entry) string
 }
 
-var (
-	readyStyle   = lipgloss.NewStyle().Bold(true)
-	askStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{Light: "94", Dark: "179"})
-	blockedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{Light: "160", Dark: "203"})
-	droppedStyle = lipgloss.NewStyle().Faint(true)
-	headingStyle = lipgloss.NewStyle().Bold(true)
-	hintStyle    = lipgloss.NewStyle().Faint(true)
-)
+var ()
 
 // columns are the plan's. The state comes FIRST and is never dropped: if you
 // have to read the issue text to know a row is blocked, the screen has failed
@@ -161,13 +157,13 @@ func (m Model) refresh() Model {
 func mark(state importer.State) string {
 	switch state {
 	case importer.Ready:
-		return readyStyle.Render("OK")
+		return style.Strong.Render("OK")
 	case importer.Confirmable:
-		return askStyle.Render("? ")
+		return style.Warn.Render("? ")
 	case importer.Blocked:
-		return blockedStyle.Render("! ")
+		return style.Error.Render("! ")
 	}
-	return droppedStyle.Render("- ")
+	return style.Dim.Render("- ")
 }
 
 // why is the first thing standing in the row's way.
@@ -179,7 +175,7 @@ func why(entry importer.Entry) string {
 		return "dropped"
 	}
 	if len(entry.Creates) > 0 {
-		return "would create " + article(string(entry.Creates[0].Kind))
+		return "would create " + text.Article(strings.ToLower(string(entry.Creates[0].Kind)))
 	}
 	if len(entry.Issues) > 0 {
 		return entry.Issues[0].String()
@@ -187,46 +183,36 @@ func why(entry importer.Entry) string {
 	return "needs confirming"
 }
 
-// article is a or an, because "a item" on the screen a person is deciding
-// from reads as carelessness about everything else on it.
-func article(kind string) string {
-	lower := strings.ToLower(kind)
-	if strings.ContainsAny(lower[:1], "aeiou") {
-		return "an " + lower
-	}
-	return "a " + lower
-}
-
 // View renders the screen: a heading that says what file this is, the rows, and
 // the arithmetic that has to add up to it.
 func (m Model) View() string {
 	ready, confirmable, blocked, dropped := m.plan.Counts()
 
-	heading := headingStyle.Render("IMPORT  "+m.plan.Source) + hintStyle.Render(
+	heading := style.Strong.Render("IMPORT  "+m.plan.Source) + style.Dim.Render(
 		fmt.Sprintf("   %d rows", len(m.plan.Entries)))
 
 	counts := []string{
-		readyStyle.Render(fmt.Sprintf("%d ready", ready)),
-		askStyle.Render(fmt.Sprintf("%d need confirming", confirmable)),
-		blockedStyle.Render(fmt.Sprintf("%d blocked", blocked)),
+		style.Strong.Render(fmt.Sprintf("%d ready", ready)),
+		style.Warn.Render(fmt.Sprintf("%d need confirming", confirmable)),
+		style.Error.Render(fmt.Sprintf("%d blocked", blocked)),
 	}
 	if dropped > 0 {
-		counts = append(counts, droppedStyle.Render(fmt.Sprintf("%d dropped", dropped)))
+		counts = append(counts, style.Dim.Render(fmt.Sprintf("%d dropped", dropped)))
 	}
 
 	apply := keys.Show(keys.Plan, keys.ApplyAll)
 	footer := strings.Join(counts, "   ")
 	if reason := m.plan.Why(); reason != "" {
-		footer += hintStyle.Render("   -- " + apply + " is unavailable: " + reason)
+		footer += style.Dim.Render("   -- " + apply + " is unavailable: " + reason)
 	} else {
-		footer += headingStyle.Render("   " + apply + " applies all of it, in one transaction")
+		footer += style.Strong.Render("   " + apply + " applies all of it, in one transaction")
 	}
 
 	return strings.Join([]string{
 		heading,
 		m.tbl.View(),
 		footer,
-		hintStyle.Render(keys.Hint(keys.Plan,
+		style.Dim.Render(keys.Hint(keys.Plan,
 			[]keys.Action{keys.Confirm},
 			[]keys.Action{keys.Drop},
 			[]keys.Action{keys.Undrop},

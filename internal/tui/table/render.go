@@ -4,6 +4,10 @@ import (
 	"strings"
 
 	"home-management-system/internal/tui/keys"
+
+	"home-management-system/internal/tui/style"
+
+	"home-management-system/internal/tui/text"
 )
 
 // Rendering, and the width arithmetic that decides what a narrow terminal
@@ -20,7 +24,7 @@ const separator = "  "
 func (m Model) View() string {
 	widths, visible := m.layout()
 	if len(visible) == 0 {
-		return emptyStyle.Render("(too narrow)")
+		return style.Dim.Render("(too narrow)")
 	}
 
 	var b strings.Builder
@@ -28,7 +32,7 @@ func (m Model) View() string {
 	b.WriteByte('\n')
 
 	if len(m.visible) == 0 {
-		b.WriteString(emptyStyle.Render(m.emptyMessage()))
+		b.WriteString(style.Dim.Render(m.emptyMessage()))
 		return b.String()
 	}
 
@@ -69,7 +73,7 @@ func (m Model) header(widths []int, visible []int) string {
 		if i == m.col {
 			text = focusedStyle.Render(text)
 		} else {
-			text = headerStyle.Render(text)
+			text = style.Dim.Render(text)
 		}
 		cells = append(cells, text)
 	}
@@ -329,7 +333,7 @@ func fitPath(full, leaf string, width int, elide Elide) string {
 const pathSeparator = " > "
 
 func pad(s string, width int, align Align) string {
-	n := width - len([]rune(stripANSI(s)))
+	n := width - len([]rune(text.StripANSI(s)))
 	if n <= 0 {
 		return s
 	}
@@ -337,23 +341,4 @@ func pad(s string, width int, align Align) string {
 		return strings.Repeat(" ", n) + s
 	}
 	return s + strings.Repeat(" ", n)
-}
-
-// stripANSI removes escape sequences so padding measures printable columns.
-func stripANSI(s string) string {
-	var b strings.Builder
-	inEscape := false
-	for _, r := range s {
-		switch {
-		case r == 0x1b:
-			inEscape = true
-		case inEscape:
-			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
-				inEscape = false
-			}
-		default:
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
 }

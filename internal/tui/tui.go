@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
@@ -25,6 +24,8 @@ import (
 	"home-management-system/internal/tui/planview"
 	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/tree"
+
+	"home-management-system/internal/tui/style"
 )
 
 type view int
@@ -40,19 +41,6 @@ const (
 	// number, and left the way History is. It has no tab: a view you cannot
 	// get to by pressing a digit should not claim one of the digits.
 	viewHelp
-)
-
-var (
-	titleStyle  = lipgloss.NewStyle().Bold(true)
-	dimStyle    = lipgloss.NewStyle().Faint(true)
-	cursorStyle = lipgloss.NewStyle().Bold(true).Reverse(true)
-	alertStyle  = lipgloss.NewStyle().Bold(true)
-
-	// Red, and bold, because a refusal has to be distinguishable from a
-	// confirmation at a glance. Everything else in this interface is deliberately
-	// quiet, which is exactly what makes one loud thing readable.
-	errorStyle = lipgloss.NewStyle().Bold(true).
-			Foreground(lipgloss.AdaptiveColor{Light: "160", Dark: "203"})
 )
 
 // wrap breaks text onto as many lines as it needs.
@@ -604,7 +592,7 @@ func (m Model) View() string {
 			parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
 		}
 		for _, line := range m.problemLines() {
-			parts = append(parts, errorStyle.Render(line))
+			parts = append(parts, style.Error.Render(line))
 		}
 		return strings.Join(parts, "\n")
 	}
@@ -614,14 +602,14 @@ func (m Model) View() string {
 	// it is true of the whole screen rather than of the row under the cursor,
 	// and it has to be readable in whichever view you have navigated to.
 	for _, line := range m.carryLine() {
-		parts = append(parts, alertStyle.Render(line))
+		parts = append(parts, style.Strong.Render(line))
 	}
 	parts = append(parts, body)
 	if line := m.box.View(); line != "" {
 		parts = append(parts, line)
 	}
 	for _, line := range m.problemLines() {
-		parts = append(parts, errorStyle.Render(line))
+		parts = append(parts, style.Error.Render(line))
 	}
 	return strings.Join(append(parts, m.footer()), "\n")
 }
@@ -759,9 +747,9 @@ func (m Model) header() string {
 	for _, t := range m.tabs() {
 		label := t.label(names)
 		if t.view == m.view {
-			rendered = append(rendered, titleStyle.Render("["+label+"]"))
+			rendered = append(rendered, style.Strong.Render("["+label+"]"))
 		} else {
-			rendered = append(rendered, dimStyle.Render(" "+label+" "))
+			rendered = append(rendered, style.Dim.Render(" "+label+" "))
 		}
 	}
 	if m.view == viewHistory || m.view == viewHelp {
@@ -769,9 +757,9 @@ func (m Model) header() string {
 		if !names {
 			suffix = suffix[:1]
 		}
-		rendered = append(rendered, titleStyle.Render("["+suffix+"]"))
+		rendered = append(rendered, style.Strong.Render("["+suffix+"]"))
 	}
-	return strings.Join(rendered, " ") + "\n" + dimStyle.Render(strings.Repeat("-", max(10, m.width)))
+	return strings.Join(rendered, " ") + "\n" + style.Dim.Render(strings.Repeat("-", max(10, m.width)))
 }
 
 type tab struct {
@@ -814,8 +802,11 @@ func (m Model) tabLabels(withName bool) string {
 	return s
 }
 
-// fit joins as many hints as the width allows, dropping from the end.
-func fit(width int, parts []string) string {
+// joinWhatFits joins as many hints as the width allows, dropping from the end.
+//
+// Named apart from table.fit, which cuts ONE string to a width. Two functions
+// called fit that do different things is a name that has to be read twice.
+func joinWhatFits(width int, parts []string) string {
 	line := ""
 	for _, part := range parts {
 		next := part
@@ -835,7 +826,7 @@ func (m Model) footer() string {
 	// the terminal rather than allowed to wrap. A line wider than the screen
 	// wraps, and one wrapped line shifts every row below it -- which is the
 	// same reason the table drops columns instead of overflowing.
-	help := fit(m.width, []string{
+	help := joinWhatFits(m.width, []string{
 		keys.Hint(keys.Table,
 			[]keys.Action{keys.MoveDown, keys.MoveUp},
 			[]keys.Action{keys.MoveLeft, keys.MoveRight}),
@@ -844,7 +835,7 @@ func (m Model) footer() string {
 		keys.Hint(keys.Table, []keys.Action{keys.ToggleSelect}, []keys.Action{keys.Sort}),
 		keys.Hint(keys.Browse, []keys.Action{keys.Quit}),
 	})
-	rule := dimStyle.Render(strings.Repeat("-", max(10, m.width)))
+	rule := style.Dim.Render(strings.Repeat("-", max(10, m.width)))
 
 	// Assembled as PARTS and joined once, rather than concatenated piece by
 	// piece. The first version glued them together with separators baked into
@@ -859,7 +850,7 @@ func (m Model) footer() string {
 	// screen nobody is reading.
 	if m.box.Mode() == omnibox.Jump {
 		shown, _ := m.jump.Counts()
-		return rule + "\n" + dimStyle.Render(fmt.Sprintf(
+		return rule + "\n" + style.Dim.Render(fmt.Sprintf(
 			"%d matches across every kind - %s go - %s cancel",
 			shown, keys.Show(keys.Line, keys.Confirm), keys.Show(keys.Line, keys.Cancel)))
 	}
@@ -882,7 +873,7 @@ func (m Model) footer() string {
 	if status != "" {
 		return rule + "\n" + status
 	}
-	return rule + "\n" + dimStyle.Render(help)
+	return rule + "\n" + style.Dim.Render(help)
 }
 
 // render turns controller data into display rows, for the views that are prose
@@ -919,14 +910,14 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error
 		} else {
 			out = append(out, "")
 			for _, d := range report.Discrepancies {
-				out = append(out, alertStyle.Render("DISCREPANCY ")+d)
+				out = append(out, style.Strong.Render("DISCREPANCY ")+d)
 			}
 			for _, o := range report.Orphans {
-				out = append(out, alertStyle.Render("ORPHAN      ")+o)
+				out = append(out, style.Strong.Render("ORPHAN      ")+o)
 			}
 			// Reporting, never repairing: silently correcting would destroy the
 			// only signal that a write skipped its event.
-			out = append(out, "", dimStyle.Render("reported, not repaired"))
+			out = append(out, "", style.Dim.Render("reported, not repaired"))
 		}
 
 		nudges, err := m.ctrl.Nudges(m.ctx)
@@ -934,7 +925,7 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error
 			return nil, "", err
 		}
 		if len(nudges) > 0 {
-			out = append(out, "", titleStyle.Render("Classification"))
+			out = append(out, "", style.Strong.Render("Classification"))
 			for _, n := range nudges {
 				out = append(out, fmt.Sprintf("  %s sits at %q, which has %d subcategories",
 					n.Item, n.Category, n.Siblings))
@@ -942,7 +933,7 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error
 		}
 		status := "clean"
 		if !report.Clean() {
-			status = alertStyle.Render(fmt.Sprintf("%d discrepancies, %d orphans",
+			status = style.Strong.Render(fmt.Sprintf("%d discrepancies, %d orphans",
 				len(report.Discrepancies), len(report.Orphans)))
 		}
 		return out, status, nil
@@ -960,13 +951,6 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error
 		return out, fmt.Sprintf("holding %d - %d events in sequence order", subject, len(rows)), nil
 	}
 	return nil, "", fmt.Errorf("unknown view %d", v)
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // Run starts the program.

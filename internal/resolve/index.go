@@ -202,10 +202,3 @@ func distinguish(h domain.Holding) string {
 	}
 	return ""
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

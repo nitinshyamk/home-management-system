@@ -17,10 +17,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/charmbracelet/lipgloss"
 	"home-management-system/internal/tui/complete"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/line"
+
+	"home-management-system/internal/tui/style"
 )
 
 // Kind is what the panel is making.
@@ -112,15 +113,7 @@ type Model struct {
 	units []string
 }
 
-var (
-	frameStyle   = lipgloss.NewStyle().Faint(true)
-	labelStyle   = lipgloss.NewStyle().Faint(true)
-	valueStyle   = lipgloss.NewStyle().Bold(true)
-	focusStyle   = lipgloss.NewStyle().Reverse(true)
-	hintStyle    = lipgloss.NewStyle().Faint(true)
-	chosenStyle  = lipgloss.NewStyle().Bold(true)
-	unchosenStyl = lipgloss.NewStyle().Faint(true)
-)
+var ()
 
 func New() Model { return Model{width: 80} }
 
@@ -427,7 +420,7 @@ func (m Model) Lines() []string {
 	if pad := m.width - len([]rune(head)) - 2; pad > 0 {
 		head += strings.Repeat("─", pad)
 	}
-	out := []string{frameStyle.Render(head)}
+	out := []string{style.Dim.Render(head)}
 
 	// The dropdown, the warnings and the hint all sit UNDER THE FIELD they
 	// belong to, spliced between the rows rather than collected at the bottom.
@@ -439,13 +432,13 @@ func (m Model) Lines() []string {
 	gutter := "  " + strings.Repeat(" ", 11) + " "
 	for n, i := range visible {
 		f := m.fields[i]
-		label := labelStyle.Render(fmt.Sprintf("  %-11s ", f.label))
+		label := style.Dim.Render(fmt.Sprintf("  %-11s ", f.label))
 		if f.key == "counting" {
 			out = append(out, label+m.countingLine())
 		} else if n == m.focus {
-			out = append(out, label+renderFocused(f))
+			out = append(out, label+line.Render(f.value, f.cursor))
 		} else {
-			out = append(out, label+valueStyle.Render(f.value))
+			out = append(out, label+style.Strong.Render(f.value))
 		}
 		if n != m.focus {
 			continue
@@ -456,11 +449,11 @@ func (m Model) Lines() []string {
 		case len(m.warnings) > 0:
 			out = append(out, complete.Warnings(gutter, m.width, m.warnings)...)
 		case f.hint != "":
-			out = append(out, hintStyle.Render(gutter+f.hint))
+			out = append(out, style.Dim.Render(gutter+f.hint))
 		}
 	}
 
-	out = append(out, hintStyle.Render("  "+m.footerHint()))
+	out = append(out, style.Dim.Render("  "+m.footerHint()))
 	return out
 }
 
@@ -478,25 +471,6 @@ func (m Model) footerHint() string {
 		keys.Show(keys.Creator, keys.Cancel) + " discard"
 }
 
-// renderFocused draws the focused field with a block cursor IN it.
-//
-// The cursor used to be a block pinned after the text, which was honest while
-// a field could only be appended to. Now that C-a and C-b move within it, a
-// marker frozen at the end would be a lie about where the next character goes.
-func renderFocused(f field) string {
-	r := []rune(f.value)
-	at := f.cursor
-	if at > len(r) {
-		at = len(r)
-	}
-	if at == len(r) {
-		return valueStyle.Render(f.value) + focusStyle.Render(" ")
-	}
-	return valueStyle.Render(string(r[:at])) +
-		focusStyle.Render(string(r[at])) +
-		valueStyle.Render(string(r[at+1:]))
-}
-
 // countingLine renders the three presets as a choice rather than a field.
 //
 // All three are always shown. A choice you can only see one option of is a
@@ -505,10 +479,10 @@ func (m Model) countingLine() string {
 	parts := make([]string, 0, len(countings))
 	for i, c := range countings {
 		if i == m.counting {
-			parts = append(parts, chosenStyle.Render("(o) "+c.Label))
+			parts = append(parts, style.Strong.Render("(o) "+c.Label))
 			continue
 		}
-		parts = append(parts, unchosenStyl.Render("( ) "+c.Label))
+		parts = append(parts, style.Dim.Render("( ) "+c.Label))
 	}
 	return strings.Join(parts, "  ")
 }

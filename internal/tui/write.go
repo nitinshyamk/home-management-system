@@ -10,6 +10,10 @@ import (
 	"home-management-system/internal/command"
 	"home-management-system/internal/tui/complete"
 	"home-management-system/internal/tui/keys"
+
+	"home-management-system/internal/tui/style"
+
+	"home-management-system/internal/tui/text"
 )
 
 // The first place the interface writes anything.
@@ -278,20 +282,20 @@ func (m Model) handleConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 // that has any.
 func (m Model) confirmView() string {
 	plan := m.confirm.plan
-	lines := []string{"  " + alertStyle.Render(m.confirm.summary+"?"), ""}
+	lines := []string{"  " + style.Strong.Render(m.confirm.summary+"?"), ""}
 
 	for _, facts := range plan.Permanent {
-		lines = append(lines, "  "+titleStyle.Render("permanent")+"     "+facts)
+		lines = append(lines, "  "+style.Strong.Render("permanent")+"     "+facts)
 		lines = append(lines, "  "+strings.Repeat(" ", len("permanent"))+"     "+
-			dimStyle.Render("changing these later replaces every holding"))
+			style.Dim.Render("changing these later replaces every holding"))
 	}
 	for _, ends := range plan.Irreversible {
-		lines = append(lines, "  "+alertStyle.Render("no way back")+"   "+ends)
+		lines = append(lines, "  "+style.Strong.Render("no way back")+"   "+ends)
 		lines = append(lines, "  "+strings.Repeat(" ", len("no way back"))+"   "+
-			dimStyle.Render("the history stays; the holding does not"))
+			style.Dim.Render("the history stays; the holding does not"))
 	}
 	if len(plan.Permanent) == 0 && len(plan.Irreversible) == 0 {
-		lines = append(lines, "  "+dimStyle.Render(
+		lines = append(lines, "  "+style.Dim.Render(
 			"nothing here is permanent, but a second one by accident is worse than a question"))
 	}
 
@@ -301,7 +305,7 @@ func (m Model) confirmView() string {
 	if plan.Creates() {
 		verb = "create"
 	}
-	lines = append(lines, "", dimStyle.Render(
+	lines = append(lines, "", style.Dim.Render(
 		"  ["+keys.Show(keys.Line, keys.Confirm)+"] "+verb+
 			"    ["+keys.Show(keys.Line, keys.Cancel)+"] back"))
 	return strings.Join(lines, "\n")
@@ -521,15 +525,7 @@ func (m Model) refuseContained(kind, verb string) Model {
 		where = "the Holdings view"
 	}
 	return m.refuse("that is %s the tree is showing you -- %s it from %s",
-		strings.ToLower(article(kind)), verb, where)
-}
-
-// article is "an Item" or "a Holding", so a refusal reads as a sentence.
-func article(kind string) string {
-	if strings.ContainsAny(kind[:1], "AEIOU") {
-		return "an " + kind
-	}
-	return "a " + kind
+		text.Article(strings.ToLower(kind)), verb, where)
 }
 
 // runCommands plans already-built Commands and merges them into one unit of

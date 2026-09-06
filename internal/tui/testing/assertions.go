@@ -5,6 +5,8 @@ import (
 
 	"home-management-system/internal/domain"
 	"home-management-system/internal/query"
+
+	"home-management-system/internal/tui/text"
 )
 
 // The assertions.
@@ -43,30 +45,11 @@ func (s *Simulator) HidesText(text string) {
 func (s *Simulator) FitsWidth(width int) {
 	s.t.Helper()
 	for i, line := range strings.Split(s.View(), "\n") {
-		if w := visibleWidth(line); w > width {
+		if w := text.VisibleWidth(line); w > width {
 			s.t.Errorf("line %d is %d columns wide in a %d-column terminal: %q",
 				i+1, w, width, line)
 		}
 	}
-}
-
-// visibleWidth counts printable columns, ignoring ANSI escape sequences, which
-// carry colour and occupy no space on screen.
-func visibleWidth(line string) int {
-	n, inEscape := 0, false
-	for _, r := range line {
-		switch {
-		case r == 0x1b:
-			inEscape = true
-		case inEscape:
-			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
-				inEscape = false
-			}
-		default:
-			n++
-		}
-	}
-	return n
 }
 
 // ---------------------------------------------------------------------------

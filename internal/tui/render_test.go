@@ -152,7 +152,7 @@ func TestTheHelpLineFitsTheTerminal(t *testing.T) {
 		keys.Hint(keys.Browse, []keys.Action{keys.Quit}),
 	}
 	for _, width := range []int{40, 60, 80, 100, 120} {
-		got := fit(width, parts)
+		got := joinWhatFits(width, parts)
 		if n := len([]rune(got)); n > width {
 			t.Errorf("the help line is %d columns in a %d-column terminal: %q", n, width, got)
 		}

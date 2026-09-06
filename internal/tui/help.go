@@ -9,6 +9,10 @@ import (
 	"home-management-system/internal/command"
 	"home-management-system/internal/tui/complete"
 	"home-management-system/internal/tui/keys"
+
+	"home-management-system/internal/tui/style"
+
+	"home-management-system/internal/tui/text"
 )
 
 // Help, generated rather than written.
@@ -248,7 +252,7 @@ func describeField(f command.Field) string {
 	case len(f.Kinds) > 0:
 		var kinds []string
 		for _, k := range f.Kinds {
-			kinds = append(kinds, article(string(k)))
+			kinds = append(kinds, text.Article(string(k)))
 		}
 		what += " -- names " + strings.Join(kinds, " or ")
 	case f.Type != command.FieldText:
@@ -308,7 +312,7 @@ func renderHelp(sections []helpSection, width int) []string {
 		if len(out) > 0 {
 			out = append(out, "")
 		}
-		out = append(out, "  "+titleStyle.Render(s.title))
+		out = append(out, "  "+style.Strong.Render(s.title))
 		for _, line := range s.prose {
 			for _, wrapped := range wrap(line, width-4) {
 				out = append(out, "    "+wrapped)
@@ -323,9 +327,9 @@ func renderHelp(sections []helpSection, width int) []string {
 				continue // nothing on this surface binds it
 			}
 			lines := wrap(row[1], width-len(hang))
-			out = append(out, fmt.Sprintf("    %-*s  %s", keyWidth, row[0], dimStyle.Render(lines[0])))
+			out = append(out, fmt.Sprintf("    %-*s  %s", keyWidth, row[0], style.Dim.Render(lines[0])))
 			for _, rest := range lines[1:] {
-				out = append(out, hang+dimStyle.Render(rest))
+				out = append(out, hang+style.Dim.Render(rest))
 			}
 		}
 	}
