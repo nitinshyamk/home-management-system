@@ -51,19 +51,10 @@ func (i Issue) String() string {
 	if i.Problem != "" {
 		return i.Field + ": " + Humanise(i.Problem)
 	}
-	switch o := i.Outcome.(type) {
-	case resolve.Suggested:
-		return fmt.Sprintf("%s: did you mean %s? (%s)", i.Field, o.Candidate.Path, o.Basis)
-	case resolve.Ambiguous:
-		var names []string
-		for _, c := range o.Candidates {
-			names = append(names, c.Path)
-		}
-		return fmt.Sprintf("%s: could be %s", i.Field, strings.Join(names, ", "))
-	case resolve.Missing:
-		return fmt.Sprintf("%s: nothing called %q", i.Field, o.Query)
-	}
-	return i.Field + ": cannot be settled"
+	// The wording belongs to resolve, which is where the verdict is made. This
+	// adds the field it was made about, which is the only thing an Issue knows
+	// that the outcome does not.
+	return i.Field + ": " + resolve.Describe(i.Outcome)
 }
 
 // Humanise strips the package prefixes a Go error accumulates on the way up.

@@ -1,6 +1,7 @@
 package resolve
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/sahilm/fuzzy"
@@ -32,6 +33,35 @@ type Ambiguous struct{ Candidates []Candidate }
 
 // Missing is nothing close enough to offer.
 type Missing struct{ Query string }
+
+// Describe says what the resolver decided, as a sentence a person can act on.
+//
+// One wording, because there were two. internal/command rendered an Issue and
+// the TUI rendered a keystroke's refusal, independently, and they had already
+// drifted: the command line said "did you mean Garage > Bay 3? (leaf)" while
+// the same near-miss on a keystroke said "did you mean Garage > Bay 3? nothing
+// called \"bay3\"" -- two sentences for one verdict, one of them dropping the
+// basis that says WHY it was offered.
+//
+// It describes the outcome and not the field, so a caller with a field name to
+// give can prefix it and one without can use it bare.
+func Describe(o Outcome) string {
+	switch v := o.(type) {
+	case Exact:
+		return v.Candidate.Path
+	case Suggested:
+		return fmt.Sprintf("did you mean %s? (%s)", v.Candidate.Path, v.Basis)
+	case Ambiguous:
+		paths := make([]string, 0, len(v.Candidates))
+		for _, c := range v.Candidates {
+			paths = append(paths, c.Path)
+		}
+		return "could be " + strings.Join(paths, ", ")
+	case Missing:
+		return fmt.Sprintf("nothing called %q", v.Query)
+	}
+	return "cannot be settled"
+}
 
 func (Exact) isOutcome()     {}
 func (Suggested) isOutcome() {}
