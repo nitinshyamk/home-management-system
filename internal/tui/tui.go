@@ -43,16 +43,6 @@ const (
 	viewHelp
 )
 
-var viewNames = map[view]string{
-	viewCategories: "Categories",
-	viewLocations:  "Locations",
-	viewItems:      "Items",
-	viewHoldings:   "Holdings",
-	viewIntegrity:  "Integrity",
-	viewHistory:    "History",
-	viewHelp:       "Help",
-}
-
 var (
 	titleStyle  = lipgloss.NewStyle().Bold(true)
 	dimStyle    = lipgloss.NewStyle().Faint(true)
@@ -188,7 +178,7 @@ type Model struct {
 func New(ctx context.Context, ctrl app.Controller) Model {
 	return Model{
 		ctx: ctx, ctrl: ctrl, view: viewHoldings,
-		table:    table.New(columnsFor(viewHoldings)),
+		table:    table.New(spec(viewHoldings).columns),
 		box:      omnibox.New(),
 		editor:   editor.New(),
 		creator:  creator.New(),
@@ -199,62 +189,12 @@ func New(ctx context.Context, ctrl app.Controller) Model {
 	}
 }
 
-// tabular reports whether a view is a table. Holdings and Items are; hierarchy
-// is not something a flat table shows, so Categories and Locations are trees.
-func tabular(v view) bool { return v == viewHoldings || v == viewItems }
-
 // jumpColumns are the palette's. KIND comes first and is never dropped:
 // "Shelf 1" as a Location and "Shelf 1" inside a Holding path are different
 // destinations, and a jump that does not say which lands somewhere surprising.
 var jumpColumns = []table.Column{
 	{Title: "KIND", Min: 8},
 	{Title: "NAME", Min: 12, Grow: true, Elide: table.ElideStart},
-}
-
-// facetColumns says which column each facet name restricts, per view. Only the
-// view knows that `loc:` means the LOCATION column here and nothing at all in
-// the Items table.
-func facetColumns(v view) map[string]int {
-	switch v {
-	case viewHoldings:
-		return map[string]int{"item": 0, "qty": 1, "state": 1, "loc": 2, "at": 2, "flag": 3}
-	case viewItems:
-		return map[string]int{"item": 0, "name": 0, "cat": 2, "unit": 3, "kind": 4}
-	}
-	return nil
-}
-
-// forest reports whether a view is a tree.
-func forest(v view) bool { return v == viewCategories || v == viewLocations }
-
-// columnsFor declares each table's shape, and with it what a narrow terminal
-// loses. Drop order is a decision recorded here rather than an accident of
-// layout arithmetic.
-func columnsFor(v view) []table.Column {
-	switch v {
-	case viewHoldings:
-		return []table.Column{
-			{Title: "ITEM", Min: 10, Grow: true},
-			// Quantity is never dropped: a holdings table that does not say how
-			// much is a list of things you own, which you already knew.
-			{Title: "QTY", Min: 5, Align: table.Right},
-			// Path: the cell is the shelf's own name, and the ancestors above
-			// it appear when the terminal has room to spare for them. Three
-			// rows of one item in three different Shelf 1s is the case the
-			// holdings table exists to answer, and the leaf alone cannot.
-			{Title: "LOCATION", Min: 12, Drop: 2, Elide: table.ElideStart, Path: true},
-			{Title: "FLAGS", Min: 6, Drop: 3},
-		}
-	case viewItems:
-		return []table.Column{
-			{Title: "ITEM", Min: 10, Grow: true},
-			{Title: "ON HAND", Min: 6, Align: table.Right},
-			{Title: "CATEGORY", Min: 8, Drop: 2},
-			{Title: "MEASURE", Min: 8, Drop: 3},
-			{Title: "KIND", Min: 6, Drop: 4},
-		}
-	}
-	return nil
 }
 
 func (m Model) Init() tea.Cmd { return m.load(m.view) }
@@ -385,7 +325,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// A fresh table per view: the columns differ, and carrying a
 			// selection across views would mean acting on rows a person picked
 			// while looking at something else.
-			m.table = table.New(columnsFor(msg.view)).SetRows(msg.cells).SetSize(m.width, m.bodyHeight())
+			m.table = table.New(spec(msg.view).columns).SetRows(msg.cells).SetSize(m.width, m.bodyHeight())
 		}
 		if forest(msg.view) {
 			// The folds come back, because the tree is rebuilt after every
@@ -399,7 +339,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if forest(was) {
 				m.folds[was] = m.tree.Folds()
 			}
-			m.tree = tree.New(unitFor(msg.view)).
+			m.tree = tree.New(spec(msg.view).unit).
 				WithFolds(m.folds[msg.view]).
 				SetNodes(msg.nodes).SetSize(m.width, m.bodyHeight())
 		}
@@ -807,10 +747,7 @@ func (m Model) bodyHeight() int {
 
 // countPhrase says how many, and how many of how many when a filter is on.
 func (m Model) countPhrase() string {
-	noun := map[view]string{
-		viewHoldings: "holdings", viewItems: "items",
-		viewCategories: "categories", viewLocations: "locations",
-	}[m.view]
+	noun := spec(m.view).noun
 	if noun == "" {
 		return ""
 	}
@@ -903,7 +840,7 @@ func (m Model) header() string {
 		}
 	}
 	if m.view == viewHistory || m.view == viewHelp {
-		suffix := viewNames[m.view]
+		suffix := spec(m.view).name
 		if !names {
 			suffix = suffix[:1]
 		}
@@ -928,7 +865,7 @@ func (t tab) label(withName bool) string {
 func (m Model) tabs() []tab {
 	var out []tab
 	for _, v := range []view{viewCategories, viewLocations, viewItems, viewHoldings, viewIntegrity} {
-		out = append(out, tab{view: v, name: viewNames[v], key: int(v) + 1})
+		out = append(out, tab{view: v, name: spec(v).name, key: int(v) + 1})
 	}
 	return out
 }
@@ -1059,14 +996,17 @@ func (m Model) body() string {
 	return b.String()
 }
 
-// render turns controller data into display rows. The Controller returns flat,
-// display-ready rows, so this stays formatting rather than logic.
+// render turns controller data into display rows, for the views that are prose
+// rather than a list: Help, Integrity, and History. The Controller returns
+// flat, display-ready rows, so this stays formatting rather than logic.
 //
-// Categories and Locations are NOT here. They were, formatted as flat strings,
-// and had been unreachable since they became trees -- load sends a forest to
-// renderTree before it ever gets this far. Kept "in case", they would have
-// needed a contents flag they could never be given, which is how a second
-// answer to one question starts.
+// Only those three. The other four had cases here once and every one of them
+// was unreachable -- load sends a tree to renderTree and a table to
+// renderTable long before it gets this far. Categories and Locations were
+// removed when they became trees; Items and Holdings outlived them by two
+// stages, quietly drifting to column widths no screen ever showed. A second
+// answer to one question does not announce that it has stopped being used,
+// which is the argument for spec(v).kind deciding this in one place.
 func (m Model) render(v view, subject domain.HoldingID) ([]string, []domain.HoldingID, string, error) {
 	switch v {
 
@@ -1077,34 +1017,6 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, []domain.Hold
 			status = m.helpTopic
 		}
 		return lines, nil, status, nil
-
-	case viewItems:
-		rows, err := m.ctrl.Items(m.ctx)
-		if err != nil {
-			return nil, nil, "", err
-		}
-		out := make([]string, 0, len(rows))
-		for _, r := range rows {
-			out = append(out, fmt.Sprintf("%-26s %-7s %-16s %-22s %s",
-				truncate(r.Name, 26), r.Kind, truncate(r.Category, 16),
-				truncate(r.Measure, 22), r.OnHand))
-		}
-		return out, nil, fmt.Sprintf("%d items", len(rows)), nil
-
-	case viewHoldings:
-		rows, err := m.ctrl.Holdings(m.ctx)
-		if err != nil {
-			return nil, nil, "", err
-		}
-		out := make([]string, 0, len(rows))
-		ids := make([]domain.HoldingID, 0, len(rows))
-		for _, r := range rows {
-			line := fmt.Sprintf("%-26s %-16s %-24s %s",
-				truncate(r.Item, 26), truncate(r.Location, 16), truncate(r.State, 24), r.Note)
-			out = append(out, strings.TrimRight(line, " "))
-			ids = append(ids, r.ID)
-		}
-		return out, ids, fmt.Sprintf("%d holdings - enter for history", len(rows)), nil
 
 	case viewIntegrity:
 		report, err := m.ctrl.Integrity(m.ctx)
@@ -1159,16 +1071,6 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, []domain.Hold
 		return out, nil, fmt.Sprintf("holding %d - %d events in sequence order", subject, len(rows)), nil
 	}
 	return nil, nil, "", fmt.Errorf("unknown view %d", v)
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	if n <= 1 {
-		return s[:n]
-	}
-	return s[:n-1] + "…"
 }
 
 func max(a, b int) int {
@@ -1238,15 +1140,6 @@ func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, map[int64]a
 		return cells, nil, nil, "", nil
 	}
 	return nil, nil, nil, "", fmt.Errorf("view %d is not a table", v)
-}
-
-// unitFor names what a tree's rollup counts, which is also the count column's
-// title.
-func unitFor(v view) string {
-	if v == viewCategories {
-		return "items"
-	}
-	return "holdings"
 }
 
 // renderTree turns Controller rows into tree nodes. As with renderTable, this
@@ -1375,7 +1268,7 @@ func (m Model) filterWith(q omnibox.Query) Model {
 // facetTests resolves facet names to columns, dropping the ones this view has
 // no field for.
 func facetTests(v view, q omnibox.Query) []table.FacetTest {
-	columns := facetColumns(v)
+	columns := spec(v).facets
 	var out []table.FacetTest
 	for _, f := range q.Facets {
 		if column, ok := columns[f.Key]; ok && !f.Any() {
@@ -1446,19 +1339,6 @@ func (m Model) acceptJump() (tea.Model, tea.Cmd, bool) {
 	m.box = m.box.Cancel()
 	m.pending = &target
 	return m, m.load(viewFor(target.Kind)), true
-}
-
-// viewFor is where a kind of thing lives.
-func viewFor(k resolve.Kind) view {
-	switch k {
-	case resolve.KindCategory:
-		return viewCategories
-	case resolve.KindLocation:
-		return viewLocations
-	case resolve.KindItem:
-		return viewItems
-	}
-	return viewHoldings
 }
 
 // reloadKeepingStatus re-reads the current view without discarding what the
