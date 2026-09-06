@@ -8,6 +8,8 @@ import (
 
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/line"
+
+	"home-management-system/internal/tui/style"
 )
 
 // Mode is what the line is for. The leader key chooses it, and the rendering
@@ -49,19 +51,15 @@ type Model struct {
 }
 
 var (
-	filterStyle = lipgloss.NewStyle().Bold(true)
-	jumpStyle   = lipgloss.NewStyle().Bold(true).Reverse(true)
-	hintStyle   = lipgloss.NewStyle().Faint(true)
 	// A block cursor, so the line looks like somewhere text goes -- the same
 	// cursor the inline field draws, for the same reason.
-	cursorStyle = lipgloss.NewStyle().Reverse(true)
 
 	// The command prompt is tinted rather than reversed, so the three modes
 	// differ from each other in KIND -- a slash, a reversed badge, a tinted
 	// badge -- rather than by degree of emphasis.
 	commandStyle = lipgloss.NewStyle().Bold(true).
-			Foreground(lipgloss.AdaptiveColor{Light: "231", Dark: "231"}).
-			Background(lipgloss.AdaptiveColor{Light: "24", Dark: "24"})
+		Foreground(lipgloss.AdaptiveColor{Light: "231", Dark: "231"}).
+		Background(lipgloss.AdaptiveColor{Light: "24", Dark: "24"})
 )
 
 func New() Model { return Model{width: 80} }
@@ -147,7 +145,7 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 // before reading what they typed.
 func (m Model) View() string {
 	hint := func(accept string) string {
-		return hintStyle.Render("  " + keys.Show(keys.Line, keys.Confirm) + " " + accept +
+		return style.Dim.Render("  " + keys.Show(keys.Line, keys.Confirm) + " " + accept +
 			"   " + keys.Show(keys.Line, keys.Cancel) + " cancel")
 	}
 	switch {
@@ -156,40 +154,20 @@ func (m Model) View() string {
 		// a bare `/`, which named the key that opened it -- and that key is
 		// gone, so the prompt would have been advertising a keystroke that no
 		// longer does anything.
-		return filterStyle.Render("I-search: ") + m.renderInput() + hint("apply")
+		return style.Strong.Render("I-search: ") + line.Render(m.input, m.cursor) + hint("apply")
 	case m.mode == Jump:
-		return jumpStyle.Render(" JUMP ") + " " + m.renderInput() + hint("go")
+		return style.Highlight.Render(" JUMP ") + " " + line.Render(m.input, m.cursor) + hint("go")
 	case m.mode == Command:
 		// A third prompt, distinct from both, and it spells its own key. M-x
 		// reads as a command line to anyone who has ever used emacs; what it
 		// must not do is look like the filter.
 		return commandStyle.Render(" "+keys.Show(keys.Browse, keys.CommandLine)+" ") + " " +
-			m.renderInput() + hint("run")
+			line.Render(m.input, m.cursor) + hint("run")
 	case m.applied != "":
-		return hintStyle.Render("filtered ") + filterStyle.Render(m.applied) +
-			hintStyle.Render("   "+keys.Show(keys.Browse, keys.Cancel)+" clear")
+		return style.Dim.Render("filtered ") + style.Strong.Render(m.applied) +
+			style.Dim.Render("   "+keys.Show(keys.Browse, keys.Cancel)+" clear")
 	}
 	return ""
-}
-
-// renderInput draws the line with a block cursor in it.
-//
-// A real cursor rather than the trailing underscore that stood in for one. The
-// underscore was honest while the line could only be appended to; now that C-a
-// and C-b move within it, a marker frozen at the end would be a lie about where
-// the next character goes.
-func (m Model) renderInput() string {
-	r := []rune(m.input)
-	at := m.cursor
-	if at > len(r) {
-		at = len(r)
-	}
-	if at == len(r) {
-		return filterStyle.Render(m.input) + cursorStyle.Render(" ")
-	}
-	return filterStyle.Render(string(r[:at])) +
-		cursorStyle.Render(string(r[at])) +
-		filterStyle.Render(string(r[at+1:]))
 }
 
 // Height is how many lines the omnibox occupies, which the layout needs before

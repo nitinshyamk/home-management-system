@@ -11,11 +11,12 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"home-management-system/internal/tui/complete"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/line"
+
+	"home-management-system/internal/tui/style"
 )
 
 // Model is one field being edited.
@@ -63,12 +64,8 @@ type Model struct {
 }
 
 var (
-	labelStyle = lipgloss.NewStyle().Faint(true)
-	valueStyle = lipgloss.NewStyle().Bold(true)
-	hintStyle  = lipgloss.NewStyle().Faint(true)
-	// A block cursor, so the field looks like somewhere text goes rather than
-	// like a line of output that happens to be bold.
-	cursorStyle = lipgloss.NewStyle().Reverse(true)
+// A block cursor, so the field looks like somewhere text goes rather than
+// like a line of output that happens to be bold.
 )
 
 func New() Model { return Model{width: 80} }
@@ -189,38 +186,22 @@ func (m Model) Lines() []string {
 		head += strings.Repeat("─", pad)
 	}
 	out := []string{
-		labelStyle.Render(head),
-		"  " + m.renderValue(),
+		style.Dim.Render(head),
+		"  " + line.Render(m.value, m.cursor),
 	}
 	out = append(out, m.list.Lines("  ", m.width)...)
 	if m.list.IsOpen() {
 		// While a list is up the keys mean what they mean inside it, and a
 		// footer naming only the field's keys would be wrong for as long as it
 		// was showing.
-		return append(out, hintStyle.Render("  "+complete.Hint()))
+		return append(out, style.Dim.Render("  "+complete.Hint()))
 	}
 	cancel := m.cancel
 	if cancel == "" {
 		cancel = "discard"
 	}
-	return append(out, hintStyle.Render("  "+keys.Show(keys.Line, keys.Confirm)+" "+m.verb()+
+	return append(out, style.Dim.Render("  "+keys.Show(keys.Line, keys.Confirm)+" "+m.verb()+
 		"   "+keys.Show(keys.Line, keys.Cancel)+" "+cancel))
-}
-
-// renderValue draws the value with the block cursor sitting IN it rather than
-// always after it, so a cursor that has been moved is visible where it is.
-func (m Model) renderValue() string {
-	r := []rune(m.value)
-	at := m.cursor
-	if at > len(r) {
-		at = len(r)
-	}
-	if at == len(r) {
-		return valueStyle.Render(m.value) + cursorStyle.Render(" ")
-	}
-	return valueStyle.Render(string(r[:at])) +
-		cursorStyle.Render(string(r[at])) +
-		valueStyle.Render(string(r[at+1:]))
 }
 
 // AtEnd reports whether the cursor is at the end of the value, which is the

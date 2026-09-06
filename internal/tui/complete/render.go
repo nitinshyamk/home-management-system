@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"home-management-system/internal/tui/keys"
+
+	"home-management-system/internal/tui/style"
 )
 
 // Window is how many options are drawn at once.
@@ -22,17 +22,12 @@ import (
 const Window = 6
 
 var (
-	chosenStyle   = lipgloss.NewStyle().Bold(true)
-	unchosenStyle = lipgloss.NewStyle().Faint(true)
-	hintStyle     = lipgloss.NewStyle().Faint(true)
-	warnStyle     = lipgloss.NewStyle().Faint(true).Italic(true)
-	// The highlight carries a mark in the gutter as well as its weight.
-	//
-	// Bold-against-faint is the whole signal only until the list is read on a
-	// terminal that renders neither, or by somebody scanning a column of paths
-	// that are bold-ish anyway. The table marks its cursor with a character in
-	// the margin for the same reason, and this is the same cursor.
-	markStyle = lipgloss.NewStyle().Bold(true)
+// The highlight carries a mark in the gutter as well as its weight.
+//
+// Bold-against-faint is the whole signal only until the list is read on a
+// terminal that renders neither, or by somebody scanning a column of paths
+// that are bold-ish anyway. The table marks its cursor with a character in
+// the margin for the same reason, and this is the same cursor.
 )
 
 const (
@@ -56,26 +51,26 @@ func (m Model) Lines(gutter string, width int) []string {
 
 	out := make([]string, 0, Window+2)
 	if first > 0 {
-		out = append(out, gutter+hintStyle.Render(more(first, "above")))
+		out = append(out, gutter+style.Dim.Render(more(first, "above")))
 	}
 	for i := first; i < last; i++ {
 		option := m.options[i]
 		if i != m.selected {
-			out = append(out, gutter+unmark+unchosenStyle.Render(clip(option, room)))
+			out = append(out, gutter+unmark+style.Dim.Render(clip(option, room)))
 			continue
 		}
-		line := gutter + markStyle.Render(mark) + chosenStyle.Render(clip(option, room-len([]rune(take))))
+		line := gutter + style.Strong.Render(mark) + style.Strong.Render(clip(option, room-len([]rune(take))))
 		// The hint names what Tab would DO, so it is absent on the option the
 		// field is already holding -- there Tab falls through to the next
 		// field, and a line saying "take it" would be describing a keystroke
 		// that does something else.
 		if !m.settled() {
-			line += hintStyle.Render(take)
+			line += style.Dim.Render(take)
 		}
 		out = append(out, line)
 	}
 	if rest := len(m.options) - last; rest > 0 {
-		out = append(out, gutter+hintStyle.Render(more(rest, "below")))
+		out = append(out, gutter+style.Dim.Render(more(rest, "below")))
 	}
 	return out
 }
@@ -132,7 +127,7 @@ func Warnings(gutter string, width int, matches []string) []string {
 		if i == 0 {
 			text += " already exists"
 		}
-		out = append(out, gutter+warnStyle.Render(clip(text, width-len([]rune(gutter)))))
+		out = append(out, gutter+style.Aside.Render(clip(text, width-len([]rune(gutter)))))
 	}
 	return out
 }

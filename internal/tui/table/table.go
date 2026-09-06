@@ -132,9 +132,7 @@ type Model struct {
 }
 
 var (
-	headerStyle  = lipgloss.NewStyle().Faint(true)
 	focusedStyle = lipgloss.NewStyle().Bold(true).Underline(true)
-	emptyStyle   = lipgloss.NewStyle().Faint(true)
 
 	// stripe is the banding that makes a dense table scannable across.
 	//
@@ -527,11 +525,4 @@ func clamp(v, lo, hi int) int {
 		return hi
 	}
 	return v
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

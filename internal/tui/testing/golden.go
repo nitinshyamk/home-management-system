@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"home-management-system/internal/tui/text"
 )
 
 // Golden frames.
@@ -31,7 +33,7 @@ var updateGolden = flag.Bool("update-golden", false,
 func (s *Simulator) AssertFrame(name string) {
 	s.t.Helper()
 	path := filepath.Join("testdata", "golden", name+".txt")
-	got := stripANSI(s.View()) + "\n"
+	got := text.StripANSI(s.View()) + "\n"
 
 	if *updateGolden {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -87,23 +89,4 @@ func mark(i int, other []string, line string) string {
 
 // PlainView is the view with colour stripped, for assertions that read the
 // layout rather than look at it.
-func (s *Simulator) PlainView() string { return stripANSI(s.View()) }
-
-// stripANSI removes escape sequences so a frame is plain text.
-func stripANSI(s string) string {
-	var b strings.Builder
-	inEscape := false
-	for _, r := range s {
-		switch {
-		case r == 0x1b:
-			inEscape = true
-		case inEscape:
-			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
-				inEscape = false
-			}
-		default:
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
-}
+func (s *Simulator) PlainView() string { return text.StripANSI(s.View()) }

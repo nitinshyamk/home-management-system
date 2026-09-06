@@ -10,6 +10,8 @@ import (
 	"home-management-system/internal/tui/omnibox"
 	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/tree"
+
+	"home-management-system/internal/tui/style"
 )
 
 // selection is what the cursor is on, said the same way whatever is showing.
@@ -236,12 +238,12 @@ func newTextSurface(rows []string, width, height int) surface {
 // content is the rows with the cursor drawn on one of them.
 func (s textSurface) content() string {
 	if len(s.rows) == 0 {
-		return dimStyle.Render("  (nothing here)")
+		return style.Dim.Render("  (nothing here)")
 	}
 	var b strings.Builder
 	for i, row := range s.rows {
 		if i == s.cursor {
-			b.WriteString(cursorStyle.Render("> " + row))
+			b.WriteString(style.Highlight.Render("> " + row))
 		} else {
 			b.WriteString("  " + row)
 		}
