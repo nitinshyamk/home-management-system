@@ -57,6 +57,22 @@ func (q *Queries) CategoryExists(ctx context.Context, id int64) (int64, error) {
 	return column_1, err
 }
 
+const categoryIsArchived = `-- name: CategoryIsArchived :one
+SELECT archived_at IS NOT NULL FROM categories WHERE id = ?
+`
+
+// Archiving something already archived is refused rather than repeated: the
+// second write would overwrite the timestamp recording when it actually
+// happened, and report success for having done nothing. Locations have refused
+// this since they were built; categories did not, which is the drift that comes
+// of one rule written twice.
+func (q *Queries) CategoryIsArchived(ctx context.Context, id int64) (bool, error) {
+	row := q.db.QueryRowContext(ctx, categoryIsArchived, id)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countLiveCategoryChildren = `-- name: CountLiveCategoryChildren :one
 SELECT count(*) FROM categories WHERE parent_id = ? AND archived_at IS NULL
 `
