@@ -148,23 +148,6 @@ func (f *fakeController) Describe(_ context.Context, cmd command.Command) string
 	return command.Summary(cmd, nil)
 }
 
-func (f *fakeController) CreateCategory(context.Context, string, *domain.CategoryID) (domain.CategoryID, error) {
-	f.calls = append(f.calls, "CreateCategory")
-	return 0, nil
-}
-func (f *fakeController) RenameCategory(context.Context, domain.CategoryID, string) error {
-	f.calls = append(f.calls, "RenameCategory")
-	return nil
-}
-func (f *fakeController) ReparentCategory(context.Context, domain.CategoryID, *domain.CategoryID) error {
-	f.calls = append(f.calls, "ReparentCategory")
-	return nil
-}
-func (f *fakeController) ArchiveCategory(context.Context, domain.CategoryID, domain.Resolution, *domain.CategoryID) error {
-	f.calls = append(f.calls, "ArchiveCategory")
-	return nil
-}
-
 // drive runs a model through a size message, an initial load, and the given
 // keys, returning the rendered view.
 func drive(t *testing.T, ctrl app.Controller, keys ...string) (Model, string) {

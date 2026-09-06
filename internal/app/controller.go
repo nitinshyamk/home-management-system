@@ -27,9 +27,13 @@ import (
 	"home-management-system/internal/resolve"
 )
 
-// Controller is what the UI depends on. v01 is read-only apart from Category
-// operations, which exist so the application makes sense; the TUI does not call
-// them.
+// Controller is what the UI depends on.
+//
+// Reads return flat, display-ready rows. Writes go one way only: bind a line or
+// a command, PLAN it, show what it would do, and apply the plan the person
+// agreed to. There is deliberately no method here that commits something
+// directly -- there were four, for Categories, and nothing ever called them
+// because everything the interface writes has to be showable first.
 type Controller interface {
 	// The trees, optionally with what they CONTAIN spliced in beneath each
 	// node -- a Category's Items, a Location's Holdings.
@@ -55,11 +59,6 @@ type Controller interface {
 	ApplyPlan(ctx context.Context, plan Plan) error
 	Describe(ctx context.Context, cmd command.Command) string
 	Nudges(ctx context.Context) ([]NudgeRow, error)
-
-	CreateCategory(ctx context.Context, name string, parent *domain.CategoryID) (domain.CategoryID, error)
-	RenameCategory(ctx context.Context, id domain.CategoryID, name string) error
-	ReparentCategory(ctx context.Context, id domain.CategoryID, parent *domain.CategoryID) error
-	ArchiveCategory(ctx context.Context, id domain.CategoryID, resolution domain.Resolution, moveTo *domain.CategoryID) error
 }
 
 // ---------------------------------------------------------------------------
@@ -180,11 +179,6 @@ type controller struct {
 	executor *ops.Executor
 }
 
-// New wires the paths together.
-func New(read *query.Reader, proc *ledger.Processor, o *origin.Originator, a *annotate.Annotator) Controller {
-	return &controller{read: read, proc: proc, origin: o, annotate: a}
-}
-
 // Open assembles a Controller over a connection.
 //
 // One place knows how the paths fit together, which is what lets everything
@@ -192,10 +186,26 @@ func New(read *query.Reader, proc *ledger.Processor, o *origin.Originator, a *an
 // without importing a write path itself. That is not tidiness: archlint asserts
 // that internal/tui imports none of origin, ledger, or annotate, and before
 // this existed the only way to get a Controller was to import all three.
-func Open(conn *sql.DB) Controller {
-	c := New(query.New(conn), ledger.New(conn), origin.New(conn), annotate.New(conn)).(*controller)
-	c.planner, c.executor = ops.NewPlanner(conn), ops.New(conn)
-	return c
+func Open(conn *sql.DB) Controller { return OpenWithClock(conn, time.Now) }
+
+// OpenWithClock is Open with the time source replaced, so a test can assert on
+// exact timestamps.
+//
+// It is the only other way to build one. There used to be a New that took the
+// four paths and left the planner and executor nil, so the Controller it
+// returned read correctly and panicked on the first write -- and Open finished
+// the job by asserting its way back through the interface it had just returned.
+// A constructor that can hand back a half-built thing will eventually hand one
+// back to somebody who does not know that.
+func OpenWithClock(conn *sql.DB, now func() time.Time) Controller {
+	return &controller{
+		read:     query.New(conn),
+		proc:     ledger.New(conn).WithClock(now),
+		origin:   origin.New(conn),
+		annotate: annotate.New(conn).WithClock(now),
+		planner:  ops.NewPlanner(conn).WithClock(now),
+		executor: ops.New(conn),
+	}
 }
 
 // CategoryTree is the classification, optionally with each category's own Items
@@ -462,20 +472,4 @@ func (c *controller) Nudges(ctx context.Context) ([]NudgeRow, error) {
 		out = append(out, NudgeRow{Item: n.ItemName, Category: n.CategoryName, Siblings: n.ChildCount})
 	}
 	return out, nil
-}
-
-func (c *controller) CreateCategory(ctx context.Context, name string, parent *domain.CategoryID) (domain.CategoryID, error) {
-	return c.origin.CreateCategory(ctx, origin.CreateCategoryInput{Name: name, Parent: parent})
-}
-
-func (c *controller) RenameCategory(ctx context.Context, id domain.CategoryID, name string) error {
-	return c.annotate.RenameCategory(ctx, id, name)
-}
-
-func (c *controller) ReparentCategory(ctx context.Context, id domain.CategoryID, parent *domain.CategoryID) error {
-	return c.annotate.ReparentCategory(ctx, id, parent)
-}
-
-func (c *controller) ArchiveCategory(ctx context.Context, id domain.CategoryID, resolution domain.Resolution, moveTo *domain.CategoryID) error {
-	return c.annotate.ArchiveCategory(ctx, id, resolution, moveTo)
 }

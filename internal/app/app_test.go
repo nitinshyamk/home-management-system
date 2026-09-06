@@ -6,12 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"home-management-system/internal/annotate"
 	"home-management-system/internal/app"
+	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ledger"
 	"home-management-system/internal/origin"
-	"home-management-system/internal/query"
 	"home-management-system/internal/testsupport"
 )
 
@@ -37,11 +36,10 @@ func newHarness(t *testing.T) *harness {
 	conn := testsupport.NewDB(t)
 	l := ledger.New(conn).WithClock(func() time.Time { return clock })
 	o := origin.New(conn)
-	a := annotate.New(conn).WithClock(func() time.Time { return clock })
 
 	h := &harness{
 		ctx:  context.Background(),
-		ctrl: app.New(query.New(conn), l, o, a),
+		ctrl: app.OpenWithClock(conn, func() time.Time { return clock }),
 		l:    l,
 		o:    o,
 	}
@@ -323,24 +321,33 @@ func TestNudgeSurfacesOnlyWithASibling(t *testing.T) {
 	}
 }
 
-// TestCategoryWritesGoThroughTheController checks the write surface v01 exposes,
-// even though the TUI does not call it.
-func TestCategoryWritesGoThroughTheController(t *testing.T) {
+// TestArchivingACategoryTakesItOutOfTheTree drives the write the way the
+// interface does -- plan it, then apply the plan -- because that is now the
+// only way in.
+//
+// It replaces a test that called four commit-immediately Controller methods
+// which nothing else called. The invariant it was really checking is this one,
+// and it is worth more asserted against the path that exists.
+func TestArchivingACategoryTakesItOutOfTheTree(t *testing.T) {
 	h := newHarness(t)
 
-	id, err := h.ctrl.CreateCategory(h.ctx, "Baking", nil)
-	if err != nil {
-		t.Fatalf("create: %v", err)
+	apply := func(cmd command.Command) {
+		t.Helper()
+		plan, err := h.ctrl.PlanCommand(h.ctx, cmd)
+		if err != nil {
+			t.Fatalf("plan %T: %v", cmd, err)
+		}
+		if err := h.ctrl.ApplyPlan(h.ctx, plan); err != nil {
+			t.Fatalf("apply %T: %v", cmd, err)
+		}
 	}
-	if err := h.ctrl.RenameCategory(h.ctx, id, "Baking Supplies"); err != nil {
-		t.Fatalf("rename: %v", err)
-	}
-	if err := h.ctrl.ReparentCategory(h.ctx, id, &h.spices); err != nil {
-		t.Fatalf("reparent: %v", err)
-	}
-	if err := h.ctrl.ArchiveCategory(h.ctx, id, domain.ResolutionLift, nil); err != nil {
-		t.Fatalf("archive: %v", err)
-	}
+
+	apply(command.NewCategory{Name: "Baking"})
+	id := h.categoryNamed(t, "Baking")
+
+	apply(command.Rename{Target: command.Target{Kind: domain.EntityCategory, ID: int64(id)}, Name: "Baking Supplies"})
+	apply(command.ReparentCategory{Category: id, Parent: &h.spices})
+	apply(command.ArchiveCategory{Category: id, Resolution: domain.ResolutionLift})
 
 	rows, err := h.ctrl.CategoryTree(h.ctx, false)
 	if err != nil {
@@ -351,4 +358,21 @@ func TestCategoryWritesGoThroughTheController(t *testing.T) {
 			t.Error("archived category still appears in the tree")
 		}
 	}
+}
+
+// categoryNamed finds a category the interface just created, by the name it was
+// given. The command layer names things; only the tree knows their identifiers.
+func (h *harness) categoryNamed(t *testing.T, name string) domain.CategoryID {
+	t.Helper()
+	rows, err := h.ctrl.CategoryTree(h.ctx, false)
+	if err != nil {
+		t.Fatalf("tree: %v", err)
+	}
+	for _, r := range rows {
+		if r.Name == name {
+			return domain.CategoryID(r.ID)
+		}
+	}
+	t.Fatalf("no category called %q", name)
+	return 0
 }
