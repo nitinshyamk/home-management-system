@@ -74,6 +74,22 @@ func Quote(value string) string {
 	return `"` + strings.ReplaceAll(value, `"`, "") + `"`
 }
 
+// QuoteFor quotes a value for a line of the named command, so that whoever
+// composes one does not have to know the rule.
+//
+// An unknown op quotes on whitespace alone, which is the most a caller can be
+// sure of without a spec to check against.
+func QuoteFor(op Op, value string) string {
+	spec, ok := SpecOf(op)
+	if !ok {
+		if strings.ContainsAny(value, " \t\"") || value == "" {
+			return Quote(value)
+		}
+		return value
+	}
+	return quoteFor(spec, value)
+}
+
 // quoteFor quotes when a bare value would not come back the same way: when it
 // holds whitespace or a quote, and when it happens to spell one of this
 // command's own field keys, which parse would otherwise read as starting a pair.

@@ -21,6 +21,7 @@ import (
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/line"
 
+	"home-management-system/internal/command"
 	"home-management-system/internal/tui/style"
 )
 
@@ -297,7 +298,7 @@ func (m Model) visible() []int {
 // or from a CSV row. It is the same contract with a nicer way to fill it in.
 func (m Model) Line() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "new %s %s", m.kind, quote(m.Value("name")))
+	fmt.Fprintf(&b, "new %s %s", m.kind, m.quote(m.Value("name")))
 	if m.kind == KindItem {
 		fmt.Fprintf(&b, " counting %s", m.Counting())
 	}
@@ -307,21 +308,34 @@ func (m Model) Line() string {
 			continue
 		}
 		if value := strings.TrimSpace(f.value); value != "" {
-			fmt.Fprintf(&b, " %s %s", f.key, quote(value))
+			fmt.Fprintf(&b, " %s %s", f.key, m.quote(value))
 		}
 	}
 	return b.String()
 }
 
-func quote(s string) string {
-	if s == "" {
-		return `""`
+// op is the command this panel stands for, which is what says how its values
+// have to be quoted.
+func (m Model) op() command.Op {
+	switch m.kind {
+	case KindCategory:
+		return command.OpNewCategory
+	case KindLocation:
+		return command.OpNewLocation
+	default:
+		return command.OpNewItem
 	}
-	if strings.ContainsAny(s, " \t\"") {
-		return `"` + strings.ReplaceAll(s, `"`, "") + `"`
-	}
-	return s
 }
+
+// quote defers to the parser's own rule rather than restating it.
+//
+// The restatement was wrong: it quoted on whitespace and on emptiness and
+// stopped there, missing the case where a value spells one of the command's own
+// field keys. "Notes", "Package" and "Unit" are ordinary things to call a
+// category, and each of them went out unquoted for Parse to read as the start
+// of a pair -- so naming a category Notes silently produced a different
+// command from the one the panel was showing.
+func (m Model) quote(value string) string { return command.QuoteFor(m.op(), value) }
 
 // Update handles a keystroke, reporting whether it was consumed.
 //

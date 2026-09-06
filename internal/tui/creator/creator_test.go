@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"home-management-system/internal/command"
 	"home-management-system/internal/tui/creator"
 	"home-management-system/internal/tui/keys"
 )
@@ -335,3 +336,37 @@ func TestSuggestionsDoNotOutliveTheirField(t *testing.T) {
 }
 
 func typed2(s string) []tea.KeyMsg { return typed(s) }
+
+// TestANameThatSpellsAFieldKeySurvivesTheParser is the case the panel's own
+// quoting rule missed.
+//
+// A value that spells one of its command's field keys has to be quoted, or
+// Parse reads it as the start of a pair rather than as the name -- so the panel
+// showed one command and produced another. These are not contrived: "notes",
+// "package" and "unit" are field keys of `new item` and ordinary things to call
+// a thing you keep, and "name" and "under" are field keys of `new category`.
+func TestANameThatSpellsAFieldKeySurvivesTheParser(t *testing.T) {
+	cases := []struct {
+		kind  creator.Kind
+		names []string
+	}{
+		{creator.KindItem, []string{"notes", "package", "unit", "category", "Notes"}},
+		{creator.KindCategory, []string{"under", "name", "describe"}},
+		{creator.KindLocation, []string{"under", "name", "describe"}},
+	}
+	for _, c := range cases {
+		for _, name := range c.names {
+			m := press(creator.New().Open(c.kind, ""), typed(name)...)
+			line := m.Line()
+
+			raw, err := command.Parse(line)
+			if err != nil {
+				t.Fatalf("%s %q: the panel produced a line that does not parse: %v\n%s",
+					c.kind, name, err, line)
+			}
+			if got := raw.Fields["name"]; got != name {
+				t.Errorf("%s %q came back as %q from: %s", c.kind, name, got, line)
+			}
+		}
+	}
+}
