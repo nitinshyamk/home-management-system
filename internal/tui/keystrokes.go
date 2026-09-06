@@ -50,11 +50,11 @@ func (m Model) currentHolding() (app.HoldingRow, bool) {
 	if m.view != viewHoldings {
 		return app.HoldingRow{}, false
 	}
-	row, ok := m.table.Current()
+	sel, ok := m.current.Current()
 	if !ok {
 		return app.HoldingRow{}, false
 	}
-	return m.holding(row.Key)
+	return m.holding(sel.Key)
 }
 
 // selectedHoldings is what an action should act on: the explicit selection, or
@@ -64,8 +64,8 @@ func (m Model) selectedHoldings() []app.HoldingRow {
 		return nil
 	}
 	var out []app.HoldingRow
-	for _, key := range m.table.Selected() {
-		if row, ok := m.holding(key); ok {
+	for _, sel := range m.current.Selected() {
+		if row, ok := m.holding(sel.Key); ok {
 			out = append(out, row)
 		}
 	}
@@ -158,22 +158,22 @@ func (m Model) promptFor(purpose, label, initial string) Model {
 // different events in the ledger, and calling both "move" here would leave the
 // interface with one word for two answers.
 func (m Model) promptForNode() (tea.Model, tea.Cmd, bool) {
-	node, ok := m.tree.Current()
-	if !ok || !node.Contained() {
+	sel, ok := m.current.Current()
+	if !ok || !sel.Contained {
 		return m.refuse("move one of the things inside -- a place is moved with %s",
 			keys.Show(keys.Browse, keys.CommandLine)+" reparent location"), nil, true
 	}
 	purpose, label := "move", "where to"
-	if node.Kind == "Item" {
+	if sel.Kind == "Item" {
 		purpose, label = "reclassify", "file it under"
 	}
 	m.problem = nil
-	m.editor = m.editor.OpenFor(purpose, node.Kind, node.ID, label, "").SetWidth(m.width)
+	m.editor = m.editor.OpenFor(purpose, sel.Kind, sel.ID, label, "").SetWidth(m.width)
 	// Picked up as well as prompted for. The two are the same act -- "this
 	// goes somewhere else" -- and which way you finish it is a preference
 	// about the destination: name it, or go and point at it. esc closes the
 	// prompt and leaves the thing in hand, which is what the banner says.
-	m = m.carry(carried{Kind: node.Kind, ID: node.ID, Name: node.Name})
+	m = m.carry(carried{Kind: sel.Kind, ID: sel.ID, Name: sel.Name})
 	// The vocabulary is loaded alongside the prompt, so the first keystroke
 	// into it already has something to complete against.
 	return m, m.loadCandidates(), true
@@ -405,12 +405,12 @@ type carried struct {
 // keys, which are emacs's, and it was the wrong word for what happens.
 func (m Model) copy() Model {
 	if forest(m.view) {
-		node, ok := m.tree.Current()
-		if !ok || !node.Contained() {
+		sel, ok := m.current.Current()
+		if !ok || !sel.Contained {
 			return m.refuse("copy one of the things inside -- a place is moved with %s",
 				keys.Show(keys.Browse, keys.CommandLine)+" reparent location")
 		}
-		return m.carry(carried{Kind: node.Kind, ID: node.ID, Name: node.Name})
+		return m.carry(carried{Kind: sel.Kind, ID: sel.ID, Name: sel.Name})
 	}
 	row, ok := m.currentHolding()
 	if !ok {
@@ -488,7 +488,7 @@ func (m Model) put() (tea.Model, tea.Cmd, bool) {
 func (m Model) destination() (kind string, id int64, ok bool) {
 	switch {
 	case forest(m.view):
-		node, found := m.tree.Current()
+		sel, found := m.current.Current()
 		if !found {
 			return "", 0, false
 		}
@@ -497,10 +497,10 @@ func (m Model) destination() (kind string, id int64, ok bool) {
 		// put would land in whatever location happens to share that number --
 		// a silent write to the wrong shelf, which is the worst kind of wrong
 		// this interface can be.
-		if node.Contained() {
+		if sel.Contained {
 			return "", 0, false
 		}
-		return node.Kind, node.ID, true
+		return sel.Kind, sel.ID, true
 	case m.view == viewHoldings:
 		row, found := m.currentHolding()
 		if !found {
