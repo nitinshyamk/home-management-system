@@ -301,10 +301,10 @@ func fit(s string, width int, elide Elide) string {
 // say "this has a parent" without saying which. An elided path earns its space
 // only while it still NAMES something.
 func pathForms(full string) []string {
-	segments := strings.Split(full, pathSeparator)
+	segments := strings.Split(full, PathSeparator)
 	forms := []string{full}
 	for at := 1; at <= len(segments)-2; at++ {
-		forms = append(forms, "…"+pathSeparator+strings.Join(segments[at:], pathSeparator))
+		forms = append(forms, "…"+PathSeparator+strings.Join(segments[at:], PathSeparator))
 	}
 	return forms
 }
@@ -327,10 +327,15 @@ func fitPath(full, leaf string, width int, elide Elide) string {
 	return fit(leaf, width, elide)
 }
 
-// pathSeparator joins the segments of a path. It is resolve.PathSeparator, and
-// the table cannot import resolve to say so -- a widget that knew about the
-// resolver would be a widget that knows about the domain.
-const pathSeparator = " > "
+// PathSeparator joins the segments of a Path cell, and must equal
+// resolve.PathSeparator.
+//
+// The table cannot import resolve to say so: resolve reaches the database
+// through query, and a widget that pulled in the storage layer to learn how to
+// draw a breadcrumb would be the wrong shape entirely. So it is declared twice
+// on purpose -- and exported, so that TestThePathSeparatorsAgree in the tui
+// package, which imports both, fails if the two ever drift.
+const PathSeparator = " > "
 
 func pad(s string, width int, align Align) string {
 	n := width - len([]rune(text.StripANSI(s)))

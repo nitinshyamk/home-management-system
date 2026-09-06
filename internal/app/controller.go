@@ -14,7 +14,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"home-management-system/internal/annotate"
@@ -373,10 +372,11 @@ func (n locationNames) Label(kind domain.EntityKind, id int64) string {
 // the forest to get the second of them would be a second answer to keep in
 // step with the first.
 //
-// The path is assembled from Depth with a stack, which is the same walk
-// resolve.Build does to give a Candidate its Path -- and it has to stay the
-// same, because a path the table shows and a path the resolver accepts that
-// disagreed would be two names for one shelf.
+// The path comes from resolve.PathStack -- the same assembly resolve.Build uses
+// to give a Candidate its Path. It used to be a second copy of that walk, kept
+// in step by a comment asking for it, and it has to agree: a path the table
+// shows and a path the resolver accepts that disagreed would be two names for
+// one shelf.
 func (c *controller) locationNames(ctx context.Context) (locationNames, map[int64]string, error) {
 	nodes, err := c.read.LocationForest(ctx)
 	if err != nil {
@@ -384,11 +384,10 @@ func (c *controller) locationNames(ctx context.Context) (locationNames, map[int6
 	}
 	out := make(locationNames, len(nodes))
 	paths := make(map[int64]string, len(nodes))
-	var stack []string
+	var stack resolve.PathStack
 	for _, n := range nodes {
-		stack = append(stack[:min(n.Depth, len(stack))], n.Location.Name)
 		out[int64(n.Location.ID)] = n.Location.Name
-		paths[int64(n.Location.ID)] = strings.Join(stack, resolve.PathSeparator)
+		paths[int64(n.Location.ID)] = stack.Push(n.Depth, n.Location.Name)
 	}
 	return out, paths, nil
 }

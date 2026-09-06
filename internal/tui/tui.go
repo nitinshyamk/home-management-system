@@ -103,6 +103,10 @@ type Model struct {
 	// density decisions are not made twice.
 	jump       table.Model
 	candidates []resolve.Candidate
+	// index is the candidates, ready to resolve against. Built once when they
+	// arrive rather than per keystroke: named() rebuilt it on every character
+	// typed into a prompt, which is a whole-house index per keypress.
+	index *resolve.Index
 	// units is the unit vocabulary, cached beside the candidates because both
 	// are read together and neither changes while a panel is open.
 	units []string
@@ -393,6 +397,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case candidatesMsg:
 		m.candidates, m.units = msg.candidates, msg.units
+		m.index = resolve.NewIndex(msg.candidates)
 		m.creator = m.creator.WithUnits(msg.units)
 		m = m.refreshJump()
 		if m.creator.IsOpen() {

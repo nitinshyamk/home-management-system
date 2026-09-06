@@ -102,6 +102,24 @@ func (ix *Index) Label(kind domain.EntityKind, id int64) string {
 	return ""
 }
 
+// PathStack assembles breadcrumb paths from a pre-order walk of a forest.
+//
+// Pre-order plus depth is what the query layer returns, and the path of a node
+// is the names still on the stack when you reach it. The one subtlety is the
+// truncation -- a node at depth d discards everything from d onwards, and the
+// min guards the case where a forest skips a level -- and it was written three
+// times: twice inside Build, once in the controller's breadcrumb column, whose
+// comment noted the two "ha[ve] to stay the same, because a path the table
+// shows and a path the resolver accepts that disagreed would be two names for
+// one shelf." Staying the same is easier when there is only one of them.
+type PathStack []string
+
+// Push adds a node at its depth and returns its full path.
+func (p *PathStack) Push(depth int, name string) string {
+	*p = append((*p)[:min(depth, len(*p))], name)
+	return strings.Join(*p, PathSeparator)
+}
+
 // Build reads the whole vocabulary through the query path.
 //
 // Everything, in one pass, because the alternative is a query per keystroke.
@@ -115,10 +133,9 @@ func Build(ctx context.Context, r *query.Reader) (*Index, error) {
 		return nil, fmt.Errorf("resolve: read categories: %w", err)
 	}
 	categoryPath := map[domain.CategoryID]string{}
-	var stack []string
+	var stack PathStack
 	for _, n := range categories {
-		stack = append(stack[:min(n.Depth, len(stack))], n.Category.Name)
-		path := strings.Join(stack, PathSeparator)
+		path := stack.Push(n.Depth, n.Category.Name)
 		categoryPath[n.Category.ID] = path
 		out = append(out, Candidate{
 			Kind: KindCategory, ID: int64(n.Category.ID), Path: path,
@@ -132,9 +149,9 @@ func Build(ctx context.Context, r *query.Reader) (*Index, error) {
 	}
 	stack = stack[:0]
 	for _, n := range locations {
-		stack = append(stack[:min(n.Depth, len(stack))], n.Location.Name)
 		out = append(out, Candidate{
-			Kind: KindLocation, ID: int64(n.Location.ID), Path: strings.Join(stack, PathSeparator),
+			Kind: KindLocation, ID: int64(n.Location.ID),
+			Path: stack.Push(n.Depth, n.Location.Name),
 			Leaf: n.Location.Name, Archived: n.Location.IsArchived(),
 		})
 	}

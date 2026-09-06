@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"errors"
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
@@ -306,13 +307,13 @@ func (m Model) amountFor(row app.HoldingRow, text string) (domain.Quantity, erro
 
 // locationNamed resolves a destination the person typed.
 func (m Model) locationNamed(name string) (domain.LocationID, error) {
-	id, err := m.named(name, resolve.KindLocation, "nowhere")
+	id, err := m.named(name, resolve.KindLocation)
 	return domain.LocationID(id), err
 }
 
 // categoryNamed resolves a classification the person typed.
 func (m Model) categoryNamed(name string) (domain.CategoryID, error) {
-	id, err := m.named(name, resolve.KindCategory, "no classification")
+	id, err := m.named(name, resolve.KindCategory)
 	return domain.CategoryID(id), err
 }
 
@@ -327,21 +328,18 @@ func (m Model) categoryNamed(name string) (domain.CategoryID, error) {
 // decides what you did. A near miss here is reported as a near miss -- "did you
 // mean" -- rather than silently taken, which is the resolver deciding, and the
 // one thing it must never do.
-func (m Model) named(name string, kind resolve.Kind, nothing string) (int64, error) {
-	index := resolve.NewIndex(m.candidates)
-	switch outcome := index.Resolve(name, kind).(type) {
-	case resolve.Exact:
-		return outcome.Candidate.ID, nil
-	case resolve.Suggested:
-		return 0, fmt.Errorf("did you mean %s? nothing called %q", outcome.Candidate.Path, name)
-	case resolve.Ambiguous:
-		var names []string
-		for _, c := range outcome.Candidates {
-			names = append(names, c.Path)
-		}
-		return 0, fmt.Errorf("%q could be %s", name, strings.Join(names, ", "))
+func (m Model) named(name string, kind resolve.Kind) (int64, error) {
+	if m.index == nil {
+		return 0, errors.New("the vocabulary has not loaded yet")
 	}
-	return 0, fmt.Errorf("%s called %q", nothing, name)
+	outcome := m.index.Resolve(name, kind)
+	if exact, ok := outcome.(resolve.Exact); ok {
+		return exact.Candidate.ID, nil
+	}
+	// Worded by resolve, so a near miss on a keystroke reads exactly as the
+	// same near miss typed on the command line. It used to read differently,
+	// and worse: the basis that says WHY a suggestion was offered was dropped.
+	return 0, errors.New(resolve.Describe(outcome))
 }
 
 // toggleCustody is one key rather than two.

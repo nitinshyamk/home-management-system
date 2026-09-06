@@ -13,6 +13,7 @@ import (
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/keys"
+	"home-management-system/internal/tui/table"
 )
 
 // fakeController stands in for the real one. The Controller being a plain Go
@@ -299,5 +300,21 @@ func TestTheUIMakesNoWrites(t *testing.T) {
 		case "CreateCategory", "RenameCategory", "ReparentCategory", "ArchiveCategory":
 			t.Errorf("the read-only UI called %s", call)
 		}
+	}
+}
+
+// TestThePathSeparatorsAgree pins the one constant this interface declares
+// twice.
+//
+// The table draws breadcrumbs and the resolver accepts them, and they have to
+// be written the same way or a path the screen shows is a path nothing matches.
+// They cannot share a declaration: resolve reaches the database through query,
+// and a table widget that imported it would drag the storage layer into a
+// drawing routine. This package imports both, so it is where they can be
+// compared.
+func TestThePathSeparatorsAgree(t *testing.T) {
+	if table.PathSeparator != resolve.PathSeparator {
+		t.Errorf("table draws paths with %q and the resolver reads them with %q",
+			table.PathSeparator, resolve.PathSeparator)
 	}
 }
