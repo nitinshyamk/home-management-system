@@ -45,6 +45,13 @@ type Model struct {
 	// at \"Shelf 1\"" means backspacing over everything after it, which is not
 	// editing so much as retyping.
 	cursor int
+	// cancel is what esc will do, when it is not simply "discard".
+	//
+	// A prompt opened by `m` is opened over a thing that is now IN HAND, so esc
+	// there closes the prompt and leaves the thing held rather than throwing
+	// anything away. A footer saying "discard" would be describing a keystroke
+	// that does something else, which is the one thing a footer must never do.
+	cancel string
 	// keep is the part of the value a taken suggestion leaves alone.
 	//
 	// Empty for a field holding one value, where a completion replaces the
@@ -82,13 +89,17 @@ func (m Model) Open(kind string, subject int64, label, current string) Model {
 func (m Model) OpenFor(purpose, kind string, subject int64, label, current string) Model {
 	m.open, m.purpose, m.kind, m.subject = true, purpose, kind, subject
 	m.label, m.value, m.initial = label, current, current
-	m.list, m.keep = complete.Model{}.Arrive(), ""
+	m.list, m.keep, m.cancel = complete.Model{}.Arrive(), "", ""
 	m.cursor = len([]rune(current))
 	return m
 }
 
 // Purpose is what enter will do with the answer.
 func (m Model) Purpose() string { return m.purpose }
+
+// WithCancel names what esc will do, for a caller that knows something the
+// field does not.
+func (m Model) WithCancel(what string) Model { m.cancel = what; return m }
 
 // SetSuggestions offers completions for the whole value. Offered, never applied.
 func (m Model) SetSuggestions(s []string) Model {
@@ -188,8 +199,12 @@ func (m Model) Lines() []string {
 		// was showing.
 		return append(out, hintStyle.Render("  "+complete.Hint()))
 	}
+	cancel := m.cancel
+	if cancel == "" {
+		cancel = "discard"
+	}
 	return append(out, hintStyle.Render("  "+keys.Show(keys.Line, keys.Confirm)+" "+m.verb()+
-		"   "+keys.Show(keys.Line, keys.Cancel)+" discard"))
+		"   "+keys.Show(keys.Line, keys.Cancel)+" "+cancel))
 }
 
 // renderValue draws the value with the block cursor sitting IN it rather than

@@ -113,7 +113,7 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case keys.MoveTo:
 		// The vocabulary is loaded alongside the prompt, so the first
 		// keystroke into it already has something to complete against.
-		return m.promptFor("move", "where to", ""), m.loadCandidates(), true
+		return m.promptFor("move", "where to", "").carrySubject(), m.loadCandidates(), true
 	case keys.ToggleCustody:
 		return m.toggleCustody()
 	case keys.Kill:
@@ -161,7 +161,7 @@ func (m Model) promptForNode() (tea.Model, tea.Cmd, bool) {
 	node, ok := m.tree.Current()
 	if !ok || !node.Contained() {
 		return m.refuse("move one of the things inside -- a place is moved with %s",
-			keys.Show(keys.Browse, keys.CommandLine)+" rehome"), nil, true
+			keys.Show(keys.Browse, keys.CommandLine)+" reparent location"), nil, true
 	}
 	purpose, label := "move", "where to"
 	if node.Kind == "Item" {
@@ -169,6 +169,11 @@ func (m Model) promptForNode() (tea.Model, tea.Cmd, bool) {
 	}
 	m.problem = nil
 	m.editor = m.editor.OpenFor(purpose, node.Kind, node.ID, label, "").SetWidth(m.width)
+	// Picked up as well as prompted for. The two are the same act -- "this
+	// goes somewhere else" -- and which way you finish it is a preference
+	// about the destination: name it, or go and point at it. esc closes the
+	// prompt and leaves the thing in hand, which is what the banner says.
+	m = m.carry(carried{Kind: node.Kind, ID: node.ID, Name: node.Name})
 	// The vocabulary is loaded alongside the prompt, so the first keystroke
 	// into it already has something to complete against.
 	return m, m.loadCandidates(), true
@@ -200,6 +205,10 @@ func (m Model) actOnPrompt() (tea.Model, tea.Cmd, bool) {
 	subject, kind := m.editor.Subject(), m.editor.Kind()
 	inTree := forest(m.view)
 	m.editor = m.editor.Close()
+	// Answering the prompt finishes the move, so whatever `m` picked up is put
+	// down with it. Without this, naming the destination would relocate the
+	// thing and leave the banner insisting it was still in hand.
+	m.copied = nil
 
 	if answer == "" {
 		m.status = "nothing entered"
@@ -390,12 +399,16 @@ type carried struct {
 // something when you would rather look for the destination than name it, which
 // in a tree is nearly always: the destination is on screen, and naming it would
 // be the long way round.
+//
+// The interface says CARRYING rather than "copied", because nothing is copied:
+// there is one thing and it ends up somewhere else. "Copied" belongs to the
+// keys, which are emacs's, and it was the wrong word for what happens.
 func (m Model) copy() Model {
 	if forest(m.view) {
 		node, ok := m.tree.Current()
 		if !ok || !node.Contained() {
 			return m.refuse("copy one of the things inside -- a place is moved with %s",
-				keys.Show(keys.Browse, keys.CommandLine)+" rehome")
+				keys.Show(keys.Browse, keys.CommandLine)+" reparent location")
 		}
 		return m.carry(carried{Kind: node.Kind, ID: node.ID, Name: node.Name})
 	}
@@ -406,11 +419,31 @@ func (m Model) copy() Model {
 	return m.carry(carried{Kind: "Holding", ID: int64(row.ID), Name: row.Item})
 }
 
+// carry picks a thing up. What is being held is said by carryLine, which is a
+// BANNER rather than a status: a status is wiped by the next view switch, and a
+// view switch is the middle step of this gesture.
 func (m Model) carry(what carried) Model {
 	m.copied = &what
-	m.status = fmt.Sprintf("copied %s -- %s puts it where you are",
-		what.Name, keys.Show(keys.Browse, keys.Paste))
+	m.problem, m.status = nil, ""
 	return m
+}
+
+// carrySubject picks up what a prompt was just opened over, so the same gesture
+// can be finished by pointing instead of by typing.
+//
+// Only one thing, and only if the prompt actually opened. `m` on the Holdings
+// table acts on the whole selection, and a carry holds exactly one thing -- so
+// with several rows picked, `m` stays the typed prompt it has always been, and
+// what it writes is unchanged.
+func (m Model) carrySubject() Model {
+	if !m.editor.IsOpen() {
+		return m
+	}
+	rows := m.selectedHoldings()
+	if len(rows) != 1 {
+		return m
+	}
+	return m.carry(carried{Kind: "Holding", ID: int64(rows[0].ID), Name: rows[0].Item})
 }
 
 // put relocates what was copied to whatever the cursor is on now.
@@ -421,7 +454,8 @@ func (m Model) carry(what carried) Model {
 // near-miss to be coerced -- a classification is not anywhere.
 func (m Model) put() (tea.Model, tea.Cmd, bool) {
 	if m.copied == nil {
-		return m.refuse("nothing copied"), nil, true
+		return m.refuse("nothing in hand -- %s picks up the row you are on",
+			keys.Show(keys.Browse, keys.Copy)), nil, true
 	}
 	kind, id, ok := m.destination()
 	if !ok {

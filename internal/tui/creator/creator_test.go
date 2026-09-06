@@ -30,9 +30,10 @@ func typed(s string) []tea.KeyMsg {
 }
 
 var (
-	tab   = named("tab")
-	left  = named("ctrl+b")
-	right = named("ctrl+f")
+	tab    = named("tab")
+	escape = named("esc")
+	left   = named("ctrl+b")
+	right  = named("ctrl+f")
 )
 
 func named(name string) tea.KeyMsg {
@@ -307,14 +308,29 @@ func TestTabMovesWhenThereIsNothingToTake(t *testing.T) {
 	}
 }
 
-// Moving fields drops the suggestions, or they would be answers to a question
-// nobody is asking any more.
+// Moving fields starts the completions over: a list put away on one field is not
+// put away on the next.
+//
+// This used to press the down arrow with a list open and expect a field change.
+// It does not any more -- the arrows navigate a dropdown wherever one is open,
+// which is the whole reason a dropdown has a highlight -- so the move here is
+// made with the list already dismissed, which is the only state in which any key
+// still means "next field".
 func TestSuggestionsDoNotOutliveTheirField(t *testing.T) {
 	m := press(creator.New().Open(creator.KindLocation, ""), tab)
 	m = m.SetSuggestions([]string{"Garage"})
+	if got := m.Suggestions(); len(got) != 1 {
+		t.Fatalf("nothing was on offer to begin with: %v", got)
+	}
+
+	m = press(m, escape)
+	if got := m.SetSuggestions([]string{"Garage"}).Suggestions(); len(got) != 0 {
+		t.Errorf("a dismissed list came back on the same field: %v", got)
+	}
+
 	m = press(m, tea.KeyMsg{Type: tea.KeyDown})
-	if got := m.Suggestions(); len(got) != 0 {
-		t.Errorf("suggestions survived a move: %v", got)
+	if got := m.SetSuggestions([]string{"Kitchen"}).Suggestions(); len(got) != 1 {
+		t.Errorf("the next field inherited the last one's dismissal: %v", got)
 	}
 }
 

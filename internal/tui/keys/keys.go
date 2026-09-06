@@ -231,8 +231,8 @@ var contexts = map[Context][]binding{
 	// moves the highlight inside it. With nothing open the panel reads Dismiss
 	// as "back a field", which is what S-Tab has always done here.
 	Creator: alias(alias(lineBindings(),
-		MoveDown, "next field", "down"),
-		MoveUp, "previous field", "up"),
+		MoveDown, "next field"),
+		MoveUp, "previous field"),
 
 	Plan: {
 		{Confirm, []string{"enter"}, "settle"},
@@ -268,8 +268,14 @@ func lineBindings() []binding {
 		// over it. A single-line field has nothing else for them to do, and a
 		// dropdown that could not be walked would be a list with one usable
 		// entry -- which is what the first version was.
-		{MoveDown, []string{"ctrl+n"}, "next"},
-		{MoveUp, []string{"ctrl+p"}, "previous"},
+		//
+		// The arrows are here for the same reason they are on Creator: a list
+		// of options is the one place in a terminal where everybody reaches for
+		// the down arrow first, and this context had them bound on the panel's
+		// dropdown and NOT on the prompt's -- so the same list answered the
+		// same key in two places and refused it in a third.
+		{MoveDown, []string{"ctrl+n", "down"}, "next"},
+		{MoveUp, []string{"ctrl+p", "up"}, "previous"},
 		{Confirm, []string{"enter"}, "accept"},
 		cancel,
 	}
@@ -333,6 +339,26 @@ func Show(ctx Context, action Action) string {
 		if b.action == action && len(b.keys) > 0 {
 			return Display(b.keys[0])
 		}
+	}
+	return ""
+}
+
+// ShowAll is every key bound to an action on a surface, for help text that has
+// room to name the alternatives.
+//
+// Show names one key because a footer has room for one. Help does not have that
+// excuse, and an alternative nobody is told about is one nobody uses: the
+// arrows walk a dropdown, and the only reason to know that was to try it.
+func ShowAll(ctx Context, action Action) string {
+	for _, b := range contexts[ctx] {
+		if b.action != action {
+			continue
+		}
+		shown := make([]string, 0, len(b.keys))
+		for _, k := range b.keys {
+			shown = append(shown, Display(k))
+		}
+		return strings.Join(shown, " / ")
 	}
 	return ""
 }

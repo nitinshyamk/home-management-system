@@ -161,3 +161,29 @@ func TestWarningsAreCapped(t *testing.T) {
 		t.Errorf("named %d existing things, want %d", len(got), complete.NearLimit)
 	}
 }
+
+// An empty field shows the top of the hierarchy, not the first branch of it.
+//
+// Tree order alone offered the first room and its whole subtree, so arriving at
+// the prompt in a five-room house listed the Basement shelves and nothing else
+// -- an answer to "what is under Basement" for somebody who has not said
+// Basement.
+func TestAnEmptyFieldOffersTheTopOfTheTree(t *testing.T) {
+	got := complete.Options([]complete.Match{
+		{Path: "Basement", Leaf: "Basement"},
+		{Path: "Basement > Shelf 1", Leaf: "Shelf 1"},
+		{Path: "Basement > Shelf 1 > Bin", Leaf: "Bin"},
+		{Path: "Basement > Shelf 2", Leaf: "Shelf 2"},
+		{Path: "Kitchen", Leaf: "Kitchen"},
+		{Path: "Kitchen > Pantry", Leaf: "Pantry"},
+	}, "")
+	want := []string{"Basement", "Kitchen", "Basement > Shelf 1", "Basement > Shelf 2", "Kitchen > Pantry"}
+	for i, w := range want {
+		if got[i] != w {
+			t.Fatalf("an empty field offered %v,\nwant the rooms first: %v", got, want)
+		}
+	}
+	if got[len(got)-1] != "Basement > Shelf 1 > Bin" {
+		t.Errorf("the deepest place is not last: %v", got)
+	}
+}

@@ -50,9 +50,17 @@ func TestTheGeneralHelpNamesOnlyRealKeys(t *testing.T) {
 	m := Model{width: 100}
 	for _, line := range m.helpLines("") {
 		if !strings.HasPrefix(line, "    ") || strings.HasPrefix(line, "     ") {
-			continue // a heading, or wrapped prose
+			continue // a heading, or a wrapped description
 		}
-		column, _, _ := strings.Cut(strings.TrimSpace(line), "  ")
+		// A key row is a key column padded out and then two spaces before what
+		// it means, so the two spaces are what says there is a key column at
+		// all. Prose sits at the same indent and has none, and reading a whole
+		// sentence as a keystroke is how this test first reported that "What is
+		// in hand is named at the top of the screen" is not bound to anything.
+		column, _, isRow := strings.Cut(strings.TrimSpace(line), "  ")
+		if !isRow {
+			continue
+		}
 		for _, key := range strings.Split(column, " / ") {
 			if key == "" || bound[key] {
 				continue

@@ -188,11 +188,14 @@ func TestAContainedRowIsNotSomewhereToPut(t *testing.T) {
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltW)
-	s.ShowsText("copied")
+	s.ShowsText("carrying")
 
 	// Onto a holding row in the Locations tree, and put.
+	//
+	// No esc on the way: switching views clears the filter by itself, and esc
+	// now PUTS DOWN what is being carried -- which would make the refusal below
+	// "nothing in hand" and the test would be passing for the wrong reason.
 	s.Send(sim.Press("2"), sim.Press("v"))
-	s.Send(sim.Esc)
 	before := s.CountHoldings()
 	for i := 0; i < 4; i++ {
 		s.Send(sim.CtrlN)
@@ -342,7 +345,7 @@ func TestCopyAndPutMovesAHoldingInTheLocationsTree(t *testing.T) {
 	s.Send(sim.CtrlN)
 	s.Send(sim.CtrlN)
 	s.Send(sim.AltW)
-	s.ShowsText("copied")
+	s.ShowsText("carrying")
 
 	// Onto the Kitchen, which is a place, and put it there.
 	s.Send(sim.AltLess)
@@ -366,7 +369,7 @@ func TestCopyAndPutReclassifiesAnItemInTheCategoriesTree(t *testing.T) {
 	s.Send(sim.CtrlN)
 	s.ShowsText("Basmati Rice")
 	s.Send(sim.AltW)
-	s.ShowsText("copied")
+	s.ShowsText("carrying")
 
 	s.Send(sim.AltLess) // onto Grains
 	s.Send(sim.CtrlY)
@@ -442,8 +445,8 @@ func TestCopyingAContainerIsRefused(t *testing.T) {
 	s.Send(sim.Press("2"), sim.Press("v"))
 
 	s.Send(sim.AltW)
-	s.ShowsText("rehome")
-	s.HidesText("copied")
+	s.ShowsText("reparent location")
+	s.HidesText("carrying")
 }
 
 // Both read through the query path rather than the screen, which is the point
@@ -476,5 +479,162 @@ func categoryOf(t *testing.T, s *sim.Simulator, item domain.ItemID) domain.Categ
 		}
 	}
 	t.Fatalf("no item %d", item)
+	return 0
+}
+
+// ---------------------------------------------------------------------------
+// Carrying a thing to where it goes.
+//
+// The gesture already worked. What it did not do is SAY anything: carry() spoke
+// through the status line, and every view change overwrites the status line --
+// so the one keystroke the gesture needs in the middle destroyed the only
+// evidence that anything was in hand. You picked a thing up, went to the tree,
+// and the screen said nothing at all.
+
+// The banner is the fix, and this is the case that was broken.
+func TestWhatIsCarriedIsSaidInEveryView(t *testing.T) {
+	s := sim.New(t)
+	rice, _ := stockedTree(t, s)
+	_ = rice
+
+	s.Send(sim.Press("4"))
+	s.Send(sim.AltW)
+	s.ShowsText("carrying")
+
+	// The view switch is the middle of the gesture, and it used to be where the
+	// screen went quiet.
+	for _, view := range []string{"2", "1", "3", "4"} {
+		s.Send(sim.Press(view))
+		if !s.Contains("carrying") {
+			t.Fatalf("view %s forgot what was in hand:\n%s", view, s.PlainView())
+		}
+	}
+}
+
+// It says where the thing can go, which is the half worth reading: a Holding
+// goes in a place and an Item is filed under a classification, and being told
+// which by a refusal is being told too late.
+func TestTheBannerSaysWhereTheThingCanGo(t *testing.T) {
+	s := sim.New(t)
+	stockedTree(t, s)
+
+	s.Send(sim.Press("4"), sim.AltW)
+	s.ShowsText("puts it in a place")
+
+	s.Send(sim.Esc)
+	// An Item, picked up in the Categories tree.
+	s.Send(sim.Press("1"), sim.Press("v"))
+	moveTo(t, s, "Basmati Rice")
+	s.Send(sim.AltW)
+	s.ShowsText("files it under a classification")
+}
+
+// esc puts it down. It was the only mode in this interface with no way out.
+func TestEscPutsDownWhatIsBeingCarried(t *testing.T) {
+	s := sim.New(t)
+	rice, _ := stockedTree(t, s)
+
+	s.Send(sim.Press("4"), sim.AltW)
+	s.ShowsText("carrying")
+	s.Send(sim.Esc)
+	s.HidesText("carrying")
+
+	// And it really is down: a put afterwards has nothing to put.
+	s.Send(sim.Press("2"))
+	s.Send(sim.CtrlY)
+	s.ShowsText("nothing in hand")
+	s.OnHand(rice, 500*domain.Scale)
+}
+
+// `m` picks the thing up as well as asking where it goes, so one key starts a
+// move and either half can finish it -- name the destination, or go and point
+// at it.
+func TestTheMoveKeyPicksItUpAsWell(t *testing.T) {
+	s := sim.New(t)
+	rice, pantry := stockedTree(t, s)
+
+	s.Send(sim.Press("4"), sim.Press("m"))
+	s.ShowsText("carrying")
+
+	// Out of the dropdown, then out of the prompt. Each esc leaves exactly one
+	// mode, and neither of them is the carry.
+	s.Send(sim.Esc, sim.Esc)
+	s.HidesText("where to")
+	s.ShowsText("carrying")
+
+	s.Send(sim.Press("2"))
+	moveTo(t, s, "Kitchen")
+	s.Send(sim.CtrlY)
+
+	s.HidesText("carrying")
+	s.OnHand(rice, 500*domain.Scale)
+	if at := locationOf(t, s, rice); at == pantry {
+		t.Error("the rice never left the pantry")
+	}
+}
+
+// Answering the prompt finishes the same move, and puts down what it picked up.
+// Otherwise the banner would insist a thing was still in hand after it had been
+// relocated.
+func TestATypedAnswerPutsDownWhatMPickedUp(t *testing.T) {
+	s := sim.New(t)
+	rice, pantry := stockedTree(t, s)
+
+	s.Send(sim.Press("4"), sim.Press("m"))
+	s.Send(sim.Type("Kitchen"))
+	s.Send(sim.Enter)
+	s.Send(sim.Enter) // the first took the completion, the second confirms
+
+	s.HidesText("carrying")
+	s.OnHand(rice, 500*domain.Scale)
+	if at := locationOf(t, s, rice); at == pantry {
+		t.Errorf("the typed move did not happen:\n%s", s.PlainView())
+	}
+}
+
+// The seam between the two kinds of list.
+//
+// While the prompt is open every keystroke is the prompt's, so C-n walks the
+// DROPDOWN and the tree cursor does not move. Close the prompt and the same key
+// walks the TREE. One key, two meanings, and which one is in force is exactly
+// what the prompt being open decides.
+func TestCNWalksTheDropdownThenTheTree(t *testing.T) {
+	s := sim.New(t)
+	stockedTree(t, s)
+	s.Send(sim.Press("2"), sim.Press("v"))
+	moveTo(t, s, "Basmati Rice")
+
+	row := cursorLine(s)
+	s.Send(sim.Press("m"))
+	s.Send(sim.CtrlN)
+	if got := cursorLine(s); got != row {
+		t.Errorf("C-n moved the tree cursor from %q to %q while a prompt was open", row, got)
+	}
+	s.ShowsText("TAB to take it")
+
+	// C-p rather than C-n for the tree half: `m` only opens on a contained row,
+	// and the only one in this house is the last row of the tree, so there is
+	// nothing below it to move to.
+	s.Send(sim.Esc, sim.Esc)
+	s.Send(sim.CtrlP)
+	if got := cursorLine(s); got == row {
+		t.Errorf("C-p did not move the tree cursor once the prompt was closed: %q", got)
+	}
+	s.HidesText("TAB to take it")
+}
+
+// locationOf is where a holding of an item is stowed.
+func locationOf(t *testing.T, s *sim.Simulator, item domain.ItemID) domain.LocationID {
+	t.Helper()
+	rows, err := s.Reader().Holdings(s.Context())
+	if err != nil {
+		t.Fatalf("holdings: %v", err)
+	}
+	for _, h := range rows {
+		if h.Holding.Base().Item == item {
+			return h.Holding.Base().StowedLocation
+		}
+	}
+	t.Fatalf("no holding of item %d", item)
 	return 0
 }
