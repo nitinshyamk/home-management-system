@@ -522,8 +522,11 @@ func (m Model) clearLineSuggestions() Model {
 
 // promptResolves says what kind of thing a prompt is asking for a name of.
 func promptResolves(purpose string) (string, bool) {
-	if purpose == "move" {
+	switch purpose {
+	case "move":
 		return "Location", true
+	case "reclassify":
+		return "Category", true
 	}
 	return "", false
 }

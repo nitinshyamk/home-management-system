@@ -323,3 +323,158 @@ func TestFoldsDoNotCrossBetweenTrees(t *testing.T) {
 	s.Send(sim.Press("2"))
 	s.HidesText("Metal Shelving Unit") // and the Locations tree kept its own
 }
+
+// The trees show what they hold, so the thing you most want to do to something
+// you can see in the wrong place is put it in the right one.
+//
+// Two commands behind one gesture, because they are two events: a Holding MOVES
+// to a place, an Item is RECLASSIFIED under a classification. The tree decides
+// which by what the row IS, not by which tree it is in -- reading the view would
+// be reading it twice and getting the answer from the wrong one the day a tree
+// shows something else.
+func TestCopyAndPutMovesAHoldingInTheLocationsTree(t *testing.T) {
+	s := sim.New(t)
+	rice, pantry := stockedTree(t, s)
+	s.Send(sim.Press("2"), sim.Press("v"))
+
+	// Onto the rice, inside the Left Pantry, and pick it up.
+	s.Send(sim.CtrlN)
+	s.Send(sim.CtrlN)
+	s.Send(sim.CtrlN)
+	s.Send(sim.AltW)
+	s.ShowsText("copied")
+
+	// Onto the Kitchen, which is a place, and put it there.
+	s.Send(sim.AltLess)
+	s.Send(sim.CtrlY)
+
+	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
+	if held := holdingsIn(t, s, pantry); held != 0 {
+		t.Errorf("%d holdings left in the pantry, want 0", held)
+	}
+}
+
+func TestCopyAndPutReclassifiesAnItemInTheCategoriesTree(t *testing.T) {
+	s := sim.New(t)
+	rice, _ := stockedTree(t, s)
+	s.Apply(s.Planner().NewCategory(s.Context(), ops.NewCategoryRequest{Name: "Grains"}))
+	grains := s.HasCategory("Grains")
+
+	s.Send(sim.Press("1"), sim.Press("v"))
+	// Grains sorts before Pantry, and is empty, so the rice is two rows down.
+	s.Send(sim.CtrlN)
+	s.Send(sim.CtrlN)
+	s.ShowsText("Basmati Rice")
+	s.Send(sim.AltW)
+	s.ShowsText("copied")
+
+	s.Send(sim.AltLess) // onto Grains
+	s.Send(sim.CtrlY)
+
+	if got := categoryOf(t, s, rice); got != grains {
+		t.Errorf("the rice is filed under %d, want Grains (%d)", got, grains)
+	}
+}
+
+// The prompt is the other half: for when you already know where it goes.
+func TestThePromptMovesAThingInATree(t *testing.T) {
+	s := sim.New(t)
+	rice, pantry := stockedTree(t, s)
+	s.Send(sim.Press("2"), sim.Press("v"))
+	s.Send(sim.CtrlN)
+	s.Send(sim.CtrlN)
+	s.Send(sim.CtrlN)
+
+	s.Send(sim.Press("m"))
+	s.ShowsText("where to")
+	s.Send(sim.Type("Kitchen"))
+	s.Send(sim.Enter)
+
+	s.OnHand(rice, 500*domain.Scale)
+	if held := holdingsIn(t, s, pantry); held != 0 {
+		t.Errorf("%d holdings left in the pantry, want 0", held)
+	}
+}
+
+// And it says what it is doing in the thing's own words: stock moves, a kind of
+// thing is filed.
+func TestThePromptAsksTheRightQuestionForTheKind(t *testing.T) {
+	s := sim.New(t)
+	stockedTree(t, s)
+
+	s.Send(sim.Press("1"), sim.Press("v"))
+	s.Send(sim.CtrlN)
+	s.Send(sim.Press("m"))
+	s.ShowsText("file it under")
+	s.HidesText("where to")
+}
+
+// The two mismatches are refused in terms of the things. Putting stock into a
+// classification is not a near miss to be coerced: a classification is not
+// anywhere.
+func TestPuttingAThingWhereItCannotGoIsRefused(t *testing.T) {
+	s := sim.New(t)
+	rice, pantry := stockedTree(t, s)
+
+	s.Send(sim.Press("2"), sim.Press("v"))
+	s.Send(sim.CtrlN)
+	s.Send(sim.CtrlN)
+	s.Send(sim.CtrlN)
+	s.Send(sim.AltW)
+
+	s.Send(sim.Press("1")) // the Categories tree
+	s.Send(sim.CtrlY)
+	s.ShowsText("is stock")
+
+	// And nothing happened.
+	s.OnHand(rice, 500*domain.Scale)
+	if held := holdingsIn(t, s, pantry); held != 1 {
+		t.Errorf("%d holdings in the pantry, want the 1 that was never moved", held)
+	}
+}
+
+// A container is not a thing to pick up. Moving a PLACE is a different command
+// with different consequences -- everything inside it goes too -- so it is not
+// something to reach by the same gesture as moving one jar.
+func TestCopyingAContainerIsRefused(t *testing.T) {
+	s := sim.New(t)
+	stockedTree(t, s)
+	s.Send(sim.Press("2"), sim.Press("v"))
+
+	s.Send(sim.AltW)
+	s.ShowsText("rehome")
+	s.HidesText("copied")
+}
+
+// Both read through the query path rather than the screen, which is the point
+// of the harness: keys go in the front and the assertion is on the far side.
+
+func holdingsIn(t *testing.T, s *sim.Simulator, location domain.LocationID) int {
+	t.Helper()
+	held, err := s.Reader().Holdings(s.Context())
+	if err != nil {
+		t.Fatalf("holdings: %v", err)
+	}
+	n := 0
+	for _, detail := range held {
+		if detail.Holding.Base().StowedLocation == location {
+			n++
+		}
+	}
+	return n
+}
+
+func categoryOf(t *testing.T, s *sim.Simulator, item domain.ItemID) domain.CategoryID {
+	t.Helper()
+	items, err := s.Reader().Items(s.Context())
+	if err != nil {
+		t.Fatalf("items: %v", err)
+	}
+	for _, it := range items {
+		if it.Base().ID == item {
+			return it.Base().Category
+		}
+	}
+	t.Fatalf("no item %d", item)
+	return 0
+}

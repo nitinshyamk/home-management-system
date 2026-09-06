@@ -85,6 +85,21 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if action == keys.Paste {
 		return m.put()
 	}
+	// Copy picks up from wherever the cursor is too. The two halves of one
+	// gesture have to have the same reach, and a tree is where the second half
+	// usually lands.
+	if action == keys.Copy {
+		return m.copy(), nil, true
+	}
+	// Moving a thing the tree is SHOWING is the other half of the same idea:
+	// the trees display holdings and items, and the one thing a person wants to
+	// do to something they can see somewhere wrong is put it somewhere right.
+	if forest(m.view) {
+		if action == keys.MoveTo {
+			return m.promptForNode()
+		}
+		return m, nil, false
+	}
 	// Everything else acts on a Holding, so it needs the view that has them.
 	if m.view != viewHoldings {
 		return m, nil, false
@@ -101,8 +116,6 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return m.promptFor("move", "where to", ""), m.loadCandidates(), true
 	case keys.ToggleCustody:
 		return m.toggleCustody()
-	case keys.Copy:
-		return m.copy(), nil, true
 	case keys.Kill:
 		// One key, where retiring used to take two.
 		//
@@ -137,6 +150,30 @@ func (m Model) promptFor(purpose, label, initial string) Model {
 	return m
 }
 
+// promptForNode opens the destination prompt for a thing a tree is showing.
+//
+// The purpose is the thing's own, not the tree's: a Holding MOVES to a place, an
+// Item is RECLASSIFIED under a classification. Two commands, and the difference
+// is not a detail of wording -- moving stock and re-filing a kind of thing are
+// different events in the ledger, and calling both "move" here would leave the
+// interface with one word for two answers.
+func (m Model) promptForNode() (tea.Model, tea.Cmd, bool) {
+	node, ok := m.tree.Current()
+	if !ok || !node.Contained() {
+		return m.refuse("move one of the things inside -- a place is moved with %s",
+			keys.Show(keys.Browse, keys.CommandLine)+" rehome"), nil, true
+	}
+	purpose, label := "move", "where to"
+	if node.Kind == "Item" {
+		purpose, label = "reclassify", "file it under"
+	}
+	m.problem = nil
+	m.editor = m.editor.OpenFor(purpose, node.Kind, node.ID, label, "").SetWidth(m.width)
+	// The vocabulary is loaded alongside the prompt, so the first keystroke
+	// into it already has something to complete against.
+	return m, m.loadCandidates(), true
+}
+
 // refuses says why an action does not apply, in terms of the THING rather than
 // the keystroke. "you cannot consume a cable" beats "invalid operation".
 func refuses(purpose string, rows []app.HoldingRow) (string, bool) {
@@ -160,11 +197,25 @@ func (m Model) actOnPrompt() (tea.Model, tea.Cmd, bool) {
 	answer := strings.TrimSpace(m.editor.Value())
 	purpose := m.editor.Purpose()
 	rows := m.selectedHoldings()
+	subject, kind := m.editor.Subject(), m.editor.Kind()
+	inTree := forest(m.view)
 	m.editor = m.editor.Close()
 
 	if answer == "" {
 		m.status = "nothing entered"
 		return m, nil, true
+	}
+
+	// A prompt opened over a TREE has one subject and it is the node, not a
+	// selection: selectedHoldings is the Holdings table's idea of "what am I
+	// acting on", and it is empty here -- which would have made this report
+	// "nothing to do" for a perfectly complete answer.
+	if inTree {
+		built, err := m.buildForNode(purpose, kind, subject, answer)
+		if err != nil {
+			return m.refuse("%v", err), nil, true
+		}
+		return m, m.runCommands([]command.Command{built}), true
 	}
 
 	var commands []command.Command
@@ -176,6 +227,30 @@ func (m Model) actOnPrompt() (tea.Model, tea.Cmd, bool) {
 		commands = append(commands, built)
 	}
 	return m, m.runCommands(commands), true
+}
+
+// buildForNode makes the Command a prompt over a tree row means.
+//
+// The kind decides, not the view: the Locations tree shows Holdings and the
+// Categories tree shows Items, so reading the view would be reading it twice
+// and getting the answer from the wrong one the day a tree shows something
+// else.
+func (m Model) buildForNode(purpose, kind string, subject int64, answer string) (command.Command, error) {
+	switch {
+	case purpose == "move" && kind == "Holding":
+		to, err := m.locationNamed(answer)
+		if err != nil {
+			return nil, err
+		}
+		return command.Move{Holding: domain.HoldingID(subject), To: to}, nil
+	case purpose == "reclassify" && kind == "Item":
+		to, err := m.categoryNamed(answer)
+		if err != nil {
+			return nil, err
+		}
+		return command.Reclassify{Item: domain.ItemID(subject), Category: to}, nil
+	}
+	return nil, fmt.Errorf("nothing called %q applies to %s", purpose, strings.ToLower(kind))
 }
 
 // build makes the Command a keystroke means, from identifiers it already holds.
@@ -221,15 +296,33 @@ func (m Model) amountFor(row app.HoldingRow, text string) (domain.Quantity, erro
 }
 
 // locationNamed resolves a destination the person typed.
+func (m Model) locationNamed(name string) (domain.LocationID, error) {
+	id, err := m.named(name, resolve.KindLocation, "nowhere")
+	return domain.LocationID(id), err
+}
+
+// categoryNamed resolves a classification the person typed.
+func (m Model) categoryNamed(name string) (domain.CategoryID, error) {
+	id, err := m.named(name, resolve.KindCategory, "no classification")
+	return domain.CategoryID(id), err
+}
+
+// named resolves a destination the person typed.
 //
 // The DESTINATION is a name because a person typed it; the SUBJECT is an
 // identifier because the cursor was already on it. That asymmetry is the whole
 // design: resolution happens where trust changes, and nowhere else.
-func (m Model) locationNamed(name string) (domain.LocationID, error) {
+//
+// Through resolve.Resolve rather than the completion matcher, because those two
+// answer different questions: completion offers what you might mean and this
+// decides what you did. A near miss here is reported as a near miss -- "did you
+// mean" -- rather than silently taken, which is the resolver deciding, and the
+// one thing it must never do.
+func (m Model) named(name string, kind resolve.Kind, nothing string) (int64, error) {
 	index := resolve.NewIndex(m.candidates)
-	switch outcome := index.Resolve(name, resolve.KindLocation).(type) {
+	switch outcome := index.Resolve(name, kind).(type) {
 	case resolve.Exact:
-		return domain.LocationID(outcome.Candidate.ID), nil
+		return outcome.Candidate.ID, nil
 	case resolve.Suggested:
 		return 0, fmt.Errorf("did you mean %s? nothing called %q", outcome.Candidate.Path, name)
 	case resolve.Ambiguous:
@@ -239,7 +332,7 @@ func (m Model) locationNamed(name string) (domain.LocationID, error) {
 		}
 		return 0, fmt.Errorf("%q could be %s", name, strings.Join(names, ", "))
 	}
-	return 0, fmt.Errorf("nowhere called %q", name)
+	return 0, fmt.Errorf("%s called %q", nothing, name)
 }
 
 // toggleCustody is one key rather than two.
@@ -278,59 +371,108 @@ func (m Model) retire() (tea.Model, tea.Cmd, bool) {
 	return m, m.runCommands(commands), true
 }
 
-// copy remembers a row so a put can move it somewhere.
+// carried is a thing picked up by copy, waiting for a put.
+//
+// Kinded, because there are two things worth relocating and they go to
+// different sorts of place: a Holding moves to a Location, an Item is filed
+// under a Category. An untyped identifier would let the second land in the
+// first, and both are int64.
+type carried struct {
+	Kind string // "Holding" or "Item"
+	ID   int64
+	Name string
+}
+
+// copy picks up whatever the cursor is on, so a put can relocate it.
 //
 // M-w and C-y, which is emacs's copy and paste -- and note that the words swap
 // sides coming from vim, where yank is the COPY. It is how you relocate
-// something when you would rather look for the destination than name it.
+// something when you would rather look for the destination than name it, which
+// in a tree is nearly always: the destination is on screen, and naming it would
+// be the long way round.
 func (m Model) copy() Model {
+	if forest(m.view) {
+		node, ok := m.tree.Current()
+		if !ok || !node.Contained() {
+			return m.refuse("copy one of the things inside -- a place is moved with %s",
+				keys.Show(keys.Browse, keys.CommandLine)+" rehome")
+		}
+		return m.carry(carried{Kind: node.Kind, ID: node.ID, Name: node.Name})
+	}
 	row, ok := m.currentHolding()
 	if !ok {
 		return m.refuse("nothing to copy here")
 	}
-	m.copied = &row
+	return m.carry(carried{Kind: "Holding", ID: int64(row.ID), Name: row.Item})
+}
+
+func (m Model) carry(what carried) Model {
+	m.copied = &what
 	m.status = fmt.Sprintf("copied %s -- %s puts it where you are",
-		row.Item, keys.Show(keys.Browse, keys.Paste))
+		what.Name, keys.Show(keys.Browse, keys.Paste))
 	return m
 }
 
-// put moves what was copied to wherever the cursor is now.
+// put relocates what was copied to whatever the cursor is on now.
+//
+// The pairing is the whole of it: a Holding goes to a Location, an Item goes to
+// a Category, and the two mismatches are refused in terms of the things rather
+// than as a type error. Putting a holding into a classification is not a
+// near-miss to be coerced -- a classification is not anywhere.
 func (m Model) put() (tea.Model, tea.Cmd, bool) {
 	if m.copied == nil {
 		return m.refuse("nothing copied"), nil, true
 	}
-	to, ok := m.destination()
+	kind, id, ok := m.destination()
 	if !ok {
-		return m.refuse("put somewhere that is a place -- try the Locations view"), nil, true
+		return m.refuse("put it on a place or a classification, not on a thing"), nil, true
 	}
 	copied := *m.copied
-	m.copied = nil
-	return m, m.runCommands([]command.Command{command.Move{Holding: copied.ID, To: to}}), true
+
+	switch {
+	case copied.Kind == "Holding" && kind == "Location":
+		m.copied = nil
+		return m, m.runCommands([]command.Command{
+			command.Move{Holding: domain.HoldingID(copied.ID), To: domain.LocationID(id)},
+		}), true
+	case copied.Kind == "Item" && kind == "Category":
+		m.copied = nil
+		return m, m.runCommands([]command.Command{
+			command.Reclassify{Item: domain.ItemID(copied.ID), Category: domain.CategoryID(id)},
+		}), true
+	case copied.Kind == "Holding":
+		return m.refuse("%q is stock -- it goes in a place, and this is a classification",
+			copied.Name), nil, true
+	default:
+		return m.refuse("%q is a kind of thing -- it is filed under a classification, not kept in a place",
+			copied.Name), nil, true
+	}
 }
 
-// destination is the place the cursor is on, which is where a put goes.
-func (m Model) destination() (domain.LocationID, bool) {
+// destination is the container the cursor is on, and what sort of container it
+// is, which is what a put needs to know before it can mean anything.
+func (m Model) destination() (kind string, id int64, ok bool) {
 	switch {
-	case m.view == viewLocations:
-		node, ok := m.tree.Current()
-		if !ok {
-			return 0, false
+	case forest(m.view):
+		node, found := m.tree.Current()
+		if !found {
+			return "", 0, false
 		}
-		// A CONTAINED row is not a place. Without this the cursor sitting on a
-		// holding would hand its identifier over as a LocationID and the put
-		// would land in whatever location happens to share that number -- a
-		// silent write to the wrong shelf, which is the worst kind of wrong
+		// A CONTAINED row is not a container. Without this the cursor sitting
+		// on a holding would hand its identifier over as a LocationID and the
+		// put would land in whatever location happens to share that number --
+		// a silent write to the wrong shelf, which is the worst kind of wrong
 		// this interface can be.
 		if node.Contained() {
-			return 0, false
+			return "", 0, false
 		}
-		return domain.LocationID(node.ID), true
+		return node.Kind, node.ID, true
 	case m.view == viewHoldings:
-		row, ok := m.currentHolding()
-		if !ok {
-			return 0, false
+		row, found := m.currentHolding()
+		if !found {
+			return "", 0, false
 		}
-		return row.LocationID, true
+		return "Location", int64(row.LocationID), true
 	}
-	return 0, false
+	return "", 0, false
 }

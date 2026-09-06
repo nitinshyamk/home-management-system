@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -90,35 +88,19 @@ func TestTheFormatSyntaxIsStillTypable(t *testing.T) {
 	}
 }
 
-// A line that is only a hash is a KEY -- `#` counts -- so a script using one as
-// a blank separator between comment paragraphs silently presses it.
+// A note is still a note, and a bare hash is still a KEY.
 //
-// Every script in docs/review did exactly that, and had been doing it since `#`
-// became a binding: the count prompt opened twice in the header of each one,
-// against whatever the starting view had selected, and the digits that followed
-// went to the application as view switches. That is the SECOND time this format
-// has failed by producing a frame of something else, after the colon, and it
-// failed the same silent way. `##` is the blank comment line.
-func TestNoScriptPressesAKeyFromItsHeader(t *testing.T) {
-	paths, err := filepath.Glob(filepath.Join("..", "..", "docs", "review", "*.keys"))
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no scripts found: %v", err)
-	}
-	for _, path := range paths {
-		text, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("%s: %v", path, err)
-		}
-		for n, raw := range strings.Split(string(text), "\n") {
-			if strings.TrimSpace(raw) == "#" {
-				t.Errorf("%s line %d is a bare # -- that is the count key, not a blank comment; use ##",
-					filepath.Base(path), n+1)
-			}
-		}
-	}
-}
-
-// And a note is still a note.
+// That last part is the trap, and it is worth stating as a test because it
+// reads backwards: `#` counts, so a line holding nothing but a hash presses the
+// count key. Anybody writing a script will reach for one as a blank separator
+// between comment paragraphs -- every script this project had did exactly that,
+// and had been doing it since `#` became a binding, opening the count prompt
+// twice in each header against whatever the starting view had selected while
+// the digits that followed went to the application as view switches.
+//
+// It failed silently, producing a frame of something else, which is the second
+// time this format has failed that way after the colon. `##` is the blank
+// comment line.
 func TestCommentsAreStillComments(t *testing.T) {
 	steps, err := parseScript(strings.NewReader(
 		"# a note about the script\n" +
@@ -129,6 +111,15 @@ func TestCommentsAreStillComments(t *testing.T) {
 	}
 	if len(steps) != 1 {
 		t.Errorf("got %d steps, want just the 4: %v", len(steps), steps)
+	}
+
+	steps, err = parseScript(strings.NewReader("#\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(steps) != 1 || steps[0].key.String() != "#" {
+		t.Errorf("a bare # parsed to %v, want the count key -- if this is ever "+
+			"changed to a comment, `#` becomes a key no script can press", steps)
 	}
 }
 

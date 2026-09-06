@@ -9,9 +9,9 @@ import (
 // The golden frames for 10a, captured after sign-off.
 //
 // They mean UNCHANGED, never good. What makes them worth anything is that the
-// layout they hold was reviewed by a person first -- docs/review/10a-table.md,
-// accepted 2026-08-19 -- so a failure here says "this differs from what was
-// approved" rather than "this differs from whatever came out first".
+// layout they hold was reviewed by a person and accepted, so a failure here
+// says "this differs from what was approved" rather than "this differs from
+// whatever came out first".
 //
 // A failure is not automatically a bug. It is a prompt to re-review the screen
 // and, if the change is wanted, re-capture with -update-golden.

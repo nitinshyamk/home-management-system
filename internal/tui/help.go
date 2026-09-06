@@ -113,6 +113,9 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Tree, "fold the node under the cursor", keys.FoldToggle),
 			pair(keys.Tree, "fold everything, or unfold it", keys.FoldCycleAll),
 			pair(keys.Browse, "show what the nodes contain -- items, or holdings", keys.ShowContents),
+			pair(keys.Browse, "pick up one of the things inside", keys.Copy),
+			pair(keys.Browse, "put it in the place or classification you are on", keys.Paste),
+			pair(keys.Browse, "or name where it goes instead", keys.MoveTo),
 		}},
 		{title: "ACTING ON A ROW", rows: [][2]string{
 			pair(keys.Browse, "use some of it", keys.Consume),
