@@ -49,10 +49,6 @@ var (
 	ErrSlotTaken = errors.New("annotate: another holding already occupies that slot")
 )
 
-// ancestorScanLimit matches the LIMIT in the cycle-guard query. Reaching it
-// means the tree is already corrupt, so it is an error rather than a truncation.
-const ancestorScanLimit = 256
-
 // Annotator revises labels and knowledge.
 type Annotator struct {
 	scope db.Scope
@@ -522,21 +518,13 @@ func (a *Annotator) requireCategory(ctx context.Context, id domain.CategoryID) e
 // categoryHasAncestor reports whether `ancestor` lies on the parent chain above
 // `node`. It walks upward, so its cost is the depth of the tree.
 func (a *Annotator) categoryHasAncestor(ctx context.Context, node, ancestor domain.CategoryID) (bool, error) {
-	ids, err := a.q.CategoryAncestorIDs(ctx, int64(node))
+	chain, err := a.q.CategoryAncestorIDs(ctx, int64(node))
 	if err != nil {
 		return false, fmt.Errorf("annotate: walk ancestors of %d: %w", node, err)
 	}
-	if len(ids) >= ancestorScanLimit {
-		// The query is capped so a cycle fails loudly rather than hanging. A
-		// full result means the tree is already corrupt, which is not a
-		// truncation to paper over.
-		return false, fmt.Errorf("annotate: ancestor chain of %d exceeds %d nodes; tree is corrupt",
-			node, ancestorScanLimit)
+	has, err := domain.HasAncestor(chain, ancestor)
+	if err != nil {
+		return false, fmt.Errorf("annotate: category %d: %w", node, err)
 	}
-	for _, id := range ids {
-		if domain.CategoryID(id) == ancestor {
-			return true, nil
-		}
-	}
-	return false, nil
+	return has, nil
 }
