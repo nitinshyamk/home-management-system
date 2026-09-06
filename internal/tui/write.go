@@ -9,7 +9,6 @@ import (
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
 	"home-management-system/internal/tui/complete"
-	"home-management-system/internal/tui/creator"
 	"home-management-system/internal/tui/keys"
 )
 
@@ -371,24 +370,10 @@ func (m Model) confirmView() string {
 // Creation
 // ---------------------------------------------------------------------------
 
-// creatorKind is what a view creates. Holdings are absent on purpose: stock
-// arrives by acquiring it, and a Holding is a placement rather than a name.
-func creatorKind(v view) (creator.Kind, bool) {
-	switch v {
-	case viewItems:
-		return creator.KindItem, true
-	case viewCategories:
-		return creator.KindCategory, true
-	case viewLocations:
-		return creator.KindLocation, true
-	}
-	return "", false
-}
-
 // openCreator starts a panel, defaulted to create inside what the cursor is on.
 func (m Model) openCreator() Model {
-	kind, ok := creatorKind(m.view)
-	if !ok {
+	kind := spec(m.view).creates
+	if kind == "" {
 		return m.refuse("stock arrives by acquiring it -- try :acquire")
 	}
 	parent := ""
