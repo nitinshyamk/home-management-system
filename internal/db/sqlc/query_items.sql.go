@@ -7,48 +7,19 @@ package sqlc
 
 import (
 	"context"
-	"database/sql"
 )
 
 const getItemWithVariant = `-- name: GetItemWithVariant :one
 
-SELECT
-    i.id, i.kind, i.name, i.category_id, i.notes,
-    i.placement_confirmed_at, i.created_at, i.archived_at,
-    u.item_id AS unique_variant_id,
-    b.item_id AS bulk_variant_id,
-    b.content_unit, b.package_size
-FROM items i
-LEFT JOIN unique_items u ON u.item_id = i.id
-LEFT JOIN bulk_items   b ON b.item_id = i.id
-WHERE i.id = ?
+SELECT id, kind, name, category_id, notes, placement_confirmed_at, created_at, archived_at, unique_variant_id, bulk_variant_id, content_unit, package_size FROM items_with_variant
+WHERE id = ?
 `
 
-type GetItemWithVariantRow struct {
-	ID                   int64
-	Kind                 string
-	Name                 string
-	CategoryID           int64
-	Notes                sql.NullString
-	PlacementConfirmedAt sql.NullString
-	CreatedAt            string
-	ArchivedAt           sql.NullString
-	UniqueVariantID      sql.NullInt64
-	BulkVariantID        sql.NullInt64
-	ContentUnit          sql.NullString
-	PackageSize          sql.NullInt64
-}
-
-// QUERY for Item, hydrating the correct variant.
-//
-// Both variant tables are joined so the Go layer can check I3's remaining half:
-// "at least one variant row exists" is a CHECKED invariant -- the primary key
-// gives "at most one" declaratively, but nothing declarative can require one.
-// A kind with no matching variant row surfaces here rather than as a nil deref
-// somewhere downstream.
-func (q *Queries) GetItemWithVariant(ctx context.Context, id int64) (GetItemWithVariantRow, error) {
+// QUERY for Item. The variant join is the items_with_variant view, defined once
+// in 0007 -- these queries differ only in what they select FROM it.
+func (q *Queries) GetItemWithVariant(ctx context.Context, id int64) (ItemsWithVariant, error) {
 	row := q.db.QueryRowContext(ctx, getItemWithVariant, id)
-	var i GetItemWithVariantRow
+	var i ItemsWithVariant
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
@@ -67,43 +38,20 @@ func (q *Queries) GetItemWithVariant(ctx context.Context, id int64) (GetItemWith
 }
 
 const listItemsInCategoryWithVariant = `-- name: ListItemsInCategoryWithVariant :many
-SELECT
-    i.id, i.kind, i.name, i.category_id, i.notes,
-    i.placement_confirmed_at, i.created_at, i.archived_at,
-    u.item_id AS unique_variant_id,
-    b.item_id AS bulk_variant_id,
-    b.content_unit, b.package_size
-FROM items i
-LEFT JOIN unique_items u ON u.item_id = i.id
-LEFT JOIN bulk_items   b ON b.item_id = i.id
-WHERE i.category_id = ? AND i.archived_at IS NULL
-ORDER BY i.name
+SELECT id, kind, name, category_id, notes, placement_confirmed_at, created_at, archived_at, unique_variant_id, bulk_variant_id, content_unit, package_size FROM items_with_variant
+WHERE category_id = ? AND archived_at IS NULL
+ORDER BY name
 `
 
-type ListItemsInCategoryWithVariantRow struct {
-	ID                   int64
-	Kind                 string
-	Name                 string
-	CategoryID           int64
-	Notes                sql.NullString
-	PlacementConfirmedAt sql.NullString
-	CreatedAt            string
-	ArchivedAt           sql.NullString
-	UniqueVariantID      sql.NullInt64
-	BulkVariantID        sql.NullInt64
-	ContentUnit          sql.NullString
-	PackageSize          sql.NullInt64
-}
-
-func (q *Queries) ListItemsInCategoryWithVariant(ctx context.Context, categoryID int64) ([]ListItemsInCategoryWithVariantRow, error) {
+func (q *Queries) ListItemsInCategoryWithVariant(ctx context.Context, categoryID int64) ([]ItemsWithVariant, error) {
 	rows, err := q.db.QueryContext(ctx, listItemsInCategoryWithVariant, categoryID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListItemsInCategoryWithVariantRow{}
+	items := []ItemsWithVariant{}
 	for rows.Next() {
-		var i ListItemsInCategoryWithVariantRow
+		var i ItemsWithVariant
 		if err := rows.Scan(
 			&i.ID,
 			&i.Kind,
@@ -132,43 +80,20 @@ func (q *Queries) ListItemsInCategoryWithVariant(ctx context.Context, categoryID
 }
 
 const listItemsWithVariant = `-- name: ListItemsWithVariant :many
-SELECT
-    i.id, i.kind, i.name, i.category_id, i.notes,
-    i.placement_confirmed_at, i.created_at, i.archived_at,
-    u.item_id AS unique_variant_id,
-    b.item_id AS bulk_variant_id,
-    b.content_unit, b.package_size
-FROM items i
-LEFT JOIN unique_items u ON u.item_id = i.id
-LEFT JOIN bulk_items   b ON b.item_id = i.id
-WHERE i.archived_at IS NULL
-ORDER BY i.name
+SELECT id, kind, name, category_id, notes, placement_confirmed_at, created_at, archived_at, unique_variant_id, bulk_variant_id, content_unit, package_size FROM items_with_variant
+WHERE archived_at IS NULL
+ORDER BY name
 `
 
-type ListItemsWithVariantRow struct {
-	ID                   int64
-	Kind                 string
-	Name                 string
-	CategoryID           int64
-	Notes                sql.NullString
-	PlacementConfirmedAt sql.NullString
-	CreatedAt            string
-	ArchivedAt           sql.NullString
-	UniqueVariantID      sql.NullInt64
-	BulkVariantID        sql.NullInt64
-	ContentUnit          sql.NullString
-	PackageSize          sql.NullInt64
-}
-
-func (q *Queries) ListItemsWithVariant(ctx context.Context) ([]ListItemsWithVariantRow, error) {
+func (q *Queries) ListItemsWithVariant(ctx context.Context) ([]ItemsWithVariant, error) {
 	rows, err := q.db.QueryContext(ctx, listItemsWithVariant)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListItemsWithVariantRow{}
+	items := []ItemsWithVariant{}
 	for rows.Next() {
-		var i ListItemsWithVariantRow
+		var i ItemsWithVariant
 		if err := rows.Scan(
 			&i.ID,
 			&i.Kind,

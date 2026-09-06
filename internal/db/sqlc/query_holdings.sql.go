@@ -7,7 +7,6 @@ package sqlc
 
 import (
 	"context"
-	"database/sql"
 )
 
 const bulkOnHand = `-- name: BulkOnHand :one
@@ -38,47 +37,13 @@ func (q *Queries) BulkOnHand(ctx context.Context, itemID int64) (interface{}, er
 }
 
 const getHoldingWithDetail = `-- name: GetHoldingWithDetail :one
-SELECT
-    h.id, h.item_id, h.kind, h.stowed_location_id,
-    h.expires_on, h.snoozed_until, h.retired_at, h.created_at,
-    i.name AS item_name,
-    l.name AS location_name,
-    b.quantity, b.unit_basis,
-    bi.content_unit, bi.package_size,
-    u.label, u.custody, u.custody_since, u.displaced_to_id
-FROM holdings h
-JOIN items i ON i.id = h.item_id
-JOIN locations l ON l.id = h.stowed_location_id
-LEFT JOIN bulk_holdings b   ON b.holding_id = h.id
-LEFT JOIN bulk_items bi     ON bi.item_id = h.item_id
-LEFT JOIN unique_holdings u ON u.holding_id = h.id
-WHERE h.id = ?
+SELECT id, item_id, kind, stowed_location_id, expires_on, snoozed_until, retired_at, created_at, item_name, location_name, quantity, unit_basis, content_unit, package_size, label, custody, custody_since, displaced_to_id FROM holdings_with_detail
+WHERE id = ?
 `
 
-type GetHoldingWithDetailRow struct {
-	ID               int64
-	ItemID           int64
-	Kind             string
-	StowedLocationID int64
-	ExpiresOn        sql.NullString
-	SnoozedUntil     sql.NullString
-	RetiredAt        sql.NullString
-	CreatedAt        string
-	ItemName         string
-	LocationName     string
-	Quantity         sql.NullInt64
-	UnitBasis        sql.NullString
-	ContentUnit      sql.NullString
-	PackageSize      sql.NullInt64
-	Label            sql.NullString
-	Custody          sql.NullString
-	CustodySince     sql.NullString
-	DisplacedToID    sql.NullInt64
-}
-
-func (q *Queries) GetHoldingWithDetail(ctx context.Context, id int64) (GetHoldingWithDetailRow, error) {
+func (q *Queries) GetHoldingWithDetail(ctx context.Context, id int64) (HoldingsWithDetail, error) {
 	row := q.db.QueryRowContext(ctx, getHoldingWithDetail, id)
-	var i GetHoldingWithDetailRow
+	var i HoldingsWithDetail
 	err := row.Scan(
 		&i.ID,
 		&i.ItemID,
@@ -104,58 +69,24 @@ func (q *Queries) GetHoldingWithDetail(ctx context.Context, id int64) (GetHoldin
 
 const holdingsOfItemWithDetail = `-- name: HoldingsOfItemWithDetail :many
 
-SELECT
-    h.id, h.item_id, h.kind, h.stowed_location_id,
-    h.expires_on, h.snoozed_until, h.retired_at, h.created_at,
-    i.name AS item_name,
-    l.name AS location_name,
-    b.quantity, b.unit_basis,
-    bi.content_unit, bi.package_size,
-    u.label, u.custody, u.custody_since, u.displaced_to_id
-FROM holdings h
-JOIN items i ON i.id = h.item_id
-JOIN locations l ON l.id = h.stowed_location_id
-LEFT JOIN bulk_holdings b   ON b.holding_id = h.id
-LEFT JOIN bulk_items bi     ON bi.item_id = h.item_id
-LEFT JOIN unique_holdings u ON u.holding_id = h.id
-WHERE h.item_id = ? AND h.retired_at IS NULL
-ORDER BY h.id
+SELECT id, item_id, kind, stowed_location_id, expires_on, snoozed_until, retired_at, created_at, item_name, location_name, quantity, unit_basis, content_unit, package_size, label, custody, custody_since, displaced_to_id FROM holdings_with_detail
+WHERE item_id = ? AND retired_at IS NULL
+ORDER BY id
 `
-
-type HoldingsOfItemWithDetailRow struct {
-	ID               int64
-	ItemID           int64
-	Kind             string
-	StowedLocationID int64
-	ExpiresOn        sql.NullString
-	SnoozedUntil     sql.NullString
-	RetiredAt        sql.NullString
-	CreatedAt        string
-	ItemName         string
-	LocationName     string
-	Quantity         sql.NullInt64
-	UnitBasis        sql.NullString
-	ContentUnit      sql.NullString
-	PackageSize      sql.NullInt64
-	Label            sql.NullString
-	Custody          sql.NullString
-	CustodySince     sql.NullString
-	DisplacedToID    sql.NullInt64
-}
 
 // Every live Holding of one Item, wherever it is kept. This is what the
 // composing operations plan against: consuming from a bag has to know which
 // holdings exist at the location, in which unit basis, before it can decide
 // whether a package must be opened.
-func (q *Queries) HoldingsOfItemWithDetail(ctx context.Context, itemID int64) ([]HoldingsOfItemWithDetailRow, error) {
+func (q *Queries) HoldingsOfItemWithDetail(ctx context.Context, itemID int64) ([]HoldingsWithDetail, error) {
 	rows, err := q.db.QueryContext(ctx, holdingsOfItemWithDetail, itemID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []HoldingsOfItemWithDetailRow{}
+	items := []HoldingsWithDetail{}
 	for rows.Next() {
-		var i HoldingsOfItemWithDetailRow
+		var i HoldingsWithDetail
 		if err := rows.Scan(
 			&i.ID,
 			&i.ItemID,
@@ -191,59 +122,22 @@ func (q *Queries) HoldingsOfItemWithDetail(ctx context.Context, itemID int64) ([
 
 const listHoldingsWithDetail = `-- name: ListHoldingsWithDetail :many
 
-SELECT
-    h.id, h.item_id, h.kind, h.stowed_location_id,
-    h.expires_on, h.snoozed_until, h.retired_at, h.created_at,
-    i.name AS item_name,
-    l.name AS location_name,
-    b.quantity, b.unit_basis,
-    bi.content_unit, bi.package_size,
-    u.label, u.custody, u.custody_since, u.displaced_to_id
-FROM holdings h
-JOIN items i ON i.id = h.item_id
-JOIN locations l ON l.id = h.stowed_location_id
-LEFT JOIN bulk_holdings b   ON b.holding_id = h.id
-LEFT JOIN bulk_items bi     ON bi.item_id = h.item_id
-LEFT JOIN unique_holdings u ON u.holding_id = h.id
-ORDER BY i.name, h.id
+SELECT id, item_id, kind, stowed_location_id, expires_on, snoozed_until, retired_at, created_at, item_name, location_name, quantity, unit_basis, content_unit, package_size, label, custody, custody_since, displaced_to_id FROM holdings_with_detail
+ORDER BY item_name, id
 `
 
-type ListHoldingsWithDetailRow struct {
-	ID               int64
-	ItemID           int64
-	Kind             string
-	StowedLocationID int64
-	ExpiresOn        sql.NullString
-	SnoozedUntil     sql.NullString
-	RetiredAt        sql.NullString
-	CreatedAt        string
-	ItemName         string
-	LocationName     string
-	Quantity         sql.NullInt64
-	UnitBasis        sql.NullString
-	ContentUnit      sql.NullString
-	PackageSize      sql.NullInt64
-	Label            sql.NullString
-	Custody          sql.NullString
-	CustodySince     sql.NullString
-	DisplacedToID    sql.NullInt64
-}
-
-// QUERY for Holding, joining everything a display needs in one pass.
-//
-// Both variant tables are joined so the Go layer can hydrate the right one and
-// surface the checked half of H5: "at least one variant row" cannot be expressed
-// declaratively, so a kind with no matching row must fail loudly here rather
-// than as a nil dereference downstream.
-func (q *Queries) ListHoldingsWithDetail(ctx context.Context) ([]ListHoldingsWithDetailRow, error) {
+// QUERY for Holding. The join a display needs is the holdings_with_detail view,
+// defined once in 0007 -- these three queries differ only in what they select
+// FROM it, which is the whole of what actually differs between them.
+func (q *Queries) ListHoldingsWithDetail(ctx context.Context) ([]HoldingsWithDetail, error) {
 	rows, err := q.db.QueryContext(ctx, listHoldingsWithDetail)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListHoldingsWithDetailRow{}
+	items := []HoldingsWithDetail{}
 	for rows.Next() {
-		var i ListHoldingsWithDetailRow
+		var i HoldingsWithDetail
 		if err := rows.Scan(
 			&i.ID,
 			&i.ItemID,

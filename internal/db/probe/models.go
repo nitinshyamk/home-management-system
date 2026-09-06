@@ -132,6 +132,27 @@ type Holding struct {
 	CreatedAt        string
 }
 
+type HoldingsWithDetail struct {
+	ID               int64
+	ItemID           int64
+	Kind             string
+	StowedLocationID int64
+	ExpiresOn        sql.NullString
+	SnoozedUntil     sql.NullString
+	RetiredAt        sql.NullString
+	CreatedAt        string
+	ItemName         string
+	LocationName     string
+	Quantity         sql.NullInt64
+	UnitBasis        sql.NullString
+	ContentUnit      sql.NullString
+	PackageSize      sql.NullInt64
+	Label            sql.NullString
+	Custody          sql.NullString
+	CustodySince     sql.NullString
+	DisplacedToID    sql.NullInt64
+}
+
 type Item struct {
 	ID                   int64
 	Kind                 string
@@ -141,6 +162,21 @@ type Item struct {
 	PlacementConfirmedAt sql.NullString
 	CreatedAt            string
 	ArchivedAt           sql.NullString
+}
+
+type ItemsWithVariant struct {
+	ID                   int64
+	Kind                 string
+	Name                 string
+	CategoryID           int64
+	Notes                sql.NullString
+	PlacementConfirmedAt sql.NullString
+	CreatedAt            string
+	ArchivedAt           sql.NullString
+	UniqueVariantID      sql.NullInt64
+	BulkVariantID        sql.NullInt64
+	ContentUnit          sql.NullString
+	PackageSize          sql.NullInt64
 }
 
 type Location struct {
