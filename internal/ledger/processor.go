@@ -51,8 +51,6 @@ var (
 	ErrCycle = errors.New("ledger: re-parenting would create a cycle")
 )
 
-const ancestorScanLimit = 256
-
 // Processor appends events and updates the projections they imply.
 type Processor struct {
 	scope db.Scope
@@ -500,20 +498,15 @@ func (p *Processor) applyToLocation(ctx context.Context, q *sqlc.Queries, id dom
 }
 
 func (p *Processor) locationHasAncestor(ctx context.Context, node, ancestor domain.LocationID) (bool, error) {
-	ids, err := p.q.LocationAncestorIDs(ctx, int64(node))
+	chain, err := p.q.LocationAncestorIDs(ctx, int64(node))
 	if err != nil {
 		return false, fmt.Errorf("ledger: walk ancestors of location %d: %w", node, err)
 	}
-	if len(ids) >= ancestorScanLimit {
-		return false, fmt.Errorf("ledger: ancestor chain of location %d exceeds %d nodes; tree is corrupt",
-			node, ancestorScanLimit)
+	has, err := domain.HasAncestor(chain, ancestor)
+	if err != nil {
+		return false, fmt.Errorf("ledger: location %d: %w", node, err)
 	}
-	for _, id := range ids {
-		if domain.LocationID(id) == ancestor {
-			return true, nil
-		}
-	}
-	return false, nil
+	return has, nil
 }
 
 // ---------------------------------------------------------------------------

@@ -92,6 +92,28 @@ if ls internal/db/queries/*.sql internal/db/probe/*.sql internal/db/migrations/*
   fi
 fi
 
+# The cycle guard's cap lives in Go and is enforced in SQL, so the two have to
+# agree. Below the SQL limit, a deep-but-legal chain would be truncated and the
+# guard would miss an ancestor; above it, the "tree is corrupt" error can never
+# fire because the query returns fewer rows than the check looks for. It used to
+# be four literals -- two Go constants and two LIMITs -- kept level by hand.
+if [ -f internal/domain/tree.go ] && ls internal/db/queries/*.sql >/dev/null 2>&1; then
+  limit="$(grep -oE 'AncestorScanLimit = [0-9]+' internal/domain/tree.go | grep -oE '[0-9]+')"
+  mismatched=""
+  for f in internal/db/queries/annotate_categories.sql internal/db/queries/ledger_locations.sql; do
+    [ -e "$f" ] || continue
+    for found in $(grep -oiE 'FROM chain LIMIT [0-9]+' "$f" | grep -oE '[0-9]+'); do
+      [ "$found" = "$limit" ] || mismatched="${mismatched}${f}: LIMIT ${found}, but domain.AncestorScanLimit is ${limit}"$'\n'
+    done
+  done
+  if [ -n "$mismatched" ]; then
+    report "ancestor-chain queries match domain.AncestorScanLimit"
+    printf '      %s' "$mismatched" >&2
+  else
+    ok "ancestor-chain queries match domain.AncestorScanLimit ($limit)"
+  fi
+fi
+
 echo "archlint: write-path boundaries (plan §1.1)"
 
 # Queries live centrally in internal/db/queries and are named for the path that
