@@ -81,7 +81,9 @@ func (m Model) runLine(line string) tea.Cmd {
 			if err != nil {
 				return issuesMsg{issues: []string{err.Error()}}
 			}
-			combined = combined.Merge(plan)
+			if combined, err = combined.Merge(plan); err != nil {
+				return issuesMsg{issues: []string{err.Error()}}
+			}
 			summaries = append(summaries, m.ctrl.Describe(m.ctx, result.Command))
 		}
 		return planMsg{plan: combined, summary: summarise(summaries)}
@@ -621,7 +623,9 @@ func (m Model) runCommands(commands []command.Command) tea.Cmd {
 			if err != nil {
 				return issuesMsg{issues: []string{err.Error()}}
 			}
-			combined = combined.Merge(plan)
+			if combined, err = combined.Merge(plan); err != nil {
+				return issuesMsg{issues: []string{err.Error()}}
+			}
 			summaries = append(summaries, m.ctrl.Describe(m.ctx, cmd))
 		}
 		return planMsg{plan: combined, summary: summarise(summaries)}

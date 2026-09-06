@@ -167,16 +167,18 @@ func (p *Planner) NewHolding(ctx context.Context, req NewHoldingRequest) (Batch,
 	if err != nil {
 		return Batch{}, err
 	}
-	if existing, taken := s.findSlot(slot{
-		req.Item, req.Location, req.Basis, expiryKey(req.ExpiresOn),
-	}); taken {
+	key := slot{req.Item, req.Location, req.Basis, expiryKey(req.ExpiresOn)}
+	if existing, taken := s.findSlot(key); taken {
 		return Batch{}, fmt.Errorf("%w: holding %d already keeps %q there on that basis",
 			ErrInvalidRequest, existing.ID, bulk.Name)
 	}
 
+	// The fill is declared for the same reason PlanMove declares its own: this
+	// creates a Holding in a slot without going through a Plan, so without it a
+	// batch holding two of these would be two originations onto one H8 key.
 	return originationBatch(NewBulkHolding{
 		Item: &req.Item, Location: req.Location, UnitBasis: req.Basis, ExpiresOn: req.ExpiresOn,
-	}), nil
+	}).filling(map[slot]occupant{key: {created: true}}), nil
 }
 
 // originationBatch wraps one origination as a Batch.

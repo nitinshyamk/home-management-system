@@ -136,5 +136,19 @@ func (p Plan) AsStep(summary string) Step {
 
 // Batch wraps a Plan as a one-Step Batch.
 func (p Plan) Batch(summary string) Batch {
-	return Batch{Steps: []Step{p.AsStep(summary)}}
+	return Batch{Steps: []Step{p.AsStep(summary)}}.filling(p.occupants())
+}
+
+// occupants is filled, in the terms a Batch can be compared in: a plan-local
+// reference means nothing to another plan, but "one that already exists, with
+// this identifier" and "one that will be created" both do.
+func (p Plan) occupants() map[slot]occupant {
+	if len(p.filled) == 0 {
+		return nil
+	}
+	out := make(map[slot]occupant, len(p.filled))
+	for k, r := range p.filled {
+		out[k] = occupant{id: r.id, created: r.slot >= 0}
+	}
+	return out
 }
