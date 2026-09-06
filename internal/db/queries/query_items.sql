@@ -1,48 +1,19 @@
--- QUERY for Item, hydrating the correct variant.
---
--- Both variant tables are joined so the Go layer can check I3's remaining half:
--- "at least one variant row exists" is a CHECKED invariant -- the primary key
--- gives "at most one" declaratively, but nothing declarative can require one.
--- A kind with no matching variant row surfaces here rather than as a nil deref
--- somewhere downstream.
+-- QUERY for Item. The variant join is the items_with_variant view, defined once
+-- in 0007 -- these queries differ only in what they select FROM it.
 
 -- name: GetItemWithVariant :one
-SELECT
-    i.id, i.kind, i.name, i.category_id, i.notes,
-    i.placement_confirmed_at, i.created_at, i.archived_at,
-    u.item_id AS unique_variant_id,
-    b.item_id AS bulk_variant_id,
-    b.content_unit, b.package_size
-FROM items i
-LEFT JOIN unique_items u ON u.item_id = i.id
-LEFT JOIN bulk_items   b ON b.item_id = i.id
-WHERE i.id = ?;
+SELECT * FROM items_with_variant
+WHERE id = ?;
 
 -- name: ListItemsWithVariant :many
-SELECT
-    i.id, i.kind, i.name, i.category_id, i.notes,
-    i.placement_confirmed_at, i.created_at, i.archived_at,
-    u.item_id AS unique_variant_id,
-    b.item_id AS bulk_variant_id,
-    b.content_unit, b.package_size
-FROM items i
-LEFT JOIN unique_items u ON u.item_id = i.id
-LEFT JOIN bulk_items   b ON b.item_id = i.id
-WHERE i.archived_at IS NULL
-ORDER BY i.name;
+SELECT * FROM items_with_variant
+WHERE archived_at IS NULL
+ORDER BY name;
 
 -- name: ListItemsInCategoryWithVariant :many
-SELECT
-    i.id, i.kind, i.name, i.category_id, i.notes,
-    i.placement_confirmed_at, i.created_at, i.archived_at,
-    u.item_id AS unique_variant_id,
-    b.item_id AS bulk_variant_id,
-    b.content_unit, b.package_size
-FROM items i
-LEFT JOIN unique_items u ON u.item_id = i.id
-LEFT JOIN bulk_items   b ON b.item_id = i.id
-WHERE i.category_id = ? AND i.archived_at IS NULL
-ORDER BY i.name;
+SELECT * FROM items_with_variant
+WHERE category_id = ? AND archived_at IS NULL
+ORDER BY name;
 
 -- D20's raw material: Items filed directly at a Category that has children, and
 -- whose placement has not been confirmed. The nudge fires only where a plausible

@@ -202,13 +202,7 @@ func (r *Reader) Item(ctx context.Context, id domain.ItemID) (domain.Item, error
 		}
 		return nil, fmt.Errorf("query: get item %d: %w", id, err)
 	}
-	return hydrateItem(itemRow{
-		ID: row.ID, Kind: row.Kind, Name: row.Name, CategoryID: row.CategoryID,
-		Notes: row.Notes, PlacementConfirmedAt: row.PlacementConfirmedAt,
-		CreatedAt: row.CreatedAt, ArchivedAt: row.ArchivedAt,
-		UniqueVariantID: row.UniqueVariantID, BulkVariantID: row.BulkVariantID,
-		ContentUnit: row.ContentUnit, PackageSize: row.PackageSize,
-	})
+	return hydrateItem(row)
 }
 
 func (r *Reader) Items(ctx context.Context) ([]domain.Item, error) {
@@ -218,13 +212,7 @@ func (r *Reader) Items(ctx context.Context) ([]domain.Item, error) {
 	}
 	out := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		item, err := hydrateItem(itemRow{
-			ID: row.ID, Kind: row.Kind, Name: row.Name, CategoryID: row.CategoryID,
-			Notes: row.Notes, PlacementConfirmedAt: row.PlacementConfirmedAt,
-			CreatedAt: row.CreatedAt, ArchivedAt: row.ArchivedAt,
-			UniqueVariantID: row.UniqueVariantID, BulkVariantID: row.BulkVariantID,
-			ContentUnit: row.ContentUnit, PackageSize: row.PackageSize,
-		})
+		item, err := hydrateItem(row)
 		if err != nil {
 			return nil, err
 		}
@@ -240,13 +228,7 @@ func (r *Reader) ItemsInCategory(ctx context.Context, category domain.CategoryID
 	}
 	out := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		item, err := hydrateItem(itemRow{
-			ID: row.ID, Kind: row.Kind, Name: row.Name, CategoryID: row.CategoryID,
-			Notes: row.Notes, PlacementConfirmedAt: row.PlacementConfirmedAt,
-			CreatedAt: row.CreatedAt, ArchivedAt: row.ArchivedAt,
-			UniqueVariantID: row.UniqueVariantID, BulkVariantID: row.BulkVariantID,
-			ContentUnit: row.ContentUnit, PackageSize: row.PackageSize,
-		})
+		item, err := hydrateItem(row)
 		if err != nil {
 			return nil, err
 		}
@@ -335,24 +317,13 @@ func categoryFrom(id int64, parent sql.NullInt64, name string, description sql.N
 	}, nil
 }
 
-// itemRow is the shape every item query returns, so hydration has one
-// implementation rather than three.
-type itemRow struct {
-	ID                   int64
-	Kind                 string
-	Name                 string
-	CategoryID           int64
-	Notes                sql.NullString
-	PlacementConfirmedAt sql.NullString
-	CreatedAt            string
-	ArchivedAt           sql.NullString
-	UniqueVariantID      sql.NullInt64
-	BulkVariantID        sql.NullInt64
-	ContentUnit          sql.NullString
-	PackageSize          sql.NullInt64
-}
-
-func hydrateItem(row itemRow) (domain.Item, error) {
+// hydrateItem takes the view's row directly.
+//
+// It used to take a local struct that mirrored it field for field, filled in by
+// a twelve-field literal repeated at each of the three call sites -- because
+// sqlc generated three field-identical row types from three copy-pasted
+// SELECTs, and there was no one type to name.
+func hydrateItem(row sqlc.ItemsWithVariant) (domain.Item, error) {
 	created, err := db.ParseTime(row.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("query: item %d created_at: %w", row.ID, err)
@@ -557,7 +528,7 @@ func (r *Reader) Holdings(ctx context.Context) ([]HoldingDetail, error) {
 	}
 	out := make([]HoldingDetail, 0, len(rows))
 	for _, row := range rows {
-		d, err := hydrateHolding(holdingRow(row))
+		d, err := hydrateHolding(row)
 		if err != nil {
 			return nil, err
 		}
@@ -590,7 +561,7 @@ func (r *Reader) HoldingsOfItem(ctx context.Context, item domain.ItemID) ([]Hold
 	}
 	out := make([]HoldingDetail, 0, len(rows))
 	for _, row := range rows {
-		d, err := hydrateHolding(holdingRow(sqlc.ListHoldingsWithDetailRow(row)))
+		d, err := hydrateHolding(row)
 		if err != nil {
 			return nil, err
 		}
@@ -607,7 +578,7 @@ func (r *Reader) Holding(ctx context.Context, id domain.HoldingID) (HoldingDetai
 		}
 		return HoldingDetail{}, fmt.Errorf("query: get holding %d: %w", id, err)
 	}
-	return hydrateHolding(holdingRow(sqlc.ListHoldingsWithDetailRow(row)))
+	return hydrateHolding(row)
 }
 
 // OnHand is D7, and it DISPATCHES ON KIND. For Bulk it is a sum of content
@@ -648,9 +619,12 @@ func toInt64(v any) int64 {
 	}
 }
 
-type holdingRow sqlc.ListHoldingsWithDetailRow
+// hydrateHolding takes the view's row directly. The three queries that read it
+// all return the same generated type now, so there is nothing to convert -- it
+// used to take a local alias reached by converting one query's row struct into
+// another's, which compiled only while their field orders happened to match.
 
-func hydrateHolding(row holdingRow) (HoldingDetail, error) {
+func hydrateHolding(row sqlc.HoldingsWithDetail) (HoldingDetail, error) {
 	created, err := db.ParseTime(row.CreatedAt)
 	if err != nil {
 		return HoldingDetail{}, fmt.Errorf("query: holding %d created_at: %w", row.ID, err)
