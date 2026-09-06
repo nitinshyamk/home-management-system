@@ -1,6 +1,7 @@
 package complete_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -9,6 +10,11 @@ import (
 	"home-management-system/internal/tui/complete"
 	"home-management-system/internal/tui/keys"
 )
+
+// Shorthands, so a test that needs the real ranking reads as one thought.
+type Match = complete.Match
+
+var Options = complete.Options
 
 func key(name string) tea.KeyMsg {
 	msg, ok := keys.Named(name)
@@ -194,22 +200,185 @@ func TestTabFallsThroughWhenItWouldChangeNothing(t *testing.T) {
 	}
 }
 
-// Taking an option settles the field for the rest of the visit.
+// Taking an option does NOT put the list away for the visit -- it closes it and
+// lets the next recompute decide whether there is still a choice to make.
 //
-// The list is recomputed on every keystroke, so without this it re-offered the
-// option just taken: the field kept saying "take it" about the value it was
-// already holding, and the next Tab had to fight past it.
-func TestTakingSettlesTheField(t *testing.T) {
-	m, took := press(offered(), "tab")
+// The first version did settle the field, and that made a hierarchy impossible
+// to walk. Taking "Garage" ended completion for the visit, so the way to reach
+// "Garage > Metal Shelving Unit" was to type the rest of it by hand, and
+// backspacing to correct a take left a field with no completions at all.
+//
+// What settling was really guarding against is handled where it belongs: the
+// matcher offers nothing when the only match IS the value, and Tab falls through
+// rather than re-taking one. Both are checked below through the real matcher,
+// because that pairing is the whole reason this can be left open.
+func TestTakingOpensTheNextChoice(t *testing.T) {
+	house := []Match{
+		{Path: "Garage", Leaf: "Garage"},
+		{Path: "Garage > Metal Shelving Unit", Leaf: "Metal Shelving Unit"},
+		{Path: "Garden", Leaf: "Garden"},
+	}
+	m, took := press(complete.Model{}.Offer(Options(house, "gar"), "gar"), "tab")
 	if took != "Garage" {
-		t.Fatalf("tab took %q", took)
+		t.Fatalf("tab took %q, want the Garage", took)
 	}
-	m = m.Offer([]string{"Garage", "Garden"}, "Garage")
+	// What the owner does next: put the taken value in the field and recompute.
+	m = m.Offer(Options(house, took), took)
+	if !m.IsOpen() {
+		t.Fatal("taking a parent ended completion, so its children are unreachable")
+	}
+	if option, _ := m.Selected(); option != "Garage" {
+		t.Errorf("the list came back highlighting %q, want the exact match", option)
+	}
+	// And Tab is the owner's again, because taking it would change nothing.
+	if _, _, handled := m.Update(key("tab")); handled {
+		t.Error("tab re-took the value the field already held")
+	}
+
+	// A take with nothing else near it closes and stays closed.
+	only := []Match{{Path: "Garden", Leaf: "Garden"}}
+	m, took = press(complete.Model{}.Offer(Options(only, "gard"), "gard"), "tab")
+	if m.Offer(Options(only, took), took).IsOpen() {
+		t.Error("the list re-offered the one value the field already held")
+	}
+}
+
+// The arrows walk the list, wherever the list is.
+//
+// They were bound on the creation panel's dropdown and not on the prompt's, so
+// the same list answered the same key in one place and swallowed it in the
+// other. A dropdown is the one thing in a terminal everybody reaches for the
+// down arrow at.
+func TestTheArrowsWalkTheList(t *testing.T) {
+	if _, took := press(offered(), "down", "down", "tab"); took != "Gate" {
+		t.Errorf("two downs then tab took %q, want Gate", took)
+	}
+	if _, took := press(offered(), "up", "tab"); took != "Gate" {
+		t.Errorf("up from the top took %q, want the list to wrap to Gate", took)
+	}
+}
+
+// Enter takes the highlight, which is what a person means by it once they have
+// pointed at something.
+func TestEnterTakesWhatWasChosen(t *testing.T) {
+	if _, took := press(offered(), "ctrl+n", "enter"); took != "Garden" {
+		t.Errorf("enter took %q, want the highlighted Garden", took)
+	}
+	// Typed towards is enough; the highlight need not have been moved.
+	if _, took := press(offered(), "enter"); took != "Garage" {
+		t.Errorf("enter on a typed-towards list took %q, want Garage", took)
+	}
+}
+
+// Enter on an untouched empty field is NOT a choice.
+//
+// Something has to be highlighted for the list to have a highlight at all, and
+// on arrival that something is whichever option happened to rank first. Taking
+// it would be the interface answering the question on the person's behalf --
+// so enter falls through, and the owner refuses the empty field as it always
+// did.
+func TestEnterDoesNotChooseForYou(t *testing.T) {
+	arrived := complete.Model{}.Offer([]string{"Garage", "Garden"}, "")
+	next, took, handled := arrived.Update(key("enter"))
+	if handled || took != "" {
+		t.Errorf("enter took %q from an untouched empty field", took)
+	}
+	// But Tab is explicit, so Tab still takes.
+	if _, took := press(arrived, "tab"); took != "Garage" {
+		t.Errorf("tab took %q, want Garage", took)
+	}
+	// And once the highlight has been moved, enter is a choice.
+	if _, took := press(next, "ctrl+n", "enter"); took != "Garden" {
+		t.Errorf("enter after a move took %q, want Garden", took)
+	}
+}
+
+// A list longer than the window scrolls to what is highlighted, rather than
+// cutting the matches off at whatever fits.
+//
+// The cap used to BE the window, so in a house with more places than rows the
+// later matches were not merely off-screen -- they were not in the list, and no
+// keystroke could reach them.
+func TestALongListScrollsToTheHighlight(t *testing.T) {
+	var many []string
+	for i := 0; i < complete.Window*3; i++ {
+		many = append(many, fmt.Sprintf("Shelf %d", i))
+	}
+	m := complete.Model{}.Offer(many, "shelf")
+
+	shows := func(m complete.Model, option string) bool {
+		for _, line := range m.Lines("", 60) {
+			if strings.Contains(line, option) {
+				return true
+			}
+		}
+		return false
+	}
+	if shows(m, many[len(many)-1]) {
+		t.Fatal("the whole list is drawn, so there is no window to test")
+	}
+	if n := len(m.Lines("", 60)); n > complete.Window+2 {
+		t.Errorf("the list drew %d lines over a field, want at most %d",
+			n, complete.Window+2)
+	}
+
+	// C-n all the way to the last option, which must be both reachable and
+	// visible once reached.
+	for i := 0; i < len(many)-1; i++ {
+		m, _ = press(m, "ctrl+n")
+	}
+	if option, _ := m.Selected(); option != many[len(many)-1] {
+		t.Fatalf("walking the list stopped at %q", option)
+	}
+	if !shows(m, many[len(many)-1]) {
+		t.Errorf("the highlight is off the window:\n%s", strings.Join(m.Lines("", 60), "\n"))
+	}
+	// And it says what is off the top, so the list does not look complete.
+	if !shows(m, "more above") {
+		t.Error("a scrolled list does not say there is more above it")
+	}
+}
+
+// C-n brings back a list that was put away.
+//
+// It was a dead key: a dismissed list is closed, so Update declined the
+// keystroke, the line editor has no motion of its own to give it, and the field
+// swallowed it. Having pressed esc to see the row underneath, there was no way
+// back to the list short of retyping the field -- so esc was a one-way door in
+// the middle of a field somebody was still filling in.
+func TestTheListCanBeBroughtBack(t *testing.T) {
+	m, _ := press(offered(), "esc")
 	if m.IsOpen() {
-		t.Error("the list re-offered the option that was just taken")
+		t.Fatal("esc did not put the list away")
 	}
-	// Leaving and coming back offers again.
-	if !m.Arrive().Offer([]string{"Garage"}, "").IsOpen() {
-		t.Error("a field is offered nothing ever again after one take")
+	// What the owner does on every keystroke: recompute and re-offer.
+	if m.Offer([]string{"Garage", "Garden", "Gate"}, "ga").IsOpen() {
+		t.Fatal("a dismissed list came back on its own")
+	}
+
+	next, _, handled := m.Update(key("ctrl+n"))
+	if !handled {
+		t.Error("C-n on a dismissed list was declined, so nothing will happen at all")
+	}
+	back := next.Offer([]string{"Garage", "Garden", "Gate"}, "ga")
+	if !back.IsOpen() {
+		t.Fatal("C-n did not bring the list back")
+	}
+	// At the best match, not at whatever was highlighted when it was dismissed.
+	if option, _ := back.Selected(); option != "Garage" {
+		t.Errorf("the list came back highlighting %q, want the best match", option)
+	}
+}
+
+// A field that has simply not been offered anything is a different thing from a
+// dismissed one, and C-n has to fall through there -- in the creation panel it
+// is how you reach the next field.
+func TestCNFallsThroughOnAFieldWithNoList(t *testing.T) {
+	if _, _, handled := (complete.Model{}).Update(key("ctrl+n")); handled {
+		t.Error("C-n was taken by a list that was never offered")
+	}
+	fresh := complete.Model{}.Offer([]string{"Garage"}, "ga").Arrive()
+	if _, _, handled := fresh.Update(key("ctrl+n")); handled {
+		t.Error("C-n was taken after arriving at a new field")
 	}
 }

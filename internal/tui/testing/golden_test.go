@@ -142,3 +142,20 @@ func TestGoldenTheRetirementConfirmation(t *testing.T) {
 	s.Send(sim.CtrlK)
 	s.AssertFrame("10f-retire-confirmation")
 }
+
+// The carry banner, which is a LAYOUT claim: it sits above the body with the
+// view tabs, and the rows give up the line rather than the screen overflowing.
+//
+// Kept as a frame because that claim is exactly the kind a plain-text capture
+// can hold still, and because the banner is drawn in every view -- so a change
+// to where it goes changes every screen at once.
+func TestGoldenSomethingInHand(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(84, 22)
+	s.Send(sim.Press("4"))
+	s.Send(sim.AltW)
+	// Across a view switch, which is where it used to vanish.
+	s.Send(sim.Press("2"))
+	s.AssertFrame("11e-carrying")
+}

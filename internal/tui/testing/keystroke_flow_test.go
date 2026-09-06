@@ -220,7 +220,7 @@ func TestCopyAndPut(t *testing.T) {
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltW)
-	s.ShowsText("copied")
+	s.ShowsText("carrying")
 
 	s.Send(sim.Press("2"))
 	moveTo(t, s, "Garage")
@@ -397,8 +397,45 @@ func TestTheQuantityPromptOffersNothing(t *testing.T) {
 	s.HidesText("Garage")
 }
 
-// Not taking the suggestion is still a refusal rather than a guess -- the
-// resolver reports, and the interface asks.
+// Enter takes the highlighted place. It does not guess at the text, and it does
+// not move anything on its own.
+//
+// It used to submit what had been TYPED, which meant that walking the list to
+// the place you meant and pressing enter came back as "did you mean" -- the
+// interface refusing to guess at the very thing it had just been told. Now the
+// first enter fills the field in with the whole path, where it can be read, and
+// the second one is what moves the stock.
+func TestEnterTakesThePlaceItIsPointingAt(t *testing.T) {
+	s := sim.New(t)
+	rice, _ := stocked(t, s)
+	s.Send(sim.Press("4"), sim.CtrlS)
+	s.Send(sim.Type("rice"))
+	s.Send(sim.Enter)
+
+	s.Send(sim.Press("m"))
+	s.Send(sim.Type("gar"))
+	s.Send(sim.Enter) // takes the highlight
+
+	s.HidesText("did you mean")
+	s.ShowsText("Garage")
+	// Taken, not applied. On the ROW rather than anywhere on the screen,
+	// because the field itself now says Garage.
+	if placed(s) {
+		t.Error("taking a suggestion moved the stock by itself")
+	}
+
+	s.Send(sim.Enter) // and this moves it
+	s.Send(sim.Esc)
+	s.Send(sim.Press("4"))
+	s.OnHand(rice, 500*domain.Scale)
+	if !placed(s) {
+		t.Errorf("the move never happened:\n%s", s.PlainView())
+	}
+}
+
+// With the list put away there is nothing to take, so a half-typed name is
+// still a refusal rather than a guess -- the resolver reports, and the
+// interface asks.
 func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
@@ -408,20 +445,26 @@ func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
 
 	s.Send(sim.Press("m"))
 	s.Send(sim.Type("gar"))
-	s.Send(sim.Enter) // without tab
+	s.Send(sim.Esc)   // the list goes away, the field stays
+	s.Send(sim.Enter) // on "gar", which is nobody's name
 
 	s.ShowsText("did you mean")
 	s.Send(sim.Esc)
 	s.Send(sim.Press("4"))
 	s.OnHand(rice, 500*domain.Scale)
+	if placed(s) {
+		t.Error("a suggestion was applied without being taken")
+	}
+}
 
-	// On the ROW, not anywhere on the screen: "Garage" is in the refusal
-	// itself, so a whole-screen check would fail whatever the move did.
+// placed reports whether the rice row says Garage, which is what a move shows.
+func placed(s *sim.Simulator) bool {
 	for _, line := range strings.Split(s.PlainView(), "\n") {
 		if strings.Contains(line, "Basmati Rice") && strings.Contains(line, "Garage") {
-			t.Errorf("a suggestion was applied without being taken: %q", line)
+			return true
 		}
 	}
+	return false
 }
 
 // Retiring asks, and the reason is not the write path it uses.
@@ -508,4 +551,82 @@ func holdingOf(t *testing.T, s *sim.Simulator, item domain.ItemID) domain.Holdin
 		t.Fatalf("no holdings of item %d: %v", item, err)
 	}
 	return details[0].Holding.Base().ID
+}
+
+// The views that are neither a table nor a tree scroll with the cursor.
+//
+// They did not. The table and the tree follow their own cursors; Help, History
+// and Integrity moved a cursor and redrew the same screenful, so C-n past the
+// last visible line moved something nobody could see and the screen sat still.
+// It reads as a view that has stopped responding, and on the help -- which is
+// four screens long -- everything past the first one was unreachable.
+func TestTheHelpScrollsWithItsCursor(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(88, 20)
+	s.Send(sim.AltX)
+	s.Send(sim.Type("help"))
+	s.Send(sim.Enter)
+
+	first := s.PlainView()
+	if !strings.Contains(first, "MOVING") {
+		t.Fatalf("the help did not open:\n%s", first)
+	}
+	// Past the bottom of the first screenful.
+	for i := 0; i < 40; i++ {
+		s.Send(sim.CtrlN)
+	}
+	after := s.PlainView()
+	if after == first {
+		t.Errorf("the help never scrolled:\n%s", after)
+	}
+	// And the cursor is somewhere a person can see it.
+	if !strings.Contains(after, ">") {
+		t.Errorf("the cursor walked off the screen:\n%s", after)
+	}
+}
+
+// `m` over a SELECTION does not pick anything up.
+//
+// A carry holds one thing and the prompt acts on every selected row, so with
+// several picked there is nothing coherent to hold -- and a banner naming one
+// of three rows would be describing a move that is not the one about to happen.
+// What `m` writes is unchanged either way.
+func TestTheMoveKeyDoesNotCarryASelection(t *testing.T) {
+	s := sim.New(t)
+	p, ctx := s.Planner(), s.Context()
+	rice, _ := stocked(t, s)
+	garage := s.HasLocation("Garage")
+	// Two DIFFERENT measured items, so that moving both to one place is two
+	// moves and not a merge. Two holdings of the same item sent to the same
+	// shelf in one batch is a separate problem, and not this test's.
+	s.Apply(p.NewItem(ctx, ops.NewItemRequest{
+		Name: "Wild Rice", Category: s.HasCategory("Grains"),
+		Counting: ops.CountingMeasured, ContentUnit: "g",
+	}))
+	wild := s.HasItem("Wild Rice")
+	s.Apply(p.Receive(ctx, ops.ReceiveRequest{
+		Item: wild, Location: garage, Basis: domain.BasisContent,
+		Amount: domain.FromMilli(500 * domain.Scale), Source: "shop",
+	}))
+	// Somewhere neither of them already is, so the batch is two real moves.
+	s.Apply(p.NewLocation(ctx, ops.NewLocationRequest{Name: "Shed"}))
+	_ = rice
+
+	s.Send(sim.Press("4"), sim.CtrlS)
+	s.Send(sim.Type("rice"))
+	s.Send(sim.Enter)
+	s.Send(sim.AltLess)
+	s.Send(sim.Space, sim.Space)
+	s.ShowsText("2 selected")
+
+	s.Send(sim.Press("m"))
+	s.HidesText("carrying")
+
+	// And it still moves both of them. One enter, not two: "Shed" is exactly a
+	// place and nothing else is near it, so there is no list left open for the
+	// first enter to take from.
+	s.Send(sim.Type("Shed"))
+	s.Send(sim.Enter)
+	s.ShowsText("2 rows")
 }

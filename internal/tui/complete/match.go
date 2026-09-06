@@ -2,13 +2,18 @@ package complete
 
 import "strings"
 
-// Limit is how many options a dropdown offers.
+// Limit is how many matches a dropdown holds.
 //
-// Eight, where the old hint offered three. Three was sized for a line of advice
-// under a field; a list somebody is expected to walk with C-n needs enough rows
-// that walking is worth doing, and few enough that it does not bury the form it
-// is opening over.
-const Limit = 8
+// Not how many it SHOWS -- that is Window, and the difference is the whole
+// point. A cap sized to the screen is a cap that decides which matches exist
+// based on how tall the list is allowed to be, and in a house with thirty
+// places the ninth match was unreachable by any keystroke.
+//
+// Thirty, which is five windows of scrolling: enough that the answer is in the
+// list for any household this program is for, and few enough that C-n is a
+// choice rather than a journey. Past it the advice is to type another letter,
+// which is what the list says.
+const Limit = 30
 
 // Match is one candidate to complete against.
 //
@@ -54,21 +59,15 @@ func rank(m Match, typed string) int {
 // Options ranks candidates against what has been typed and returns what to
 // offer, best first, capped at Limit.
 //
-// Empty input offers the first Limit candidates rather than nothing. The old
-// rule was the opposite -- "a list of everything is not a suggestion, it is the
-// tree, which is one keystroke away" -- and it was right when the list only
-// appeared mid-typing. It is wrong now that arriving at a field is meant to
-// show what the field accepts.
+// Empty input offers the top of the hierarchy rather than nothing. The old rule
+// was the opposite -- "a list of everything is not a suggestion, it is the tree,
+// which is one keystroke away" -- and it was right when the list only appeared
+// mid-typing. It is wrong now that arriving at a field is meant to show what the
+// field accepts.
 func Options(candidates []Match, typed string) []string {
 	typed = strings.ToLower(strings.TrimSpace(typed))
 	if typed == "" {
-		out := make([]string, 0, Limit)
-		for _, c := range candidates {
-			if out = append(out, c.Path); len(out) == Limit {
-				break
-			}
-		}
-		return out
+		return shallowest(candidates)
 	}
 
 	// Bucketed rather than sorted, so candidates keep their incoming order --
@@ -93,6 +92,36 @@ func Options(candidates []Match, typed string) []string {
 	out := make([]string, 0, Limit)
 	for _, bucket := range buckets {
 		for _, path := range bucket {
+			if out = append(out, path); len(out) == Limit {
+				return out
+			}
+		}
+	}
+	return out
+}
+
+// shallowest is what an empty field offers: the top of the hierarchy first.
+//
+// Tree order alone put the first room's whole subtree at the top, so arriving
+// at the prompt in a five-room house showed the Basement and its five shelves
+// and nothing else -- a list that answers "what is under Basement" to somebody
+// who has not said Basement. Depth first answers "what is there", which is the
+// question an empty field is asking.
+//
+// Within a depth the incoming order is kept, which is tree order, for the same
+// reason the tiers keep it.
+func shallowest(candidates []Match) []string {
+	var byDepth [][]string
+	for _, c := range candidates {
+		d := strings.Count(c.Path, ">")
+		for len(byDepth) <= d {
+			byDepth = append(byDepth, nil)
+		}
+		byDepth[d] = append(byDepth[d], c.Path)
+	}
+	out := make([]string, 0, Limit)
+	for _, level := range byDepth {
+		for _, path := range level {
 			if out = append(out, path); len(out) == Limit {
 				return out
 			}

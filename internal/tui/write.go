@@ -269,7 +269,14 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	switch keys.Lookup(keys.Line, msg) {
 	case keys.Cancel:
 		m.editor = m.editor.Close()
-		m.status = "unchanged"
+		// "unchanged" is true and, while something is in hand, beside the
+		// point: esc there is not abandoning the move, it is choosing the other
+		// half of it. The banner says what is happening; a second message
+		// alongside it would be a second thing to read.
+		m.status = ""
+		if m.copied == nil {
+			m.status = "unchanged"
+		}
 		return m, nil, true
 	case keys.Confirm:
 		// A field opened for an ACTION answers to that action; only a rename

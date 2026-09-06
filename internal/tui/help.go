@@ -113,9 +113,23 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Tree, "fold the node under the cursor", keys.FoldToggle),
 			pair(keys.Tree, "fold everything, or unfold it", keys.FoldCycleAll),
 			pair(keys.Browse, "show what the nodes contain -- items, or holdings", keys.ShowContents),
-			pair(keys.Browse, "pick up one of the things inside", keys.Copy),
+		}},
+		// Its own section, because the gesture is not a tree's.
+		//
+		// It was listed under IN A TREE, where it was added, and that is the
+		// half of it that is least true: it starts in the Holdings table as
+		// often as in a tree, and CROSSING VIEWS in the middle is the whole
+		// point -- you pick a thing up where you can see it is wrong and put it
+		// down where it is right.
+		{title: "MOVING A THING BY POINTING AT WHERE IT GOES", rows: [][2]string{
+			pair(keys.Browse, "pick up the row under the cursor", keys.Copy),
+			pair(keys.Browse, "or pick it up and be asked where it goes", keys.MoveTo),
 			pair(keys.Browse, "put it in the place or classification you are on", keys.Paste),
-			pair(keys.Browse, "or name where it goes instead", keys.MoveTo),
+			pair(keys.Browse, "put it down, having changed your mind", keys.Cancel),
+		}, prose: []string{
+			"What is in hand is named at the top of the screen until it is put " +
+				"down, and it stays in hand across the views -- so you can pick " +
+				"a thing up in one and go looking for where it belongs in another.",
 		}},
 		{title: "ACTING ON A ROW", rows: [][2]string{
 			pair(keys.Browse, "use some of it", keys.Consume),
@@ -124,7 +138,6 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Browse, "take it out, or bring it back", keys.ToggleCustody),
 			pair(keys.Browse, "rename it, in place", keys.EditInPlace),
 			pair(keys.Browse, "make a new one inside this", keys.Create),
-			pair(keys.Browse, "copy a row, then put it where the cursor is", keys.Copy, keys.Paste),
 			pair(keys.Browse, "retire it -- it asks first", keys.Kill),
 		}},
 		{title: "TYPING IN A FIELD", rows: [][2]string{
@@ -135,8 +148,12 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Line, "kill the word behind, and the word ahead", keys.KillWordBack, keys.KillWordForward),
 		}},
 		{title: "WHEN A LIST IS OPEN OVER A FIELD", rows: [][2]string{
-			pair(keys.Line, "take what is highlighted", keys.Complete),
-			pair(keys.Line, "choose", keys.MoveDown, keys.MoveUp),
+			pair(keys.Line, "take what is highlighted -- and taking a place "+
+				"offers what is inside it, so a path is walked rather than "+
+				"typed out", keys.Complete, keys.Confirm),
+			// Every key, not the first one: the arrows work here, and an
+			// alternative nobody is told about is one nobody uses.
+			pairAll(keys.Line, "choose", keys.MoveDown, keys.MoveUp),
 			pair(keys.Line, "put the list away and keep typing", keys.Dismiss, keys.Cancel),
 		}},
 		{title: "ON THE IMPORT PLAN", rows: [][2]string{
@@ -250,6 +267,17 @@ func pair(ctx keys.Context, what string, actions ...keys.Action) [2]string {
 	var shown []string
 	for _, action := range actions {
 		if s := keys.Show(ctx, action); s != "" {
+			shown = append(shown, s)
+		}
+	}
+	return [2]string{strings.Join(shown, " / "), what}
+}
+
+// pairAll is pair, naming every key bound to each action rather than one.
+func pairAll(ctx keys.Context, what string, actions ...keys.Action) [2]string {
+	var shown []string
+	for _, action := range actions {
+		if s := keys.ShowAll(ctx, action); s != "" {
 			shown = append(shown, s)
 		}
 	}

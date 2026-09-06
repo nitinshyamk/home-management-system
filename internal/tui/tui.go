@@ -585,12 +585,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case keys.MoveDown:
 		if m.cursor < len(m.rows)-1 {
 			m.cursor++
-			m.viewport.SetContent(m.body())
+			m.follow()
 		}
 	case keys.MoveUp:
 		if m.cursor > 0 {
 			m.cursor--
-			m.viewport.SetContent(m.body())
+			m.follow()
 		}
 	case keys.Top:
 		m.cursor = 0
@@ -621,6 +621,18 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// it. Neither has a number, so escaping is the only way out.
 		if m.view == viewHistory || m.view == viewHelp {
 			return m, m.load(m.fromView)
+		}
+		// Putting down what is being carried, LAST in this chain.
+		//
+		// Filtering and selecting are things you do while hunting for the
+		// destination, so esc has to undo the most recent of those first --
+		// otherwise looking for somewhere to put a thing would make you drop
+		// it. Dropping a carry with a filter on takes two escapes, which is
+		// the same shape as every other nested mode here.
+		if m.copied != nil {
+			m.status = fmt.Sprintf("put %q down", m.copied.Name)
+			m.copied = nil
+			return m, nil
 		}
 
 	case keys.ViewCategories:
@@ -654,7 +666,7 @@ func (m Model) View() string {
 	// The editor's lines go INTO the surface, spliced after the row they belong
 	// to, rather than under the whole list. Under the list is not inline; it is
 	// a second place to look.
-	overlay := m.editor.SetWidth(m.width).Lines()
+	overlay := m.field().Lines()
 	if m.creator.IsOpen() {
 		overlay = m.creator.SetWidth(m.width).Lines()
 	}
@@ -706,7 +718,14 @@ func (m Model) View() string {
 		return strings.Join(parts, "\n")
 	}
 
-	parts := []string{m.header(), body}
+	parts := []string{m.header()}
+	// Above the body, with the view tabs, because that is where a MODE belongs:
+	// it is true of the whole screen rather than of the row under the cursor,
+	// and it has to be readable in whichever view you have navigated to.
+	for _, line := range m.carryLine() {
+		parts = append(parts, alertStyle.Render(line))
+	}
+	parts = append(parts, body)
 	if line := m.box.View(); line != "" {
 		parts = append(parts, line)
 	}
@@ -714,6 +733,16 @@ func (m Model) View() string {
 		parts = append(parts, errorStyle.Render(line))
 	}
 	return strings.Join(append(parts, m.footer()), "\n")
+}
+
+// field is the inline editor, told the one thing it cannot know: whether esc
+// will throw the answer away or leave the thing it was opened over in hand.
+func (m Model) field() editor.Model {
+	f := m.editor.SetWidth(m.width)
+	if m.copied != nil {
+		return f.WithCancel("go and point at it instead")
+	}
+	return f
 }
 
 // problemLines is the refusal, humanised and wrapped to the terminal.
@@ -731,12 +760,46 @@ func (m Model) problemLines() []string {
 	return out
 }
 
+// carryLine says what is being held, and where it can be put down.
+//
+// It exists because the carry was INVISIBLE. carry() announced itself through
+// m.status, and every loadedMsg overwrites m.status -- so the one keystroke the
+// gesture requires in the middle, the view switch, destroyed the only evidence
+// that anything was being carried. You picked a thing up, went to the tree, and
+// the screen said nothing at all.
+//
+// Worded per kind, because where a thing can go is the useful half: a Holding
+// goes in a place, an Item is filed under a classification, and a banner that
+// said only "carrying X" would leave the person to find that out by being
+// refused.
+func (m Model) carryLine() []string {
+	if m.copied == nil {
+		return nil
+	}
+	goes := "files it under a classification"
+	if m.copied.Kind == "Holding" {
+		goes = "puts it in a place"
+	}
+	text := fmt.Sprintf("carrying %q -- %s %s, %s puts it down",
+		m.copied.Name,
+		keys.Show(keys.Browse, keys.Paste), goes,
+		keys.Show(keys.Browse, keys.Cancel))
+	out := wrap(text, max(20, m.width-2))
+	for i := range out {
+		out[i] = "  " + out[i]
+	}
+	return out
+}
+
 // bodyHeight is the room left after the header, the footer, and the input line
 // when there is one.
 func (m Model) bodyHeight() int {
 	// The editor is NOT subtracted: it takes lines from inside the surface
 	// rather than from around it, so the screen keeps its shape.
-	if h := m.height - 4 - m.box.Height() - len(m.problemLines()); h > 3 {
+	//
+	// The carry banner IS, along with the refusal: both sit outside the surface
+	// rather than inside it, so the rows have to give up the lines they take.
+	if h := m.height - 4 - m.box.Height() - len(m.problemLines()) - len(m.carryLine()); h > 3 {
 		return h
 	}
 	return 3
@@ -960,6 +1023,24 @@ func (m Model) footer() string {
 		return rule + "\n" + status
 	}
 	return rule + "\n" + dimStyle.Render(help)
+}
+
+// follow redraws the rows and scrolls the viewport the least amount that puts
+// the cursor back on screen.
+//
+// The table and the tree do this for themselves and these views did not, so
+// C-n past the last visible line moved a cursor nobody could see and the screen
+// sat still. It reads as a view that has stopped responding, and on the two
+// screens that are longer than a terminal -- the help, and a long history --
+// everything past the first screenful was unreachable.
+func (m *Model) follow() {
+	m.viewport.SetContent(m.body())
+	if m.cursor < m.viewport.YOffset {
+		m.viewport.SetYOffset(m.cursor)
+	}
+	if bottom := m.viewport.YOffset + m.viewport.Height; m.cursor >= bottom {
+		m.viewport.SetYOffset(m.cursor - m.viewport.Height + 1)
+	}
 }
 
 func (m Model) body() string {
