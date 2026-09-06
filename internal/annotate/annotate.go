@@ -159,6 +159,16 @@ func (a *Annotator) ArchiveCategory(
 	if err := a.requireCategory(ctx, id); err != nil {
 		return err
 	}
+	// Refused rather than repeated. A second archive overwrites the timestamp
+	// that recorded when it actually happened, and reports success for having
+	// done nothing. Locations have refused this since they were built.
+	archived, err := a.q.CategoryIsArchived(ctx, int64(id))
+	if err != nil {
+		return fmt.Errorf("annotate: read category %d: %w", id, err)
+	}
+	if archived {
+		return fmt.Errorf("%w: category %d is already archived", ErrInvalidInput, id)
+	}
 
 	// Where children and contents go. Lift sends them to this node's parent —
 	// which is NULL for a root, making its children roots in turn.

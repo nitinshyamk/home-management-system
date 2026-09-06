@@ -49,3 +49,12 @@ SELECT parent_id FROM categories WHERE id = ?;
 
 -- name: CategoryExists :one
 SELECT EXISTS(SELECT 1 FROM categories WHERE id = ?);
+
+-- name: CategoryIsArchived :one
+--
+-- Archiving something already archived is refused rather than repeated: the
+-- second write would overwrite the timestamp recording when it actually
+-- happened, and report success for having done nothing. Locations have refused
+-- this since they were built; categories did not, which is the drift that comes
+-- of one rule written twice.
+SELECT archived_at IS NOT NULL FROM categories WHERE id = ?;
