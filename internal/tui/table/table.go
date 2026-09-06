@@ -87,6 +87,17 @@ type Row struct {
 	// in the Garage" and sort the column by branch rather than by name -- two
 	// behaviour changes hiding inside a rendering one.
 	Paths []string
+
+	// Accent marks a row that is a different KIND of thing from the rows
+	// around it -- the items shown inside a category, the holdings inside a
+	// location.
+	//
+	// A hue rather than another grey step, for the same reason the selection
+	// is: banding already owns lightness, and saying "different kind" and
+	// "different band" in one dimension makes them compete. It is also not
+	// dimming, because these rows are not less important than the structure
+	// holding them -- they are the things the structure exists to hold.
+	Accent bool
 }
 
 // Model is the widget's state.
@@ -145,6 +156,18 @@ var (
 	// different from a grey step, so "which band am I on" and "is this picked"
 	// never have to be distinguished by degree.
 	picked = lipgloss.AdaptiveColor{Light: "189", Dark: "17"}
+
+	// accent is the FOREGROUND of a row that is a different kind of thing.
+	//
+	// Foreground because the two background channels are spoken for: lightness
+	// is banding, hue is selection. A third background state would have to be
+	// told apart from both, and a row can be contained AND picked AND banded at
+	// once -- three independent facts needing three independent channels.
+	//
+	// A tint rather than a dim, because these rows are not lesser. The holdings
+	// under a shelf are what the shelf is for; dimming them would say the
+	// opposite of what showing them was meant to say.
+	accent = lipgloss.AdaptiveColor{Light: "24", Dark: "74"}
 )
 
 // rowStyle composes what a row is saying.
@@ -158,13 +181,16 @@ var (
 //
 // One style rather than nested spans, so a selected row under the cursor reads
 // as both rather than as whichever was applied last.
-func rowStyle(striped, selected, cursor bool) lipgloss.Style {
+func rowStyle(striped, selected, cursor, accented bool) lipgloss.Style {
 	s := lipgloss.NewStyle()
 	switch {
 	case selected:
 		s = s.Background(picked)
 	case striped:
 		s = s.Background(stripe)
+	}
+	if accented {
+		s = s.Foreground(accent)
 	}
 	if cursor {
 		s = s.Bold(true)

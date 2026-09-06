@@ -163,8 +163,8 @@ type Model struct {
 	// identifiers behind its row through this rather than through the display
 	// strings, which is what lets it build a Command without resolving a name.
 	holdingRows map[int64]app.HoldingRow
-	// copied is a row waiting for a put.
-	copied *app.HoldingRow
+	// copied is a thing waiting for a put.
+	copied *carried
 
 	// The import flow. importing swaps the whole screen for the plan review,
 	// because a file proposing a batch of changes is not something to look at

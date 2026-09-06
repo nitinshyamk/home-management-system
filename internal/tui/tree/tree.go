@@ -384,8 +384,9 @@ func (m Model) rows() []table.Row {
 			skipBelow = -1
 		}
 		out = append(out, table.Row{
-			Key:   n.Key(),
-			Cells: []string{m.label(n), measure(n)},
+			Key:    n.Key(),
+			Cells:  []string{m.label(n), measure(n)},
+			Accent: n.Contained(),
 		})
 		if m.collapsed[n.Key()] {
 			skipBelow = n.Depth
@@ -421,7 +422,8 @@ func (m Model) filteredRows() []table.Row {
 			Key: n.Key(),
 			// No fold marker while filtering: what is shown is what matched,
 			// not what is open, and a marker would claim otherwise.
-			Cells: []string{strings.Repeat(indent, n.Depth) + "  " + n.Name, measure(n)},
+			Cells:  []string{strings.Repeat(indent, n.Depth) + "  " + n.Name, measure(n)},
+			Accent: n.Contained(),
 		})
 	}
 	return out
