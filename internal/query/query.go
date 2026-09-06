@@ -116,29 +116,15 @@ func (r *Reader) CategoryPath(ctx context.Context, id domain.CategoryID) ([]doma
 		return nil, fmt.Errorf("%w: ancestors of %d", ErrTreeTooLarge, id)
 	}
 
-	byID := make(map[domain.CategoryID]domain.Category, len(rows))
+	nodes := make([]domain.Category, 0, len(rows))
 	for _, row := range rows {
 		c, err := categoryFrom(row.ID, row.ParentID, row.Name, row.Description, row.CreatedAt, row.ArchivedAt)
 		if err != nil {
 			return nil, err
 		}
-		byID[c.ID] = c
+		nodes = append(nodes, c)
 	}
-
-	// Walk from the requested node upward, then reverse.
-	var reversed []domain.Category
-	for cur, ok := byID[id], true; ok; {
-		reversed = append(reversed, cur)
-		if cur.Parent == nil {
-			break
-		}
-		cur, ok = byID[*cur.Parent]
-	}
-	path := make([]domain.Category, 0, len(reversed))
-	for i := len(reversed) - 1; i >= 0; i-- {
-		path = append(path, reversed[i])
-	}
-	return path, nil
+	return categoryTree.path(nodes, id), nil
 }
 
 // CategorySubtree is D14/D15: the node and everything beneath it, each with its
@@ -158,37 +144,21 @@ func (r *Reader) CategorySubtree(ctx context.Context, root domain.CategoryID) ([
 		return nil, fmt.Errorf("%w: descendants of %d", ErrTreeTooLarge, root)
 	}
 
-	children := map[domain.CategoryID][]domain.Category{}
-	var start *domain.Category
+	nodes := make([]domain.Category, 0, len(rows))
 	for _, row := range rows {
 		c, err := categoryFrom(row.ID, row.ParentID, row.Name, row.Description, row.CreatedAt, row.ArchivedAt)
 		if err != nil {
 			return nil, err
 		}
-		if c.ID == root {
-			copied := c
-			start = &copied
-			continue
-		}
-		if c.Parent != nil {
-			children[*c.Parent] = append(children[*c.Parent], c)
-		}
-	}
-	if start == nil {
-		return nil, fmt.Errorf("%w: category %d", ErrNotFound, root)
+		nodes = append(nodes, c)
 	}
 
-	// Depth-first, so the output reads as an indented tree. Names arrive sorted
-	// from SQL, and map iteration never reorders a slice.
 	var out []Node
-	var walk func(c domain.Category, depth int)
-	walk = func(c domain.Category, depth int) {
+	if !categoryTree.subtree(nodes, root, func(c domain.Category, depth int) {
 		out = append(out, Node{Category: c, Depth: depth})
-		for _, child := range children[c.ID] {
-			walk(child, depth+1)
-		}
+	}) {
+		return nil, fmt.Errorf("%w: category %d", ErrNotFound, root)
 	}
-	walk(*start, 0)
 	return out, nil
 }
 
@@ -482,28 +452,15 @@ func (r *Reader) LocationPath(ctx context.Context, id domain.LocationID) ([]doma
 		return nil, fmt.Errorf("%w: ancestors of location %d", ErrTreeTooLarge, id)
 	}
 
-	byID := make(map[domain.LocationID]domain.Location, len(rows))
+	nodes := make([]domain.Location, 0, len(rows))
 	for _, row := range rows {
 		l, err := locationFrom(row.ID, row.ParentID, row.Name, row.Description, row.CreatedAt, row.ArchivedAt)
 		if err != nil {
 			return nil, err
 		}
-		byID[l.ID] = l
+		nodes = append(nodes, l)
 	}
-
-	var reversed []domain.Location
-	for cur, ok := byID[id], true; ok; {
-		reversed = append(reversed, cur)
-		if cur.Parent == nil {
-			break
-		}
-		cur, ok = byID[*cur.Parent]
-	}
-	path := make([]domain.Location, 0, len(reversed))
-	for i := len(reversed) - 1; i >= 0; i-- {
-		path = append(path, reversed[i])
-	}
-	return path, nil
+	return locationTree.path(nodes, id), nil
 }
 
 func (r *Reader) LocationSubtree(ctx context.Context, root domain.LocationID) ([]LocationNode, error) {
@@ -518,35 +475,21 @@ func (r *Reader) LocationSubtree(ctx context.Context, root domain.LocationID) ([
 		return nil, fmt.Errorf("%w: descendants of location %d", ErrTreeTooLarge, root)
 	}
 
-	children := map[domain.LocationID][]domain.Location{}
-	var start *domain.Location
+	nodes := make([]domain.Location, 0, len(rows))
 	for _, row := range rows {
 		l, err := locationFrom(row.ID, row.ParentID, row.Name, row.Description, row.CreatedAt, row.ArchivedAt)
 		if err != nil {
 			return nil, err
 		}
-		if l.ID == root {
-			copied := l
-			start = &copied
-			continue
-		}
-		if l.Parent != nil {
-			children[*l.Parent] = append(children[*l.Parent], l)
-		}
-	}
-	if start == nil {
-		return nil, fmt.Errorf("%w: location %d", ErrNotFound, root)
+		nodes = append(nodes, l)
 	}
 
 	var out []LocationNode
-	var walk func(l domain.Location, depth int)
-	walk = func(l domain.Location, depth int) {
+	if !locationTree.subtree(nodes, root, func(l domain.Location, depth int) {
 		out = append(out, LocationNode{Location: l, Depth: depth})
-		for _, child := range children[l.ID] {
-			walk(child, depth+1)
-		}
+	}) {
+		return nil, fmt.Errorf("%w: location %d", ErrNotFound, root)
 	}
-	walk(*start, 0)
 	return out, nil
 }
 
