@@ -1,9 +1,16 @@
-// Package tui is the read-only browser.
+// Package tui is the interface.
 //
-// v01's UI exists to prove state is readable, and nothing more: no writes, no
-// forms, no confirmation flows. What it must show is the thing the whole model
-// was built for -- a Holding's full history, in sequence order, reconstructible
-// from the ledger.
+// It shows the house on one of three surfaces -- a table, a tree, or scrolling
+// prose -- and writes to it through exactly one path: compose a command, ask
+// app to PLAN it, show what the plan would do, and apply the plan the person
+// agreed to. It cannot write any other way, and that is enforced rather than
+// intended: archlint asserts this package imports none of origin, ledger or
+// annotate, so the only reachable write is one that could be shown first.
+//
+// Nothing here decides anything about the domain. The Controller returns flat,
+// display-ready rows; a keystroke turns into a Command; a name becomes an
+// identifier only in resolve. What is left is the arrangement of it, which is
+// what the rest of this package is.
 package tui
 
 import (
