@@ -284,14 +284,25 @@ func TestIntegrityViewReportsWithoutRepairing(t *testing.T) {
 }
 
 func TestCursorStaysInBounds(t *testing.T) {
-	// Far more downs than rows, then far more ups.
+	// Asserted by the row it ENDS ON rather than by an index, because the row
+	// is what a person sees and what the next keystroke will act on. There are
+	// two holdings; far more downs than that must stop on the second, and far
+	// more ups on the first.
+	onRow := func(m Model) string {
+		sel, ok := m.current.Current()
+		if !ok {
+			t.Fatal("cursor is on no row at all")
+		}
+		return sel.Name
+	}
+
 	m, _ := drive(t, &fakeController{}, "ctrl+n", "ctrl+n", "ctrl+n", "ctrl+n")
-	if m.cursor != 1 {
-		t.Errorf("cursor = %d, want 1 (two rows)", m.cursor)
+	if got := onRow(m); got != "USB-C Cable" {
+		t.Errorf("cursor on %q, want the last row", got)
 	}
 	m, _ = drive(t, &fakeController{}, "ctrl+p", "ctrl+p")
-	if m.cursor != 0 {
-		t.Errorf("cursor = %d, want 0", m.cursor)
+	if got := onRow(m); got != "Basmati Rice" {
+		t.Errorf("cursor on %q, want the first row", got)
 	}
 }
 

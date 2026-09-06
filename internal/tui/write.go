@@ -130,11 +130,17 @@ func (m Model) apply(plan app.Plan, summary string) tea.Cmd {
 	}
 }
 
+// asSubject is how a row on screen names itself to a command.
+//
+// By NAME rather than by identifier, so a line binds through exactly the same
+// path a CSV row does. That is the difference between one contract and two that
+// resemble each other.
+func asSubject(s selection) command.Subject {
+	return command.Subject{Kind: s.Kind, Name: s.Name, At: s.At}
+}
+
 // subjects is everything a command should act on: the explicit selection, or
 // the row under the cursor when nothing is picked.
-//
-// Selected() already falls back to the cursor row, but the fallback is not
-// enough on its own -- the subject needs the row's cells, not just its key.
 func (m Model) subjects() []command.Subject {
 	if m.selectionCount() == 0 {
 		if one := m.subject(); one.Name != "" {
@@ -142,77 +148,20 @@ func (m Model) subjects() []command.Subject {
 		}
 		return nil
 	}
-
-	picked := map[int64]bool{}
-	if tabular(m.view) {
-		for _, key := range m.table.Selected() {
-			picked[key] = true
-		}
-		var out []command.Subject
-		for _, row := range m.table.Rows() {
-			if !picked[row.Key] {
-				continue
-			}
-			subject := command.Subject{Kind: "Item", Name: row.Cells[0]}
-			if m.view == viewHoldings && len(row.Cells) > 2 {
-				subject.At = row.Cells[2]
-			}
-			out = append(out, subject)
-		}
-		return out
-	}
-
-	for _, key := range m.tree.Selected() {
-		picked[key] = true
-	}
 	var out []command.Subject
-	for _, node := range m.tree.Nodes() {
-		// Keyed and kinded by the NODE, not the view. Selection is delegated
-		// to the table underneath, so a contained row is selectable the moment
-		// it is on screen -- and one mislabelled subject in a batch is a batch
-		// that acts on something nobody named.
-		if picked[node.Key()] {
-			out = append(out, command.Subject{Kind: node.Kind, Name: node.Name})
-		}
+	for _, sel := range m.current.Selected() {
+		out = append(out, asSubject(sel))
 	}
 	return out
 }
 
 // subject is what the cursor is on, so a contextual line can leave it out.
-//
-// By NAME rather than by identifier, so the line binds through exactly the same
-// path a CSV row does. That is the difference between one contract and two that
-// resemble each other.
 func (m Model) subject() command.Subject {
-	switch {
-	case tabular(m.view):
-		row, ok := m.table.Current()
-		if !ok {
-			return command.Subject{}
-		}
-		// Both views name an Item in their first column, and the stock commands
-		// name an Item -- which is what lets `:consume 100g` on a selected row
-		// mean the same thing the `c` keystroke will.
-		subject := command.Subject{Kind: "Item", Name: row.Cells[0]}
-		if m.view == viewHoldings && len(row.Cells) > 2 {
-			// And the place, because a holdings row is about an Item IN A
-			// PLACE. Without it, a line typed while pointing at one of three
-			// shelves asks which shelf you meant.
-			subject.At = row.Cells[2]
-		}
-		return subject
-	case forest(m.view):
-		node, ok := m.tree.Current()
-		if !ok {
-			return command.Subject{}
-		}
-		// The node says what it IS. Taking the kind from the VIEW was safe
-		// while a tree held only its own kind, and stopped being safe the
-		// moment a Category could show its Items: `e` on an item row would
-		// have asked to rename a Category that does not exist.
-		return command.Subject{Kind: node.Kind, Name: node.Name}
+	sel, ok := m.current.Current()
+	if !ok {
+		return command.Subject{}
 	}
-	return command.Subject{}
+	return asSubject(sel)
 }
 
 // ---------------------------------------------------------------------------
@@ -221,23 +170,15 @@ func (m Model) subject() command.Subject {
 
 // openEditor starts renaming whatever the cursor is on.
 func (m Model) openEditor() Model {
-	if node, ok := m.tree.Current(); ok && forest(m.view) && node.Contained() {
-		return m.refuseContained(node.Kind, "rename")
-	}
-	subject := m.subject()
-	if subject.Name == "" {
+	sel, ok := m.current.Current()
+	if !ok || sel.Name == "" {
 		m.status = "nothing selected"
 		return m
 	}
-	var id int64
-	if forest(m.view) {
-		node, _ := m.tree.Current()
-		id = node.ID
-	} else {
-		row, _ := m.table.Current()
-		id = row.Key
+	if sel.Contained {
+		return m.refuseContained(sel.Kind, "rename")
 	}
-	m.editor = m.editor.Open(subject.Kind, id, "rename", subject.Name).SetWidth(m.width)
+	m.editor = m.editor.Open(sel.Kind, sel.ID, "rename", sel.Name).SetWidth(m.width)
 	return m
 }
 
@@ -377,13 +318,13 @@ func (m Model) openCreator() Model {
 		return m.refuse("stock arrives by acquiring it -- try :acquire")
 	}
 	parent := ""
-	if node, ok := m.tree.Current(); ok && forest(m.view) {
+	if sel, ok := m.current.Current(); ok && forest(m.view) {
 		// A contained row is not somewhere to create INSIDE. Offering its name
 		// as the parent would file a new category under an item.
-		if node.Contained() {
-			return m.refuseContained(node.Kind, "create inside")
+		if sel.Contained {
+			return m.refuseContained(sel.Kind, "create inside")
 		}
-		parent = node.Name
+		parent = sel.Name
 	}
 	m.problem = nil
 	m.creator = m.creator.Open(kind, parent).SetWidth(m.width)

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -94,19 +93,13 @@ type Model struct {
 	ctrl app.Controller
 	ctx  context.Context
 
-	view   view
-	cursor int
-	rows   []string
+	view view
 
-	// table is the working surface for Holdings and Items. The tree and report
-	// views stay on plain rows in a viewport until 10b, because folding is a
-	// different problem and merging them early would settle it by accident.
-	table table.Model
-
-	// tree is the working surface for Categories and Locations. It is built on
-	// the same table, so density, cursor, banding, and selection are the same
-	// decisions rather than two answers to one question.
-	tree tree.Model
+	// current is what the view is drawn on: a table, a tree, or scrolling
+	// prose. One field rather than three, so every question about "the surface
+	// showing right now" has one place to be answered instead of a pair of
+	// predicates at each of thirty-five call sites.
+	current surface
 
 	// box is the one input line. Its mode says whether a keystroke is a
 	// character or a command, which is why every key handler consults it first.
@@ -163,22 +156,20 @@ type Model struct {
 	importing bool
 	plan      planview.Model
 	settling  int
-	// holdingIDs parallels rows in the Holdings view, so Enter knows what was
-	// selected without the rendering layer carrying domain types.
-	holdingIDs []domain.HoldingID
-	fromView   view
+	fromView  view
 
-	status   string
-	width    int
-	height   int
-	viewport viewport.Model
-	ready    bool
+	status string
+	width  int
+	height int
+	// ready says the terminal has told us its size. Until it has, there is no
+	// width to lay anything out against.
+	ready bool
 }
 
 func New(ctx context.Context, ctrl app.Controller) Model {
 	return Model{
 		ctx: ctx, ctrl: ctrl, view: viewHoldings,
-		table:    table.New(spec(viewHoldings).columns),
+		current:  tableSurface{model: table.New(spec(viewHoldings).columns), view: viewHoldings},
 		box:      omnibox.New(),
 		editor:   editor.New(),
 		creator:  creator.New(),
@@ -206,7 +197,6 @@ type loadedMsg struct {
 	rows        []string
 	cells       []table.Row
 	nodes       []tree.Node
-	holdingIDs  []domain.HoldingID
 	holdingRows map[int64]app.HoldingRow
 	status      string
 }
@@ -239,31 +229,56 @@ func (m Model) loadCandidates() tea.Cmd {
 
 func (m Model) load(v view) tea.Cmd {
 	return func() tea.Msg {
-		if forest(v) {
+		// One switch on the same fact surfaceFor switches on, so a view cannot
+		// be loaded as one shape and then drawn as another.
+		switch spec(v).kind {
+		case surfaceTree:
 			nodes, status, err := m.renderTree(v)
 			if err != nil {
 				return errMsg{err}
 			}
 			return loadedMsg{view: v, nodes: nodes, status: status}
-		}
-		if tabular(v) {
-			cells, ids, byKey, status, err := m.renderTable(v)
+		case surfaceTable:
+			cells, byKey, status, err := m.renderTable(v)
 			if err != nil {
 				return errMsg{err}
 			}
-			return loadedMsg{view: v, cells: cells, holdingIDs: ids, holdingRows: byKey, status: status}
+			return loadedMsg{view: v, cells: cells, holdingRows: byKey, status: status}
+		default:
+			rows, status, err := m.render(v, 0)
+			if err != nil {
+				return errMsg{err}
+			}
+			return loadedMsg{view: v, rows: rows, status: status}
 		}
-		rows, ids, status, err := m.render(v, 0)
-		if err != nil {
-			return errMsg{err}
+	}
+}
+
+// surfaceFor builds the surface a loaded view is drawn on.
+//
+// A fresh one per load: the columns differ between views, and carrying a
+// selection across them would mean acting on rows a person picked while
+// looking at something else.
+func (m Model) surfaceFor(msg loadedMsg) surface {
+	height := m.bodyHeight()
+	switch spec(msg.view).kind {
+	case surfaceTable:
+		return tableSurface{
+			model: table.New(spec(msg.view).columns).SetRows(msg.cells).SetSize(m.width, height),
+			view:  msg.view,
 		}
-		return loadedMsg{view: v, rows: rows, holdingIDs: ids, status: status}
+	case surfaceTree:
+		return treeSurface{model: tree.New(spec(msg.view).unit).
+			WithFolds(m.folds[msg.view]).
+			SetNodes(msg.nodes).SetSize(m.width, height)}
+	default:
+		return newTextSurface(msg.rows, m.width, height)
 	}
 }
 
 func (m Model) loadHistory(id domain.HoldingID) tea.Cmd {
 	return func() tea.Msg {
-		rows, _, status, err := m.render(viewHistory, id)
+		rows, status, err := m.render(viewHistory, id)
 		if err != nil {
 			return errMsg{err}
 		}
@@ -276,34 +291,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		body := msg.Height - 4
-		if body < 3 {
-			body = 3
-		}
-		if !m.ready {
-			m.viewport = viewport.New(msg.Width, body)
-			m.ready = true
-		} else {
-			m.viewport.Width, m.viewport.Height = msg.Width, body
-		}
-		m.table = m.table.SetSize(msg.Width, m.bodyHeight())
-		m.tree = m.tree.SetSize(msg.Width, m.bodyHeight())
+		m.ready = true
+		m.current = m.current.SetSize(msg.Width, m.bodyHeight())
 		m.jump = m.jump.SetSize(msg.Width, m.bodyHeight())
-		m.viewport.SetContent(m.body())
 		return m, nil
 
 	case loadedMsg:
 		was := m.view
-		m.view, m.rows, m.holdingIDs, m.status = msg.view, msg.rows, msg.holdingIDs, msg.status
+		m.view, m.status = msg.view, msg.status
 		m.holdingRows = msg.holdingRows
-		m.cursor = 0
-		// Where the cursor was, so a RELOAD can put it back. Reloading happens
-		// after every write, and a cursor that jumped to the top each time
-		// would make acting twice on one row impossible -- the second t of a
-		// checkout-and-return would land on whatever had sorted first.
-		//
-		// Only within the same view: carrying a cursor across views would
-		// restore a position nobody was in.
+
 		// A filter belongs to the VIEW it narrowed. `/rice` means nothing in
 		// the Locations tree, and carrying it there filtered the whole house
 		// down to nothing while the line still claimed to be showing rice.
@@ -311,49 +308,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.box = m.box.Clear()
 		}
 
+		// Where the cursor was, so a RELOAD can put it back. Reloading happens
+		// after every write, and a cursor that jumped to the top each time
+		// would make acting twice on one row impossible -- the second t of a
+		// checkout-and-return would land on whatever had sorted first.
+		//
+		// Only within the same view: carrying a cursor across views would
+		// restore a position nobody was in.
 		var wasOn int64 = -1
 		if was == msg.view {
-			if row, ok := m.table.Current(); ok && tabular(msg.view) {
-				wasOn = row.Key
-			}
-			if node, ok := m.tree.Current(); ok && forest(msg.view) {
-				wasOn = node.Key()
+			if sel, ok := m.current.Current(); ok {
+				wasOn = sel.Key
 			}
 		}
 
-		if tabular(msg.view) {
-			// A fresh table per view: the columns differ, and carrying a
-			// selection across views would mean acting on rows a person picked
-			// while looking at something else.
-			m.table = table.New(spec(msg.view).columns).SetRows(msg.cells).SetSize(m.width, m.bodyHeight())
+		// The folds come back, because the tree is rebuilt after every write
+		// and every toggle and one that sprang open each time would make
+		// collapsing it pointless. Saved under the view being LEFT, which is
+		// the case that loses them: switching away and back is the reload that
+		// does not mention the tree it is replacing.
+		if folds, ok := m.current.(folding); ok && forest(was) {
+			m.folds[was] = folds.Folds()
 		}
-		if forest(msg.view) {
-			// The folds come back, because the tree is rebuilt after every
-			// write and every toggle and one that sprang open each time would
-			// make collapsing it pointless. They are kept per view: the two
-			// trees fold different things, and a fold is still true when you
-			// come back to the tree that has it.
-			// Saved under the view being LEFT, which is the case that loses
-			// them: switching away and back is the reload that does not
-			// mention the tree it is replacing.
-			if forest(was) {
-				m.folds[was] = m.tree.Folds()
-			}
-			m.tree = tree.New(spec(msg.view).unit).
-				WithFolds(m.folds[msg.view]).
-				SetNodes(msg.nodes).SetSize(m.width, m.bodyHeight())
-		}
+		m.current = m.surfaceFor(msg)
+
 		// And the filter, which lives on the omnibox rather than on the
 		// surface -- so a fresh surface arrives unfiltered while the line still
 		// says it is filtered. Re-applying is what keeps the two agreeing.
 		m = m.applyFilter()
 		if wasOn >= 0 {
-			m = m.restoreCursor(wasOn)
+			m = m.focusKey(wasOn)
 		}
-		m.viewport.SetContent(m.body())
-		m.viewport.GotoTop()
 		if m.pending != nil {
-			m = m.land(*m.pending)
+			m = m.focusKey(keyOf(*m.pending))
 			m.pending = nil
 		}
 		return m, nil
@@ -464,18 +451,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// The surface sees motion, selection, and sorting first. It reports what it
 	// did not use, so the keys that belong to the application -- views, quit,
 	// enter -- still reach it.
-	if tabular(m.view) {
-		if next, handled := m.table.Update(msg); handled {
-			m.table = next
-			m.cursor = max(0, m.table.Cursor())
-			return m, nil
-		}
-	}
-	if forest(m.view) {
-		if next, handled := m.tree.Update(msg); handled {
-			m.tree = next
-			return m, nil
-		}
+	if next, handled := m.current.Update(msg); handled {
+		m.current = next
+		return m, nil
 	}
 
 	// The verbs come before the generic keys, so that consume, count, move and
@@ -520,34 +498,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case keys.Create:
 		return m.openCreator(), m.loadCandidates()
 
-	// Motion for the two views that are neither a table nor a tree. Both of
-	// those consume it above, so this is Integrity and History only.
-	case keys.MoveDown:
-		if m.cursor < len(m.rows)-1 {
-			m.cursor++
-			m.follow()
-		}
-	case keys.MoveUp:
-		if m.cursor > 0 {
-			m.cursor--
-			m.follow()
-		}
-	case keys.Top:
-		m.cursor = 0
-		m.viewport.SetContent(m.body())
-		m.viewport.GotoTop()
-	case keys.Bottom:
-		m.cursor = max(0, len(m.rows)-1)
-		m.viewport.SetContent(m.body())
-		m.viewport.GotoBottom()
-
 	case keys.Confirm:
 		// In a table C-f and C-b move between columns, so enter is the only way
 		// down into a row -- which is also what it means everywhere else.
 		if m.view == viewHoldings {
-			if row, ok := m.table.Current(); ok {
+			if sel, ok := m.current.Current(); ok {
 				m.fromView = m.view
-				return m, m.loadHistory(domain.HoldingID(row.Key))
+				return m, m.loadHistory(domain.HoldingID(sel.Key))
 			}
 		}
 	case keys.Cancel:
@@ -611,16 +568,10 @@ func (m Model) View() string {
 		overlay = m.creator.SetWidth(m.width).Lines()
 	}
 
-	body := m.viewport.View()
-	if forest(m.view) {
-		body = m.tree.SetOverlay(overlay).View()
-	}
-	if tabular(m.view) {
-		// The table scrolls itself, so it renders straight rather than through
-		// the viewport. Two things scrolling one list is how a cursor ends up
-		// off screen with nothing obviously wrong.
-		body = m.table.SetOverlay(overlay).View()
-	}
+	// Every surface scrolls itself, so each renders straight rather than
+	// through a viewport somebody else owns. Two things scrolling one list is
+	// how a cursor ends up off screen with nothing obviously wrong.
+	body := m.current.SetOverlay(overlay).View()
 	if m.confirm != nil {
 		body = m.confirmView()
 	}
@@ -754,72 +705,46 @@ func (m Model) countPhrase() string {
 	if shown, total, filtered := m.counts(); filtered {
 		return fmt.Sprintf("%d of %d %s", shown, total, noun)
 	}
-	total := len(m.rows)
-	if tabular(m.view) {
-		_, total = m.table.Counts()
-	}
-	if forest(m.view) {
-		_, total = m.tree.Counts()
-	}
+	_, total := m.current.Counts()
 	return fmt.Sprintf("%d %s", total, noun)
 }
 
 // selectionCount is how many rows were explicitly picked on whichever surface
 // is showing.
-func (m Model) selectionCount() int {
-	if tabular(m.view) {
-		return m.table.SelectionCount()
-	}
-	if forest(m.view) {
-		return m.tree.SelectionCount()
-	}
-	return 0
-}
+func (m Model) selectionCount() int { return m.current.SelectionCount() }
 
 // counts reports the filtered and total row counts of whichever surface is
 // showing, and whether a filter is in force at all.
 func (m Model) counts() (shown, total int, filtered bool) {
-	switch {
-	case tabular(m.view) && m.table.Filtered():
-		shown, total = m.table.Counts()
-		return shown, total, true
-	case forest(m.view) && m.tree.Filtered():
-		shown, total = m.tree.Counts()
+	if m.current.Filtered() {
+		shown, total = m.current.Counts()
 		return shown, total, true
 	}
 	return 0, 0, false
 }
 
-// restoreCursor puts the cursor back on a row by identity after a reload.
-func (m Model) restoreCursor(key int64) Model {
-	if tabular(m.view) {
-		for i, row := range m.table.Rows() {
-			if row.Key == key {
-				m.table = m.table.SetCursor(i)
-				return m
-			}
-		}
-	}
-	if forest(m.view) {
-		m.tree = m.tree.Focus(key)
-	}
+// focusKey puts the cursor on a row by identity, and does nothing if that row
+// is not here -- a reload can drop the row somebody was on.
+//
+// This was two functions, restoreCursor and land, which differed only in where
+// the key came from and agreed on nothing else: one knew that a tree key is not
+// a row key and the other did not.
+func (m Model) focusKey(key int64) Model {
+	m.current = m.current.Focus(key)
 	return m
 }
 
-// land puts the cursor on what a jump chose, now that its view has loaded.
-func (m Model) land(target resolve.Candidate) Model {
-	if tabular(viewFor(target.Kind)) {
-		for i, row := range m.table.Rows() {
-			if row.Key == target.ID {
-				m.table = m.table.SetCursor(i)
-				return m
-			}
-		}
-	}
+// keyOf is the key a jump destination has on the surface it lands on.
+//
+// A tree keys its rows by kind AND identifier, because Category 7 and Item 7
+// come from different tables and would otherwise be the same row. A table keys
+// them by identifier alone. The candidate does not know which it is about to
+// become, so the view it lands in decides.
+func keyOf(target resolve.Candidate) int64 {
 	if forest(viewFor(target.Kind)) {
-		m.tree = m.tree.Focus(tree.Node{ID: target.ID, Kind: string(target.Kind)}.Key())
+		return tree.Node{ID: target.ID, Kind: string(target.Kind)}.Key()
 	}
-	return m
+	return target.ID
 }
 
 func (m Model) header() string {
@@ -946,10 +871,8 @@ func (m Model) footer() string {
 	if m.status != "" {
 		parts = append(parts, m.status)
 	}
-	if tabular(m.view) {
-		if sorted := m.table.SortDescription(); sorted != "" {
-			parts = append(parts, "sorted "+sorted)
-		}
+	if sorted := m.current.SortDescription(); sorted != "" {
+		parts = append(parts, "sorted "+sorted)
 	}
 	if n := m.selectionCount(); n > 0 {
 		parts = append(parts, fmt.Sprintf("%d selected", n))
@@ -960,40 +883,6 @@ func (m Model) footer() string {
 		return rule + "\n" + status
 	}
 	return rule + "\n" + dimStyle.Render(help)
-}
-
-// follow redraws the rows and scrolls the viewport the least amount that puts
-// the cursor back on screen.
-//
-// The table and the tree do this for themselves and these views did not, so
-// C-n past the last visible line moved a cursor nobody could see and the screen
-// sat still. It reads as a view that has stopped responding, and on the two
-// screens that are longer than a terminal -- the help, and a long history --
-// everything past the first screenful was unreachable.
-func (m *Model) follow() {
-	m.viewport.SetContent(m.body())
-	if m.cursor < m.viewport.YOffset {
-		m.viewport.SetYOffset(m.cursor)
-	}
-	if bottom := m.viewport.YOffset + m.viewport.Height; m.cursor >= bottom {
-		m.viewport.SetYOffset(m.cursor - m.viewport.Height + 1)
-	}
-}
-
-func (m Model) body() string {
-	if len(m.rows) == 0 {
-		return dimStyle.Render("  (nothing here)")
-	}
-	var b strings.Builder
-	for i, row := range m.rows {
-		if i == m.cursor {
-			b.WriteString(cursorStyle.Render("> " + row))
-		} else {
-			b.WriteString("  " + row)
-		}
-		b.WriteByte('\n')
-	}
-	return b.String()
 }
 
 // render turns controller data into display rows, for the views that are prose
@@ -1007,7 +896,7 @@ func (m Model) body() string {
 // stages, quietly drifting to column widths no screen ever showed. A second
 // answer to one question does not announce that it has stopped being used,
 // which is the argument for spec(v).kind deciding this in one place.
-func (m Model) render(v view, subject domain.HoldingID) ([]string, []domain.HoldingID, string, error) {
+func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error) {
 	switch v {
 
 	case viewHelp:
@@ -1016,12 +905,12 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, []domain.Hold
 		if m.helpTopic != "" {
 			status = m.helpTopic
 		}
-		return lines, nil, status, nil
+		return lines, status, nil
 
 	case viewIntegrity:
 		report, err := m.ctrl.Integrity(m.ctx)
 		if err != nil {
-			return nil, nil, "", err
+			return nil, "", err
 		}
 		var out []string
 		out = append(out, fmt.Sprintf("%d holdings checked against the ledger", report.HoldingsChecked))
@@ -1042,7 +931,7 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, []domain.Hold
 
 		nudges, err := m.ctrl.Nudges(m.ctx)
 		if err != nil {
-			return nil, nil, "", err
+			return nil, "", err
 		}
 		if len(nudges) > 0 {
 			out = append(out, "", titleStyle.Render("Classification"))
@@ -1056,21 +945,21 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, []domain.Hold
 			status = alertStyle.Render(fmt.Sprintf("%d discrepancies, %d orphans",
 				len(report.Discrepancies), len(report.Orphans)))
 		}
-		return out, nil, status, nil
+		return out, status, nil
 
 	case viewHistory:
 		rows, err := m.ctrl.HoldingHistory(m.ctx, subject)
 		if err != nil {
-			return nil, nil, "", err
+			return nil, "", err
 		}
 		out := make([]string, 0, len(rows))
 		for _, r := range rows {
 			out = append(out, fmt.Sprintf("%6d  %s  %-18s %s",
 				r.Sequence, r.When.Format("2006-01-02 15:04"), r.Type, r.Summary))
 		}
-		return out, nil, fmt.Sprintf("holding %d - %d events in sequence order", subject, len(rows)), nil
+		return out, fmt.Sprintf("holding %d - %d events in sequence order", subject, len(rows)), nil
 	}
-	return nil, nil, "", fmt.Errorf("unknown view %d", v)
+	return nil, "", fmt.Errorf("unknown view %d", v)
 }
 
 func max(a, b int) int {
@@ -1101,15 +990,14 @@ func Run(ctx context.Context, ctrl app.Controller) error {
 // The Controller already returns flat, display-ready strings, so this is a
 // mapping and nothing more. Anything that had to decide something here would be
 // a decision the plan screen (11b) would have to make again, differently.
-func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, map[int64]app.HoldingRow, string, error) {
+func (m Model) renderTable(v view) ([]table.Row, map[int64]app.HoldingRow, string, error) {
 	switch v {
 	case viewHoldings:
 		rows, err := m.ctrl.Holdings(m.ctx)
 		if err != nil {
-			return nil, nil, nil, "", err
+			return nil, nil, "", err
 		}
 		cells := make([]table.Row, 0, len(rows))
-		ids := make([]domain.HoldingID, 0, len(rows))
 		byKey := make(map[int64]app.HoldingRow, len(rows))
 		for _, r := range rows {
 			cells = append(cells, table.Row{
@@ -1120,15 +1008,14 @@ func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, map[int64]a
 				// it hangs from.
 				Paths: []string{"", "", r.LocationPath, ""},
 			})
-			ids = append(ids, r.ID)
 			byKey[int64(r.ID)] = r
 		}
-		return cells, ids, byKey, "enter for history", nil
+		return cells, byKey, "enter for history", nil
 
 	case viewItems:
 		rows, err := m.ctrl.Items(m.ctx)
 		if err != nil {
-			return nil, nil, nil, "", err
+			return nil, nil, "", err
 		}
 		cells := make([]table.Row, 0, len(rows))
 		for _, r := range rows {
@@ -1137,9 +1024,9 @@ func (m Model) renderTable(v view) ([]table.Row, []domain.HoldingID, map[int64]a
 				Cells: []string{r.Name, r.OnHand, r.Category, r.Measure, r.Kind},
 			})
 		}
-		return cells, nil, nil, "", nil
+		return cells, nil, "", nil
 	}
-	return nil, nil, nil, "", fmt.Errorf("view %d is not a table", v)
+	return nil, nil, "", fmt.Errorf("view %d is not a table", v)
 }
 
 // renderTree turns Controller rows into tree nodes. As with renderTable, this
@@ -1252,16 +1139,7 @@ func (m Model) applyFilter() Model { return m.filterWith(m.box.Query()) }
 func (m Model) applyLive() Model { return m.filterWith(m.box.Live()) }
 
 func (m Model) filterWith(q omnibox.Query) Model {
-	if tabular(m.view) {
-		m.table = m.table.SetFilter(table.Filter{
-			Facets: facetTests(m.view, q), Text: q.Text,
-		})
-	}
-	if forest(m.view) {
-		// A tree has no columns to restrict, so a facet on one is nothing to
-		// act on. Saying so beats silently ignoring it.
-		m.tree = m.tree.SetFilter(q.Text)
-	}
+	m.current = m.current.SetFilter(q)
 	return m
 }
 
