@@ -192,10 +192,7 @@ func (m Model) openEditor() Model {
 // field is open a keystroke is a character, and a `j` that moved the cursor
 // while someone typed "jar" is how a modal interface betrays the person using
 // it.
-func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if !m.editor.IsOpen() {
-		return m, nil, false
-	}
+func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// The field, INCLUDING the dropdown over it, goes first.
 	//
 	// It has to: esc puts a list away before it closes the field, which is the
@@ -208,9 +205,9 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		// input is a suggestion for something else.
 		m = m.suggestForPrompt()
 		if len(m.candidates) == 0 {
-			return m, m.loadCandidates(), true
+			return m, m.loadCandidates()
 		}
-		return m, nil, true
+		return m, nil
 	}
 	switch keys.Lookup(keys.Line, msg) {
 	case keys.Cancel:
@@ -223,7 +220,7 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		if m.copied == nil {
 			m.status = "unchanged"
 		}
-		return m, nil, true
+		return m, nil
 	case keys.Confirm:
 		// A field opened for an ACTION answers to that action; only a rename
 		// goes back through the command line, because only a rename is text.
@@ -239,15 +236,15 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		m.editor = m.editor.Close()
 		if !changed || value == "" {
 			m.status = "unchanged"
-			return m, nil, true
+			return m, nil
 		}
 		// Through the command line's own path: the same Parse, the same Bind,
 		// the same plan. An inline edit that took a shortcut would be a second
 		// way to write, and the two would drift.
 		_ = kind
-		return m, m.runLine(fmt.Sprintf("rename %q %q", name, value)), true
+		return m, m.runLine(fmt.Sprintf("rename %q %q", name, value))
 	}
-	return m, nil, true
+	return m, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -255,23 +252,20 @@ func (m Model) handleEditor(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 // ---------------------------------------------------------------------------
 
 // handleConfirm takes the keystroke while a permanent change is waiting.
-func (m Model) handleConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if m.confirm == nil {
-		return m, nil, false
-	}
+func (m Model) handleConfirm(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Line, msg) {
 	case keys.Cancel:
 		m.confirm = nil
 		m.status = "nothing was created"
-		return m, nil, true
+		return m, nil
 	case keys.Confirm:
 		pending := *m.confirm
 		m.confirm = nil
-		return m, m.apply(pending.plan, pending.summary), true
+		return m, m.apply(pending.plan, pending.summary)
 	}
 	// Every other key is ignored. A confirmation that could be dismissed by a
 	// stray keystroke is not a confirmation.
-	return m, nil, true
+	return m, nil
 }
 
 // confirmView is the panel that names what cannot be changed later.
@@ -474,10 +468,7 @@ func promptResolves(purpose string) (string, bool) {
 //
 // Before the omnibox and the list, for the same reason the editor does: while a
 // field is open a keystroke is a character.
-func (m Model) handleCreator(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if !m.creator.IsOpen() {
-		return m, nil, false
-	}
+func (m Model) handleCreator(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// The panel, INCLUDING the dropdown over its focused field, goes first.
 	//
 	// It has to: esc puts a list away before it closes the panel, which is the
@@ -492,25 +483,25 @@ func (m Model) handleCreator(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		if len(m.candidates) == 0 {
 			// The vocabulary has not been loaded yet, so load it once and the
 			// next keystroke will have it.
-			return m, m.loadCandidates(), true
+			return m, m.loadCandidates()
 		}
-		return m, nil, true
+		return m, nil
 	}
 	switch keys.Lookup(keys.Creator, msg) {
 	case keys.Cancel:
 		m.creator = m.creator.Close()
 		m.status = "nothing was created"
-		return m, nil, true
+		return m, nil
 	case keys.Confirm:
 		if name := m.creator.Value("name"); name == "" {
-			return m.refuse("a name is required"), nil, true
+			return m.refuse("a name is required"), nil
 		}
 		// Through the command line's own path -- the same Parse, the same Bind,
 		// the same confirmation. A panel that took a shortcut would be a second
 		// way to create things, validating differently from the first.
-		return m, m.runLine(m.creator.Line()), true
+		return m, m.runLine(m.creator.Line())
 	}
-	return m, nil, true
+	return m, nil
 }
 
 // refuseContained says why a row that is only being SHOWN here cannot be acted

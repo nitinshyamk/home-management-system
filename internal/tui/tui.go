@@ -413,29 +413,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Innermost mode first, and this ORDER is the whole answer to the old
-		// interface's defect. Every mode gets the keystroke before the one that
-		// contains it, so esc -- and C-g, which is the same escape by the name
-		// emacs gives it -- leaves exactly one, never two, and never depending
-		// on how you got there.
-		if next, cmd, handled := m.handleConfirm(msg); handled {
-			return next, cmd
-		}
-		if next, cmd, handled := m.handleEditor(msg); handled {
-			return next, cmd
-		}
-		if next, cmd, handled := m.handleCreator(msg); handled {
-			return next, cmd
-		}
-		// After the field and the panel, because they are INSIDE it. Putting
-		// the plan first meant its table ate ctrl+u while someone was clearing
-		// a field, and enter settled the row instead of saving what they had
-		// typed into it.
-		if next, cmd, handled := m.handleImport(msg); handled {
-			return next, cmd
-		}
-		if next, cmd, handled := m.handleOmnibox(msg); handled {
-			return next, cmd
+		// The innermost open mode takes it; the list underneath takes what
+		// nothing else wanted. See layers.go for the order and why it is that.
+		if top, ok := m.topLayer(); ok {
+			return top.handle(m, msg)
 		}
 		return m.handleKey(msg)
 	}
@@ -447,7 +428,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //
 // It runs last, after every mode that could be open, and it is the only place
 // that sees a keystroke nothing else wanted.
-func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// The surface sees motion, selection, and sorting first. It reports what it
 	// did not use, so the keys that belong to the application -- views, quit,
 	// enter -- still reach it.
@@ -1066,10 +1047,7 @@ func (m Model) renderTree(v view) ([]tree.Node, string, error) {
 // a CHARACTER. A `j` that moved the cursor while someone was typing "jar" would
 // make the input line unusable, and it is the classic way a modal interface
 // betrays the person using it.
-func (m Model) handleOmnibox(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if m.box.Mode() == omnibox.Closed {
-		return m, nil, false
-	}
+func (m Model) handleOmnibox(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Line, msg) {
 	case keys.Cancel:
 		m.box = m.box.Cancel()
@@ -1077,7 +1055,7 @@ func (m Model) handleOmnibox(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		// narrow as you type, so an abandoned edit leaves the half-typed filter
 		// on the table -- which showed up as "0 of 12 holdings" under a jump
 		// palette, long after the filter that produced it had been cancelled.
-		return m.applyFilter(), nil, true
+		return m.applyFilter(), nil
 	case keys.Confirm:
 		if m.box.Mode() == omnibox.Jump {
 			return m.acceptJump()
@@ -1096,14 +1074,14 @@ func (m Model) handleOmnibox(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 				if m.view != viewHelp {
 					m.fromView = m.view
 				}
-				return m, m.load(viewHelp), true
+				return m, m.load(viewHelp)
 			}
 			m.status = "working..."
-			return m, m.runLine(line), true
+			return m, m.runLine(line)
 		}
 		m.box = m.box.Accept()
 		m = m.applyFilter()
-		return m, nil, true
+		return m, nil
 	}
 	if next, handled := m.box.Update(msg); handled {
 		m.box = next
@@ -1114,17 +1092,17 @@ func (m Model) handleOmnibox(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 			// Narrow as you type: the filter that would apply if accepted now.
 			m = m.applyLive()
 		}
-		return m, nil, true
+		return m, nil
 	}
 	// A key the input line does not want -- cursor motion through the results,
 	// which the palette owns.
 	if m.box.Mode() == omnibox.Jump {
 		if next, handled := m.jump.Update(msg); handled {
 			m.jump = next
-			return m, nil, true
+			return m, nil
 		}
 	}
-	return m, nil, true
+	return m, nil
 }
 
 // applyFilter puts the accepted filter onto whichever surface is showing.
@@ -1203,16 +1181,16 @@ func fuzzyContains(haystack, needle string) bool {
 }
 
 // acceptJump goes to the chosen thing: the view it lives in, cursor on its row.
-func (m Model) acceptJump() (tea.Model, tea.Cmd, bool) {
+func (m Model) acceptJump() (Model, tea.Cmd) {
 	row, ok := m.jump.Current()
 	if !ok || int(row.Key) >= len(m.candidates) {
 		m.box = m.box.Cancel()
-		return m, nil, true
+		return m, nil
 	}
 	target := m.candidates[row.Key]
 	m.box = m.box.Cancel()
 	m.pending = &target
-	return m, m.load(viewFor(target.Kind)), true
+	return m, m.load(viewFor(target.Kind))
 }
 
 // reloadKeepingStatus re-reads the current view without discarding what the

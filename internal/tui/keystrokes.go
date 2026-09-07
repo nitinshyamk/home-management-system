@@ -79,12 +79,13 @@ func (m Model) selectedHoldings() []app.HoldingRow {
 // view. Paste is why: you copy in the Holdings table and put in the Locations
 // tree, so a gate around the lot meant the second half of the gesture never
 // fired.
-func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+func (m Model) handleAction(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	action := keys.Lookup(keys.Browse, msg)
 
 	// Paste puts wherever the cursor is, which is usually somewhere else.
 	if action == keys.Paste {
-		return m.put()
+		next, cmd := m.put()
+		return next, cmd, true
 	}
 	// Copy picks up from wherever the cursor is too. The two halves of one
 	// gesture have to have the same reach, and a tree is where the second half
@@ -97,7 +98,8 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	// do to something they can see somewhere wrong is put it somewhere right.
 	if forest(m.view) {
 		if action == keys.MoveTo {
-			return m.promptForNode()
+			next, cmd := m.promptForNode()
+			return next, cmd, true
 		}
 		return m, nil, false
 	}
@@ -116,7 +118,8 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		// keystroke into it already has something to complete against.
 		return m.promptFor("move", "where to", "").carrySubject(), m.loadCandidates(), true
 	case keys.ToggleCustody:
-		return m.toggleCustody()
+		next, cmd := m.toggleCustody()
+		return next, cmd, true
 	case keys.Kill:
 		// One key, where retiring used to take two.
 		//
@@ -125,7 +128,8 @@ func (m Model) handleAction(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		// carries a Permanent fact and the confirmation panel opens on it
 		// regardless. The guard is the panel. Asking twice before the thing
 		// that asks was two answers to one question.
-		return m.retire()
+		next, cmd := m.retire()
+		return next, cmd, true
 	}
 	return m, nil, false
 }
@@ -158,11 +162,11 @@ func (m Model) promptFor(purpose, label, initial string) Model {
 // is not a detail of wording -- moving stock and re-filing a kind of thing are
 // different events in the ledger, and calling both "move" here would leave the
 // interface with one word for two answers.
-func (m Model) promptForNode() (tea.Model, tea.Cmd, bool) {
+func (m Model) promptForNode() (Model, tea.Cmd) {
 	sel, ok := m.current.Current()
 	if !ok || !sel.Contained {
 		return m.refuse("move one of the things inside -- a place is moved with %s",
-			keys.Show(keys.Browse, keys.CommandLine)+" reparent location"), nil, true
+			keys.Show(keys.Browse, keys.CommandLine)+" reparent location"), nil
 	}
 	purpose, label := "move", "where to"
 	if sel.Kind == "Item" {
@@ -177,7 +181,7 @@ func (m Model) promptForNode() (tea.Model, tea.Cmd, bool) {
 	m = m.carry(carried{Kind: sel.Kind, ID: sel.ID, Name: sel.Name})
 	// The vocabulary is loaded alongside the prompt, so the first keystroke
 	// into it already has something to complete against.
-	return m, m.loadCandidates(), true
+	return m, m.loadCandidates()
 }
 
 // refuses says why an action does not apply, in terms of the THING rather than
@@ -199,7 +203,7 @@ func refuses(purpose string, rows []app.HoldingRow) (string, bool) {
 }
 
 // actOnPrompt turns a filled-in field into Commands, one per selected row.
-func (m Model) actOnPrompt() (tea.Model, tea.Cmd, bool) {
+func (m Model) actOnPrompt() (Model, tea.Cmd) {
 	answer := strings.TrimSpace(m.editor.Value())
 	purpose := m.editor.Purpose()
 	rows := m.selectedHoldings()
@@ -213,7 +217,7 @@ func (m Model) actOnPrompt() (tea.Model, tea.Cmd, bool) {
 
 	if answer == "" {
 		m.status = "nothing entered"
-		return m, nil, true
+		return m, nil
 	}
 
 	// A prompt opened over a TREE has one subject and it is the node, not a
@@ -223,20 +227,20 @@ func (m Model) actOnPrompt() (tea.Model, tea.Cmd, bool) {
 	if inTree {
 		built, err := m.buildForNode(purpose, kind, subject, answer)
 		if err != nil {
-			return m.refuse("%v", err), nil, true
+			return m.refuse("%v", err), nil
 		}
-		return m, m.runCommands([]command.Command{built}), true
+		return m, m.runCommands([]command.Command{built})
 	}
 
 	var commands []command.Command
 	for _, row := range rows {
 		built, err := m.build(purpose, row, answer)
 		if err != nil {
-			return m.refuse("%v", err), nil, true
+			return m.refuse("%v", err), nil
 		}
 		commands = append(commands, built)
 	}
-	return m, m.runCommands(commands), true
+	return m, m.runCommands(commands)
 }
 
 // buildForNode makes the Command a prompt over a tree row means.
@@ -346,36 +350,36 @@ func (m Model) named(name string, kind resolve.Kind) (int64, error) {
 //
 // Two keys would mean remembering which state a thing is in before you can act,
 // which is what looking at the screen was supposed to be for.
-func (m Model) toggleCustody() (tea.Model, tea.Cmd, bool) {
+func (m Model) toggleCustody() (Model, tea.Cmd) {
 	rows := m.selectedHoldings()
 	if len(rows) == 0 {
-		return m, nil, true
+		return m, nil
 	}
 	var commands []command.Command
 	for _, row := range rows {
 		switch row.Custody {
 		case "":
-			return m.refuse("%q is measured, so there is no custody to change", row.Item), nil, true
+			return m.refuse("%q is measured, so there is no custody to change", row.Item), nil
 		case "Out", "Lost":
 			commands = append(commands, command.Return{Holding: row.ID})
 		default:
 			commands = append(commands, command.CheckOut{Holding: row.ID})
 		}
 	}
-	return m, m.runCommands(commands), true
+	return m, m.runCommands(commands)
 }
 
 // retire ends a Holding's life. The record persists in history.
-func (m Model) retire() (tea.Model, tea.Cmd, bool) {
+func (m Model) retire() (Model, tea.Cmd) {
 	rows := m.selectedHoldings()
 	if len(rows) == 0 {
-		return m, nil, true
+		return m, nil
 	}
 	var commands []command.Command
 	for _, row := range rows {
 		commands = append(commands, command.Retire{Holding: row.ID})
 	}
-	return m, m.runCommands(commands), true
+	return m, m.runCommands(commands)
 }
 
 // carried is a thing picked up by copy, waiting for a put.
@@ -450,14 +454,14 @@ func (m Model) carrySubject() Model {
 // a Category, and the two mismatches are refused in terms of the things rather
 // than as a type error. Putting a holding into a classification is not a
 // near-miss to be coerced -- a classification is not anywhere.
-func (m Model) put() (tea.Model, tea.Cmd, bool) {
+func (m Model) put() (Model, tea.Cmd) {
 	if m.copied == nil {
 		return m.refuse("nothing in hand -- %s picks up the row you are on",
-			keys.Show(keys.Browse, keys.Copy)), nil, true
+			keys.Show(keys.Browse, keys.Copy)), nil
 	}
 	kind, id, ok := m.destination()
 	if !ok {
-		return m.refuse("put it on a place or a classification, not on a thing"), nil, true
+		return m.refuse("put it on a place or a classification, not on a thing"), nil
 	}
 	copied := *m.copied
 
@@ -466,18 +470,18 @@ func (m Model) put() (tea.Model, tea.Cmd, bool) {
 		m.copied = nil
 		return m, m.runCommands([]command.Command{
 			command.Move{Holding: domain.HoldingID(copied.ID), To: domain.LocationID(id)},
-		}), true
+		})
 	case copied.Kind == "Item" && kind == "Category":
 		m.copied = nil
 		return m, m.runCommands([]command.Command{
 			command.Reclassify{Item: domain.ItemID(copied.ID), Category: domain.CategoryID(id)},
-		}), true
+		})
 	case copied.Kind == "Holding":
 		return m.refuse("%q is stock -- it goes in a place, and this is a classification",
-			copied.Name), nil, true
+			copied.Name), nil
 	default:
 		return m.refuse("%q is a kind of thing -- it is filed under a classification, not kept in a place",
-			copied.Name), nil, true
+			copied.Name), nil
 	}
 }
 

@@ -75,15 +75,12 @@ func (s summariser) Describe(entry importer.Entry) string {
 }
 
 // handleImport takes the keystroke while a plan is on screen.
-func (m Model) handleImport(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if !m.importing || m.confirm != nil || m.creator.IsOpen() {
-		return m, nil, false
-	}
+func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Plan, msg) {
 	case keys.Quit:
 		// Cancelling leaves nothing behind, which is the whole of
 		// all-or-nothing seen from the other end.
-		return m, tea.Quit, true
+		return m, tea.Quit
 	case keys.ApplyAll:
 		return m.applyImport()
 	case keys.Confirm:
@@ -94,7 +91,7 @@ func (m Model) handleImport(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	next, handled := m.plan.Update(msg)
 	m.plan = next
 	if handled {
-		return m, nil, true
+		return m, nil
 	}
 	// Anything the plan does not want is still CONSUMED. Falling through put
 	// the browse keystrokes live underneath the review screen: `#` opened a
@@ -102,14 +99,14 @@ func (m Model) handleImport(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	// whatever the browse view had selected, which is not what the person is
 	// looking at. A review screen that can write outside its own plan is not a
 	// review screen.
-	return m, nil, true
+	return m, nil
 }
 
 // applyImport commits the whole file, or none of it.
-func (m Model) applyImport() (tea.Model, tea.Cmd, bool) {
+func (m Model) applyImport() (Model, tea.Cmd) {
 	plan := m.plan.Plan()
 	if !plan.Applicable() {
-		return m.refuse("%s", plan.Why()), nil, true
+		return m.refuse("%s", plan.Why()), nil
 	}
 	commands := plan.Commands()
 	return m, func() tea.Msg {
@@ -124,7 +121,7 @@ func (m Model) applyImport() (tea.Model, tea.Cmd, bool) {
 			return issuesMsg{issues: []string{err.Error()}}
 		}
 		return importedMsg{rows: len(commands)}
-	}, true
+	}
 }
 
 // rowOf maps a command's index back to the line it came from.
@@ -143,14 +140,14 @@ func rowOf(plan importer.Plan, at int) int {
 }
 
 // settleRow is what enter does to whatever the cursor is on.
-func (m Model) settleRow() (tea.Model, tea.Cmd, bool) {
+func (m Model) settleRow() (Model, tea.Cmd) {
 	entry, at, ok := m.plan.Current()
 	if !ok {
-		return m, nil, true
+		return m, nil
 	}
 	switch {
 	case entry.State == importer.Ready || entry.State == importer.Dropped:
-		return m, nil, true
+		return m, nil
 
 	case len(entry.Creates) > 0:
 		// The SAME panel `o` opens, with the same confirmation behind it. A
@@ -159,12 +156,12 @@ func (m Model) settleRow() (tea.Model, tea.Cmd, bool) {
 		m.settling = at
 		m.creator = m.creator.Open(creatorKindFor(creation.Kind), "").
 			WithName(creation.Name).SetWidth(m.width)
-		return m, m.loadCandidates(), true
+		return m, m.loadCandidates()
 
 	default:
 		// A suggestion, offered and never applied -- so accepting it is a
 		// keystroke rather than something the screen did on your behalf.
-		return m.acceptSuggestions(entry, at), nil, true
+		return m.acceptSuggestions(entry, at), nil
 	}
 }
 
@@ -177,20 +174,20 @@ func (m Model) settleRow() (tea.Model, tea.Cmd, bool) {
 // the key look broken, which is exactly how it looked.
 //
 // At the row, like every other field in this interface.
-func (m Model) editRow() (tea.Model, tea.Cmd, bool) {
+func (m Model) editRow() (Model, tea.Cmd) {
 	entry, at, ok := m.plan.Current()
 	if !ok {
-		return m, nil, true
+		return m, nil
 	}
 	m.settling = at
 	m.editor = m.editor.
 		OpenFor("row", "", int64(at), "command", entry.AsLine()).
 		SetWidth(m.width)
-	return m.suggestForPrompt(), m.loadCandidates(), true
+	return m.suggestForPrompt(), m.loadCandidates()
 }
 
 // applyRowEdit re-parses the edited line and binds the row again.
-func (m Model) applyRowEdit() (tea.Model, tea.Cmd, bool) {
+func (m Model) applyRowEdit() (Model, tea.Cmd) {
 	line := strings.TrimSpace(m.editor.Value())
 	at := m.settling
 	m.editor = m.editor.Close()
@@ -198,7 +195,7 @@ func (m Model) applyRowEdit() (tea.Model, tea.Cmd, bool) {
 
 	entry, _, ok := m.plan.Current()
 	if !ok || at < 0 {
-		return m, nil, true
+		return m, nil
 	}
 	raw, err := command.Parse(line)
 	if err != nil {
@@ -206,9 +203,9 @@ func (m Model) applyRowEdit() (tea.Model, tea.Cmd, bool) {
 		// be read would leave a third state -- neither what the file said nor
 		// what was typed -- and nothing downstream could tell which it was
 		// looking at.
-		return m.refuse("%s", command.Humanise(err.Error())), nil, true
+		return m.refuse("%s", command.Humanise(err.Error())), nil
 	}
-	return m.rebindRow(at, importer.Rewrite(entry, raw)), nil, true
+	return m.rebindRow(at, importer.Rewrite(entry, raw)), nil
 }
 
 // acceptSuggestions rewrites the row with what the resolver suggested and binds
