@@ -33,7 +33,12 @@ type Model struct {
 	// whether it is collecting a name, a quantity, or a destination -- what
 	// differs is only what the caller does with the answer, so that is what is
 	// carried rather than three near-identical widgets.
-	purpose string
+	purpose Purpose
+	// verb is what enter will do, in the words of the thing being done. Given
+	// by the caller rather than derived here: "enter save" on a quantity prompt
+	// would be describing the wrong act, and this widget has no business
+	// knowing what consuming is.
+	verb string
 	// list is the completion dropdown over the field -- the same one the
 	// creation panel uses, so the keys mean the same thing in both. Offered
 	// and never applied.
@@ -68,6 +73,29 @@ var (
 // like a line of output that happens to be bold.
 )
 
+// Purpose says what pressing enter will do with the answer.
+//
+// A named type rather than a bare string, because these six values were
+// compared as string literals in six places across three packages, and one of
+// those places -- the widget's own verb() -- fell through its switch and
+// returned the identifier itself, so the word on screen WAS the constant.
+type Purpose string
+
+const (
+	// Rename edits a name in place, and is the only prompt whose answer is
+	// text: it goes back out through the command line.
+	Rename Purpose = "rename"
+	// Row is a whole command line for one row of an import plan.
+	Row Purpose = "row"
+
+	// The action prompts. Each collects one answer for a verb the person has
+	// already chosen by pressing a key.
+	Consume    Purpose = "consume"
+	Count      Purpose = "count"
+	Move       Purpose = "move"
+	Reclassify Purpose = "reclassify"
+)
+
 func New() Model { return Model{width: 80} }
 
 func (m Model) SetWidth(w int) Model { m.width = w; return m }
@@ -78,21 +106,24 @@ func (m Model) SetWidth(w int) Model { m.width = w; return m }
 // name rather than a replacement of one, and blanking it makes the common case
 // the expensive one.
 func (m Model) Open(kind string, subject int64, label, current string) Model {
-	return m.OpenFor("rename", kind, subject, label, current)
+	return m.OpenFor(Rename, kind, subject, label, current)
 }
 
 // OpenFor starts a field whose answer the caller will use for something
 // particular.
-func (m Model) OpenFor(purpose, kind string, subject int64, label, current string) Model {
+func (m Model) OpenFor(purpose Purpose, kind string, subject int64, label, current string) Model {
 	m.open, m.purpose, m.kind, m.subject = true, purpose, kind, subject
 	m.label, m.value, m.initial = label, current, current
-	m.list, m.keep, m.cancel = complete.Model{}.Arrive(), "", ""
+	m.list, m.keep, m.cancel, m.verb = complete.Model{}.Arrive(), "", "", "confirm"
 	m.cursor = len([]rune(current))
 	return m
 }
 
+// WithVerb names what enter will do, for a caller that knows what it asked for.
+func (m Model) WithVerb(what string) Model { m.verb = what; return m }
+
 // Purpose is what enter will do with the answer.
-func (m Model) Purpose() string { return m.purpose }
+func (m Model) Purpose() Purpose { return m.purpose }
 
 // WithCancel names what esc will do, for a caller that knows something the
 // field does not.
@@ -200,27 +231,13 @@ func (m Model) Lines() []string {
 	if cancel == "" {
 		cancel = "discard"
 	}
-	return append(out, style.Dim.Render("  "+keys.Show(keys.Line, keys.Confirm)+" "+m.verb()+
+	return append(out, style.Dim.Render("  "+keys.Show(keys.Line, keys.Confirm)+" "+m.verb+
 		"   "+keys.Show(keys.Line, keys.Cancel)+" "+cancel))
 }
 
 // AtEnd reports whether the cursor is at the end of the value, which is the
 // only place a completion of the last token means anything.
 func (m Model) AtEnd() bool { return m.cursor >= len([]rune(m.value)) }
-
-// verb says what enter will do, in the words of the thing being done. "enter
-// save" on a quantity prompt would be describing the wrong act.
-func (m Model) verb() string {
-	switch m.purpose {
-	case "rename":
-		return "save"
-	case "row":
-		return "re-check the row"
-	case "":
-		return "confirm"
-	}
-	return m.purpose
-}
 
 // View is Lines joined, for callers that want a block.
 func (m Model) View() string { return strings.Join(m.Lines(), "\n") }

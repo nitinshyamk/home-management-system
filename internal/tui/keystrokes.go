@@ -11,6 +11,7 @@ import (
 	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
+	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/keys"
 )
 
@@ -110,13 +111,13 @@ func (m Model) handleAction(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 
 	switch action {
 	case keys.Consume:
-		return m.promptFor("consume", "how much", ""), nil, true
+		return m.promptFor(editor.Consume, ""), nil, true
 	case keys.Count:
-		return m.promptFor("count", "how much is actually there", ""), nil, true
+		return m.promptFor(editor.Count, ""), nil, true
 	case keys.MoveTo:
 		// The vocabulary is loaded alongside the prompt, so the first
 		// keystroke into it already has something to complete against.
-		return m.promptFor("move", "where to", "").carrySubject(), m.loadCandidates(), true
+		return m.promptFor(editor.Move, "").carrySubject(), m.loadCandidates(), true
 	case keys.ToggleCustody:
 		next, cmd := m.toggleCustody()
 		return next, cmd, true
@@ -139,7 +140,7 @@ func (m Model) handleAction(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 // At the row, like the editor and the creation panel. Third time this answer
 // has been given, and it is the same answer because it is the same reason: a
 // prompt somewhere else costs you the row you were looking at.
-func (m Model) promptFor(purpose, label, initial string) Model {
+func (m Model) promptFor(purpose editor.Purpose, initial string) Model {
 	rows := m.selectedHoldings()
 	if len(rows) == 0 {
 		return m.refuse("nothing to %s here", purpose)
@@ -151,7 +152,10 @@ func (m Model) promptFor(purpose, label, initial string) Model {
 		return m.refuse("%s", why)
 	}
 	m.problem = nil
-	m.editor = m.editor.OpenFor(purpose, "Holding", int64(rows[0].ID), label, initial).SetWidth(m.width)
+	spec := prompt(purpose)
+	m.editor = m.editor.
+		OpenFor(purpose, "Holding", int64(rows[0].ID), spec.label, initial).
+		WithVerb(spec.verb).SetWidth(m.width)
 	return m
 }
 
@@ -168,12 +172,15 @@ func (m Model) promptForNode() (Model, tea.Cmd) {
 		return m.refuse("move one of the things inside -- a place is moved with %s",
 			keys.Show(keys.Browse, keys.CommandLine)+" reparent location"), nil
 	}
-	purpose, label := "move", "where to"
+	purpose := editor.Move
 	if sel.Kind == "Item" {
-		purpose, label = "reclassify", "file it under"
+		purpose = editor.Reclassify
 	}
 	m.problem = nil
-	m.editor = m.editor.OpenFor(purpose, sel.Kind, sel.ID, label, "").SetWidth(m.width)
+	spec := prompt(purpose)
+	m.editor = m.editor.
+		OpenFor(purpose, sel.Kind, sel.ID, spec.label, "").
+		WithVerb(spec.verb).SetWidth(m.width)
 	// Picked up as well as prompted for. The two are the same act -- "this
 	// goes somewhere else" -- and which way you finish it is a preference
 	// about the destination: name it, or go and point at it. esc closes the
@@ -186,14 +193,14 @@ func (m Model) promptForNode() (Model, tea.Cmd) {
 
 // refuses says why an action does not apply, in terms of the THING rather than
 // the keystroke. "you cannot consume a cable" beats "invalid operation".
-func refuses(purpose string, rows []app.HoldingRow) (string, bool) {
+func refuses(purpose editor.Purpose, rows []app.HoldingRow) (string, bool) {
 	for _, row := range rows {
 		if row.Retired {
 			return fmt.Sprintf("%q is done with, so there is nothing to %s", row.Item, purpose), false
 		}
 		measured := row.Custody == ""
 		switch purpose {
-		case "consume", "count":
+		case editor.Consume, editor.Count:
 			if !measured {
 				return fmt.Sprintf("%q is one of a kind -- there is no amount to %s", row.Item, purpose), false
 			}
@@ -241,55 +248,6 @@ func (m Model) actOnPrompt() (Model, tea.Cmd) {
 		commands = append(commands, built)
 	}
 	return m, m.runCommands(commands)
-}
-
-// buildForNode makes the Command a prompt over a tree row means.
-//
-// The kind decides, not the view: the Locations tree shows Holdings and the
-// Categories tree shows Items, so reading the view would be reading it twice
-// and getting the answer from the wrong one the day a tree shows something
-// else.
-func (m Model) buildForNode(purpose, kind string, subject int64, answer string) (command.Command, error) {
-	switch {
-	case purpose == "move" && kind == "Holding":
-		to, err := m.locationNamed(answer)
-		if err != nil {
-			return nil, err
-		}
-		return command.Move{Holding: domain.HoldingID(subject), To: to}, nil
-	case purpose == "reclassify" && kind == "Item":
-		to, err := m.categoryNamed(answer)
-		if err != nil {
-			return nil, err
-		}
-		return command.Reclassify{Item: domain.ItemID(subject), Category: to}, nil
-	}
-	return nil, fmt.Errorf("nothing called %q applies to %s", purpose, strings.ToLower(kind))
-}
-
-// build makes the Command a keystroke means, from identifiers it already holds.
-func (m Model) build(purpose string, row app.HoldingRow, answer string) (command.Command, error) {
-	switch purpose {
-	case "consume", "count":
-		// The same parser a CSV cell goes through, then resolved against the
-		// item exactly as Bind would resolve it.
-		amount, err := m.amountFor(row, answer)
-		if err != nil {
-			return nil, err
-		}
-		if purpose == "count" {
-			return command.Count{Holding: row.ID, Observed: amount}, nil
-		}
-		return command.Consume{Item: row.ItemID, Location: row.LocationID, Amount: amount}, nil
-
-	case "move":
-		to, err := m.locationNamed(answer)
-		if err != nil {
-			return nil, err
-		}
-		return command.Move{Holding: row.ID, To: to}, nil
-	}
-	return nil, fmt.Errorf("no action called %q", purpose)
 }
 
 // amountFor parses a written quantity and states it in the item's own unit.
