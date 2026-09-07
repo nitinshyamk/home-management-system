@@ -37,8 +37,8 @@ func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error
 	}
 
 	m := New(ctx, ctrl)
-	m.importing = true
-	m.plan = planview.New(importer.Bind(ctx, vocabulary, path, rows), summariser{ctrl: ctrl, ctx: ctx})
+	m.flow.active = true
+	m.flow.plan = planview.New(importer.Bind(ctx, vocabulary, path, rows), summariser{ctrl: ctrl, ctx: ctx})
 	return m, nil
 }
 
@@ -89,8 +89,8 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case keys.EditInPlace:
 		return m.editRow()
 	}
-	next, handled := m.plan.Update(msg)
-	m.plan = next
+	next, handled := m.flow.plan.Update(msg)
+	m.flow.plan = next
 	if handled {
 		return m, nil
 	}
@@ -105,7 +105,7 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 // applyImport commits the whole file, or none of it.
 func (m Model) applyImport() (Model, tea.Cmd) {
-	plan := m.plan.Plan()
+	plan := m.flow.plan.Plan()
 	if !plan.Applicable() {
 		return m.refuse("%s", plan.Why()), nil
 	}
@@ -142,7 +142,7 @@ func rowOf(plan importer.Plan, at int) int {
 
 // settleRow is what enter does to whatever the cursor is on.
 func (m Model) settleRow() (Model, tea.Cmd) {
-	entry, at, ok := m.plan.Current()
+	entry, at, ok := m.flow.plan.Current()
 	if !ok {
 		return m, nil
 	}
@@ -154,7 +154,7 @@ func (m Model) settleRow() (Model, tea.Cmd) {
 		// The SAME panel `o` opens, with the same confirmation behind it. A
 		// second one would mean two ideas of what is permanent.
 		creation := entry.Creates[0]
-		m.settling = at
+		m.flow = m.flow.opened(at)
 		m.creator = m.creator.Open(creatorKindFor(creation.Kind), "").
 			WithName(creation.Name).SetWidth(m.width)
 		return m, m.loadCandidates()
@@ -176,11 +176,11 @@ func (m Model) settleRow() (Model, tea.Cmd) {
 //
 // At the row, like every other field in this interface.
 func (m Model) editRow() (Model, tea.Cmd) {
-	entry, at, ok := m.plan.Current()
+	entry, at, ok := m.flow.plan.Current()
 	if !ok {
 		return m, nil
 	}
-	m.settling = at
+	m.flow = m.flow.opened(at)
 	m.editor = m.editor.
 		OpenFor(editor.Row, "", int64(at), prompt(editor.Row).label, entry.AsLine()).
 		WithVerb(prompt(editor.Row).verb).
@@ -191,11 +191,11 @@ func (m Model) editRow() (Model, tea.Cmd) {
 // applyRowEdit re-parses the edited line and binds the row again.
 func (m Model) applyRowEdit() (Model, tea.Cmd) {
 	line := strings.TrimSpace(m.editor.Value())
-	at := m.settling
+	at, _ := m.flow.settlingRow()
 	m.editor = m.editor.Close()
-	m.settling = -1
+	m.flow = m.flow.settled()
 
-	entry, _, ok := m.plan.Current()
+	entry, _, ok := m.flow.plan.Current()
 	if !ok || at < 0 {
 		return m, nil
 	}
@@ -243,7 +243,7 @@ func (m Model) rebindRow(at int, entry importer.Entry) Model {
 	if err != nil {
 		return m.refuse("%v", err)
 	}
-	m.plan = m.plan.Settle(at, importer.Settle(vocabulary, entry))
+	m.flow.plan = m.flow.plan.Settle(at, importer.Settle(vocabulary, entry))
 
 	// And every OTHER row that is not settled yet, because settling this one
 	// may have created something. Two rows naming one new item must create it
@@ -252,6 +252,6 @@ func (m Model) rebindRow(at int, entry importer.Entry) Model {
 	//
 	// Ready rows are left alone -- they already hold identifiers, and
 	// re-resolving them could quietly move one onto something created since.
-	m.plan = m.plan.RebindUnsettled(vocabulary)
+	m.flow.plan = m.flow.plan.RebindUnsettled(vocabulary)
 	return m
 }
