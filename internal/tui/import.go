@@ -13,6 +13,7 @@ import (
 	"home-management-system/internal/importer"
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/creator"
+	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/planview"
 )
@@ -181,7 +182,8 @@ func (m Model) editRow() (Model, tea.Cmd) {
 	}
 	m.settling = at
 	m.editor = m.editor.
-		OpenFor("row", "", int64(at), "command", entry.AsLine()).
+		OpenFor(editor.Row, "", int64(at), prompt(editor.Row).label, entry.AsLine()).
+		WithVerb(prompt(editor.Row).verb).
 		SetWidth(m.width)
 	return m.suggestForPrompt(), m.loadCandidates()
 }

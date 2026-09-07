@@ -13,6 +13,7 @@ import (
 
 	"home-management-system/internal/tui/style"
 
+	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/text"
 )
 
@@ -182,7 +183,8 @@ func (m Model) openEditor() Model {
 	if sel.Contained {
 		return m.refuseContained(sel.Kind, "rename")
 	}
-	m.editor = m.editor.Open(sel.Kind, sel.ID, "rename", sel.Name).SetWidth(m.width)
+	m.editor = m.editor.Open(sel.Kind, sel.ID, prompt(editor.Rename).label, sel.Name).
+		WithVerb(prompt(editor.Rename).verb).SetWidth(m.width)
 	return m
 }
 
@@ -224,10 +226,10 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case keys.Confirm:
 		// A field opened for an ACTION answers to that action; only a rename
 		// goes back through the command line, because only a rename is text.
-		if m.editor.Purpose() == "row" {
+		if m.editor.Purpose() == editor.Row {
 			return m.applyRowEdit()
 		}
-		if m.editor.Purpose() != "rename" {
+		if m.editor.Purpose() != editor.Rename {
 			return m.actOnPrompt()
 		}
 		value := strings.TrimSpace(m.editor.Value())
@@ -405,11 +407,11 @@ func (m Model) completions(kind, typed string) []string {
 // complete against, and offering it a list would be answering a question nobody
 // asked.
 func (m Model) suggestForPrompt() Model {
-	if m.editor.Purpose() == "row" {
+	if m.editor.Purpose() == editor.Row {
 		return m.suggestForLine()
 	}
-	kind, ok := promptResolves(m.editor.Purpose())
-	if !ok {
+	kind := prompt(m.editor.Purpose()).resolves
+	if kind == "" {
 		return m
 	}
 	m.editor = m.editor.SetSuggestions(m.completions(kind, strings.TrimSpace(m.editor.Value())))
@@ -451,17 +453,6 @@ func (m Model) suggestForLine() Model {
 func (m Model) clearLineSuggestions() Model {
 	m.editor = m.editor.SetSuggestionsAfter("", nil)
 	return m
-}
-
-// promptResolves says what kind of thing a prompt is asking for a name of.
-func promptResolves(purpose string) (string, bool) {
-	switch purpose {
-	case "move":
-		return "Location", true
-	case "reclassify":
-		return "Category", true
-	}
-	return "", false
 }
 
 // handleCreator takes the keystroke while the panel is open.
