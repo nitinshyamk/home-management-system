@@ -491,3 +491,43 @@ consume,Basmati Rice,10,Shelf 1,dinner
 	// Nothing was applied, and nothing was written outside the plan.
 	s.OnHand(rice, 500*domain.Scale)
 }
+
+// TestEscapingASettleLeavesTheRowSettleable: a cancelled settle has to end as
+// completely as a confirmed one.
+//
+// The panel's row index used to be cleared only when a creation succeeded, so
+// escaping left the plan believing a row was mid-settle. Nothing visible went
+// wrong at the time, which is why it survived -- the damage was that the next
+// applied change would have been routed into rebinding a row nobody was
+// looking at.
+func TestEscapingASettleLeavesTheRowSettleable(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,item,qty,at
+acquire,Cardamom,50,Shelf 1
+`))
+	s.ShowsText("1 need confirming")
+
+	// Open the creation panel for the row, then abandon it.
+	s.Send(sim.Enter)
+	s.ShowsText("new item")
+	s.Send(sim.Esc)
+	s.HidesText("new item")
+	s.ShowsText("1 need confirming")
+
+	// The row is still settleable, and settling it now works normally.
+	s.Send(sim.Enter)
+	s.ShowsText("new item")
+	s.Send(sim.Tab, sim.Tab)
+	s.Send(sim.Type("g"))
+	s.Send(sim.Tab, sim.Tab)
+	s.Send(sim.Type("Spices"))
+	s.Send(sim.Enter)
+	s.ShowsText("permanent")
+	s.Send(sim.Enter)
+
+	s.ShowsText("1 ready")
+	if got := countItemsNamed(t, s, "Cardamom"); got != 1 {
+		t.Errorf("%d items called Cardamom, want 1", got)
+	}
+}

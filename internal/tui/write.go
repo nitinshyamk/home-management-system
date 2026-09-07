@@ -214,6 +214,10 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Line, msg) {
 	case keys.Cancel:
 		m.editor = m.editor.Close()
+		// Whatever settle this field was opened for is over, cancelled as much
+		// as confirmed. Leaving the row index behind meant "row 3 is being
+		// settled" with nothing on screen agreeing.
+		m.flow = m.flow.settled()
 		// "unchanged" is true and, while something is in hand, beside the
 		// point: esc there is not abandoning the move, it is choosing the other
 		// half of it. The banner says what is happening; a second message
@@ -481,6 +485,8 @@ func (m Model) handleCreator(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Creator, msg) {
 	case keys.Cancel:
 		m.creator = m.creator.Close()
+		// As with the field: a cancelled settle is a finished settle.
+		m.flow = m.flow.settled()
 		m.status = "nothing was created"
 		return m, nil
 	case keys.Confirm:

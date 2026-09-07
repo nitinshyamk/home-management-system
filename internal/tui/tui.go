@@ -28,7 +28,6 @@ import (
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
-	"home-management-system/internal/tui/planview"
 	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/tree"
 
@@ -152,10 +151,8 @@ type Model struct {
 	// because a file proposing a batch of changes is not something to look at
 	// alongside the house -- it is the only thing worth looking at until it is
 	// settled. settling is the row a creation panel was opened for, or -1.
-	importing bool
-	plan      planview.Model
-	settling  int
-	fromView  view
+	flow     flow
+	fromView view
 
 	status string
 	width  int
@@ -172,7 +169,7 @@ func New(ctx context.Context, ctrl app.Controller) Model {
 		box:      omnibox.New(),
 		editor:   editor.New(),
 		creator:  creator.New(),
-		settling: -1,
+		flow:     newFlow(),
 		jump:     table.New(jumpColumns).Fixed(),
 		contents: map[view]bool{},
 		folds:    map[view]map[int64]bool{},
@@ -366,7 +363,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case importedMsg:
 		m.problem = nil
-		m.importing = false
+		m.flow = m.flow.done()
 		// Said through the load rather than before it, because a loadedMsg
 		// carries the view's own status and would otherwise overwrite the only
 		// report a whole import ever makes.
@@ -383,10 +380,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.creator = m.creator.Close()
 		// And when it was opened FOR a row of an import, that row is re-bound
 		// now that the thing it named exists.
-		if m.importing && m.settling >= 0 {
-			at := m.settling
-			m.settling = -1
-			entry, _, _ := m.plan.Current()
+		if at, ok := m.flow.settlingRow(); ok {
+			m.flow = m.flow.settled()
+			entry, _, _ := m.flow.plan.Current()
 			m = m.rebindRow(at, entry)
 			return m, nil
 		}
@@ -564,7 +560,7 @@ func (m Model) View() string {
 		body = m.jump.View()
 	}
 
-	if m.importing && m.confirm == nil {
+	if m.flow.reviewing() && m.confirm == nil {
 		// The plan REPLACES the house. A file proposing a batch of changes is
 		// not something to look at alongside what you own; it is the only thing
 		// worth looking at until it is settled.
@@ -579,7 +575,7 @@ func (m Model) View() string {
 		// yet rather than about the row's text, and it is tall enough that
 		// splicing it would push the plan off the screen it is confirming.
 		height := m.height - 2 - len(m.problemLines()) - m.creator.Height()
-		plan := m.plan.SetSize(m.width, height).SetOverlay(m.editor.SetWidth(m.width).Lines())
+		plan := m.flow.plan.SetSize(m.width, height).SetOverlay(m.editor.SetWidth(m.width).Lines())
 		parts := []string{plan.View()}
 		if m.creator.IsOpen() {
 			parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
