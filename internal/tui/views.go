@@ -102,6 +102,15 @@ var specs = map[view]viewSpec{
 	viewHelp:      {name: "Help", kind: surfaceText},
 }
 
+// rowKind is what a row of this view IS. A view holds one kind of thing; the
+// trees are the exception, and their rows say their own kind.
+func (v viewSpec) rowKind() resolve.Kind {
+	if len(v.holds) == 0 {
+		return ""
+	}
+	return v.holds[0]
+}
+
 // spec is the view's description. An unknown view reads as an empty text view,
 // which renders as nothing rather than panicking -- the same answer the nine
 // switches gave by falling through.

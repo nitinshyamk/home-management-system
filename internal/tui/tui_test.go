@@ -318,3 +318,37 @@ func TestThePathSeparatorsAgree(t *testing.T) {
 			table.PathSeparator, resolve.PathSeparator)
 	}
 }
+
+// TestARowSaysWhatItIsAndWhatACommandCallsIt pins the two facts that used to
+// share one field.
+//
+// A holdings row IS a Holding and its ID is a Holding's, but a command naming
+// it names the Item -- both table views put the item's name in their first
+// column, which is what lets `:consume 100g` on a row mean what `c` means. One
+// field held the second answer and was documented as holding the first.
+func TestARowSaysWhatItIsAndWhatACommandCallsIt(t *testing.T) {
+	m, _ := drive(t, &fakeController{})
+
+	sel, ok := m.current.Current()
+	if !ok {
+		t.Fatal("the holdings view has no row under the cursor")
+	}
+	if sel.Kind != "Holding" {
+		t.Errorf("a holdings row says it is a %q, want Holding", sel.Kind)
+	}
+	if sel.Subject != "Item" {
+		t.Errorf("a command naming a holdings row would name a %q, want Item", sel.Subject)
+	}
+	if sel.ID != 7 {
+		t.Errorf("ID = %d, want the holding's own id 7", sel.ID)
+	}
+
+	items, _ := drive(t, &fakeController{}, "3")
+	sel, ok = items.current.Current()
+	if !ok {
+		t.Fatal("the items view has no row under the cursor")
+	}
+	if sel.Kind != "Item" || sel.Subject != "Item" {
+		t.Errorf("an items row is %q/%q, want Item/Item", sel.Kind, sel.Subject)
+	}
+}
