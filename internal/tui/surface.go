@@ -32,10 +32,22 @@ type selection struct {
 	// is Key with the kind bits taken back off.
 	ID int64
 	// Kind says what this row IS -- "Item", "Holding", "Category", "Location".
-	// Taken from the row rather than from the view, because a tree can show
-	// what its nodes contain and the view no longer knows.
+	// Taken from the row rather than from the view where the row knows, because
+	// a tree can show what its nodes contain and the view no longer knows.
 	Kind string
-	Name string
+	// Subject is the kind a COMMAND naming this row uses, which is not always
+	// what the row is: both table views name an Item in their first column, and
+	// the stock commands name an Item, which is what lets `:consume 100g` on a
+	// holdings row mean the same thing the `c` keystroke will.
+	//
+	// Kind and Subject used to be one field, and it held the Subject answer --
+	// so every table row claimed to be an Item while its ID was a Holding's.
+	// Nothing read it wrongly, because the readers that wanted the row's real
+	// kind were tree-only and the one that wanted the subject got what it
+	// needed. It was a field whose doc invited the next reader to trust it for
+	// the other thing.
+	Subject string
+	Name    string
 	// At is the place, for a holdings row. A command typed while pointing at
 	// one of three shelves needs it or it has to ask which shelf you meant.
 	At string
@@ -116,7 +128,11 @@ func (s tableSurface) SetFilter(q omnibox.Query) surface {
 // Both table views name an Item in their first column, which is what lets
 // `:consume 100g` on a row mean the same thing the `c` keystroke will.
 func (s tableSurface) rowSelection(r table.Row) selection {
-	sel := selection{Key: r.Key, ID: r.Key, Kind: "Item", Name: r.Cells[0]}
+	sel := selection{
+		Key: r.Key, ID: r.Key, Name: r.Cells[0],
+		Kind:    string(spec(s.view).rowKind()),
+		Subject: "Item",
+	}
 	if s.view == viewHoldings && len(r.Cells) > 2 {
 		sel.At = r.Cells[2]
 	}
@@ -186,7 +202,12 @@ func (s treeSurface) SetFilter(q omnibox.Query) surface {
 // tree held only its own kind and stopped being safe the moment a Category
 // could show its Items.
 func nodeSelection(n tree.Node) selection {
-	return selection{Key: n.Key(), ID: n.ID, Kind: n.Kind, Name: n.Name, Contained: n.Contained()}
+	// A tree node names itself: what it is and what a command calls it are the
+	// same thing.
+	return selection{
+		Key: n.Key(), ID: n.ID, Name: n.Name,
+		Kind: n.Kind, Subject: n.Kind, Contained: n.Contained(),
+	}
 }
 
 func (s treeSurface) Current() (selection, bool) {

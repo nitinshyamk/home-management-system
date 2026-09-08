@@ -141,7 +141,7 @@ func (m Model) apply(plan app.Plan, summary string) tea.Cmd {
 // path a CSV row does. That is the difference between one contract and two that
 // resemble each other.
 func asSubject(s selection) command.Subject {
-	return command.Subject{Kind: s.Kind, Name: s.Name, At: s.At}
+	return command.Subject{Kind: s.Subject, Name: s.Name, At: s.At}
 }
 
 // subjects is everything a command should act on: the explicit selection, or
