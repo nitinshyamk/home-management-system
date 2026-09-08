@@ -35,10 +35,14 @@ func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error
 	if err != nil {
 		return Model{}, err
 	}
+	names, err := ctrl.SearchIndex(ctx)
+	if err != nil {
+		return Model{}, err
+	}
 
 	m := New(ctx, ctrl)
 	m.flow.active = true
-	m.flow.plan = planview.New(importer.Bind(ctx, vocabulary, path, rows), summariser{ctrl: ctrl, ctx: ctx})
+	m.flow.plan = planview.New(importer.Bind(ctx, vocabulary, path, rows), summariser{names: names})
 	return m, nil
 }
 
@@ -60,14 +64,20 @@ func ReadRows(path string) ([]importer.Row, error) {
 }
 
 // summariser renders a bound row in the terms of the receipt.
+//
+// It holds the names rather than the Controller. Asking the Controller meant
+// asking it PER ROW, and app.Controller.Describe builds a whole search index to
+// answer -- every category, location, item and holding, read from the database,
+// once for each row of the plan, every time the plan redrew. A five-row receipt
+// cost five whole-vocabulary reads per drop keystroke; a two-hundred-row one
+// cost two hundred.
 type summariser struct {
-	ctrl app.Controller
-	ctx  context.Context
+	names command.Namer
 }
 
 func (s summariser) Describe(entry importer.Entry) string {
 	if entry.Command != nil {
-		return s.ctrl.Describe(s.ctx, entry.Command)
+		return command.Summary(entry.Command, s.names)
 	}
 	// Not bound yet, so there are no identifiers to render names from. The raw
 	// text is what the person wrote, which is the next best thing to show and
@@ -162,7 +172,7 @@ func (m Model) settleRow() (Model, tea.Cmd) {
 	default:
 		// A suggestion, offered and never applied -- so accepting it is a
 		// keystroke rather than something the screen did on your behalf.
-		return m.acceptSuggestions(entry, at), nil
+		return m, m.acceptSuggestions(entry, at)
 	}
 }
 
@@ -207,14 +217,13 @@ func (m Model) applyRowEdit() (Model, tea.Cmd) {
 		// looking at.
 		return m.refuse("%s", command.Humanise(err.Error())), nil
 	}
-	return m.rebindRow(at, importer.Rewrite(entry, raw)), nil
+	return m, m.rebindRow(at, importer.Rewrite(entry, raw))
 }
 
 // acceptSuggestions rewrites the row with what the resolver suggested and binds
 // it again.
-func (m Model) acceptSuggestions(entry importer.Entry, at int) Model {
-	settled := importer.AcceptSuggestions(entry)
-	return m.rebindRow(at, settled)
+func (m Model) acceptSuggestions(entry importer.Entry, at int) tea.Cmd {
+	return m.rebindRow(at, importer.AcceptSuggestions(entry))
 }
 
 // importedMsg reports that a whole file was applied.
@@ -238,12 +247,35 @@ func creatorKindFor(kind resolve.Kind) creator.Kind {
 // next row that names it has to be able to find it. A vocabulary loaded once
 // and held would make the second of two rows naming one new thing fail, which
 // is exactly the case the whole design is arranged around.
-func (m Model) rebindRow(at int, entry importer.Entry) Model {
-	vocabulary, err := m.ctrl.Vocabulary(m.ctx)
-	if err != nil {
-		return m.refuse("%v", err)
+func (m Model) rebindRow(at int, entry importer.Entry) tea.Cmd {
+	return func() tea.Msg {
+		vocabulary, err := m.ctrl.Vocabulary(m.ctx)
+		if err != nil {
+			return errMsg{err}
+		}
+		// The names too, and in the same read: settling a row may have created
+		// the thing the other rows name, so the plan has to be able to say what
+		// they now mean.
+		names, err := m.ctrl.SearchIndex(m.ctx)
+		if err != nil {
+			return errMsg{err}
+		}
+		return reboundMsg{at: at, entry: entry, vocabulary: vocabulary, names: names}
 	}
-	m.flow.plan = m.flow.plan.Settle(at, importer.Settle(vocabulary, entry))
+}
+
+// reboundMsg carries a freshly read vocabulary back to the plan.
+type reboundMsg struct {
+	at         int
+	entry      importer.Entry
+	vocabulary *command.Vocabulary
+	names      command.Namer
+}
+
+// rebound applies what the read came back with.
+func (m Model) rebound(msg reboundMsg) Model {
+	m.flow.plan = m.flow.plan.WithNames(summariser{names: msg.names})
+	m.flow.plan = m.flow.plan.Settle(msg.at, importer.Settle(msg.vocabulary, msg.entry))
 
 	// And every OTHER row that is not settled yet, because settling this one
 	// may have created something. Two rows naming one new item must create it
@@ -252,6 +284,6 @@ func (m Model) rebindRow(at int, entry importer.Entry) Model {
 	//
 	// Ready rows are left alone -- they already hold identifiers, and
 	// re-resolving them could quietly move one onto something created since.
-	m.flow.plan = m.flow.plan.RebindUnsettled(vocabulary)
+	m.flow.plan = m.flow.plan.RebindUnsettled(msg.vocabulary)
 	return m
 }
