@@ -59,6 +59,10 @@ func New(plan importer.Plan, names Namer) Model {
 	return m.refresh()
 }
 
+// WithNames replaces how rows are described, for when the vocabulary has
+// changed underneath them.
+func (m Model) WithNames(names Namer) Model { m.names = names; return m }
+
 func (m Model) SetSize(width, height int) Model {
 	m.width = width
 	m.tbl = m.tbl.SetSize(width, height-3)

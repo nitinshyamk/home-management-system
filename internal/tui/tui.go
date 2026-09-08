@@ -383,13 +383,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if at, ok := m.flow.settlingRow(); ok {
 			m.flow = m.flow.settled()
 			entry, _, _ := m.flow.plan.Current()
-			m = m.rebindRow(at, entry)
-			return m, nil
+			return m, m.rebindRow(at, entry)
 		}
 		// Reload, because something changed. The list a person is looking at
 		// must not disagree with the house.
 		m.status = msg.summary
 		return m, m.reloadKeepingStatus()
+
+	case reboundMsg:
+		return m.rebound(msg), nil
 
 	case candidatesMsg:
 		m.candidates, m.units = msg.candidates, msg.units
