@@ -61,7 +61,11 @@ func New(plan importer.Plan, names Namer) Model {
 
 // WithNames replaces how rows are described, for when the vocabulary has
 // changed underneath them.
-func (m Model) WithNames(names Namer) Model { m.names = names; return m }
+//
+// It redraws, because the rows hold their descriptions as text: setting the
+// namer without refreshing left every row saying what the OLD namer said, which
+// is the opposite of what a caller asks for by calling this.
+func (m Model) WithNames(names Namer) Model { m.names = names; return m.refresh() }
 
 func (m Model) SetSize(width, height int) Model {
 	m.width = width

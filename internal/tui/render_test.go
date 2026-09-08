@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"context"
 	"home-management-system/internal/tui/keys"
 )
 
@@ -158,6 +159,75 @@ func TestTheHelpLineFitsTheTerminal(t *testing.T) {
 		}
 		if got == "" {
 			t.Errorf("the help line said nothing at all in %d columns", width)
+		}
+	}
+}
+
+// The renderer itself had no test, which is a strange gap: it produces every
+// golden frame in internal/tui/testing/testdata, so a defect here corrupts the
+// fixtures the rest of the suite asserts against, and the assertions would move
+// with them.
+
+// TestRenderReplaysAScriptIntoFrames is the whole contract: one frame per step,
+// each labelled, each showing the screen after that keystroke.
+func TestRenderReplaysAScriptIntoFrames(t *testing.T) {
+	var out strings.Builder
+	script := strings.NewReader("# a comment\n2: the locations tree\n4: back to holdings\n")
+
+	if err := Render(context.Background(), &fakeController{}, script, &out, 100, 24, false); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+
+	got := out.String()
+	for _, want := range []string{"the locations tree", "back to holdings", "Holdings"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the frames are missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "a comment") {
+		t.Error("a comment line was replayed as a keystroke")
+	}
+}
+
+// TestRenderStripsColourByDefault: a golden that differs only by escape
+// sequences is a golden nobody reads.
+func TestRenderStripsColourByDefault(t *testing.T) {
+	var plain strings.Builder
+	if err := Render(context.Background(), &fakeController{},
+		strings.NewReader("1: categories\n"), &plain, 100, 24, false); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if strings.ContainsRune(plain.String(), 0x1b) {
+		t.Error("a plain-text frame carries ANSI escapes")
+	}
+}
+
+// TestRenderRefusesAScriptItCannotDrive rather than silently skipping the line
+// -- a frame that quietly did not happen is worse than no frames.
+func TestRenderRefusesAScriptItCannotDrive(t *testing.T) {
+	var out strings.Builder
+	err := Render(context.Background(), &fakeController{},
+		strings.NewReader("not-a-key\n"), &out, 100, 24, false)
+	if err == nil {
+		t.Fatal("an unrecognised key name rendered without complaint")
+	}
+	if !strings.Contains(err.Error(), "not-a-key") {
+		t.Errorf("the error does not name the bad key: %v", err)
+	}
+}
+
+// TestEveryFrameIsWithinTheTerminal: the frames ARE the review, so one that
+// overflows its width is a review of a screen nobody will see.
+func TestEveryFrameIsWithinTheTerminal(t *testing.T) {
+	var out strings.Builder
+	if err := Render(context.Background(), &fakeController{},
+		strings.NewReader("1: categories\n2: locations\n4: holdings\n5: integrity\n"),
+		&out, 80, 24, false); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	for i, line := range strings.Split(out.String(), "\n") {
+		if n := len([]rune(line)); n > 80 {
+			t.Errorf("line %d is %d columns wide in an 80-column frame: %q", i+1, n, line)
 		}
 	}
 }
