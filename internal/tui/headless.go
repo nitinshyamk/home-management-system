@@ -1,5 +1,10 @@
 package tui
 
+// The headless renderer: the interface driven by a script instead of a person,
+// printing each frame instead of drawing it. It produces every golden frame the
+// suite asserts against, which is why it is the one part of this package that
+// is not reached by a keystroke.
+
 import (
 	"bufio"
 	"context"
