@@ -310,7 +310,7 @@ func (a *Annotator) requireLocation(ctx context.Context, id domain.LocationID) e
 	if err != nil {
 		return fmt.Errorf("annotate: read location %d: %w", id, err)
 	}
-	if ok == 0 {
+	if !ok {
 		return fmt.Errorf("%w: location %d", ErrNotFound, id)
 	}
 	return nil
@@ -483,7 +483,7 @@ func (a *Annotator) LabelHolding(ctx context.Context, id domain.HoldingID, label
 	if err != nil {
 		return fmt.Errorf("annotate: read holding %d: %w", id, err)
 	}
-	if unique == 0 {
+	if !unique {
 		if err := a.requireHolding(ctx, id); err != nil {
 			return err
 		}
@@ -504,7 +504,7 @@ func (a *Annotator) requireHolding(ctx context.Context, id domain.HoldingID) err
 	if err != nil {
 		return fmt.Errorf("annotate: read holding %d: %w", id, err)
 	}
-	if ok == 0 {
+	if !ok {
 		return fmt.Errorf("%w: holding %d", ErrNotFound, id)
 	}
 	return nil
@@ -519,7 +519,7 @@ func (a *Annotator) requireCategory(ctx context.Context, id domain.CategoryID) e
 	if err != nil {
 		return fmt.Errorf("annotate: look up category %d: %w", id, err)
 	}
-	if exists == 0 {
+	if !exists {
 		return fmt.Errorf("%w: category %d", ErrNotFound, id)
 	}
 	return nil
