@@ -265,15 +265,15 @@ func TestASpaceFromARealTerminalIsASpace(t *testing.T) {
 	}
 }
 
-// Out of reach, the line names no keys.
+// Told it offers nothing, the line names no keys.
 //
-// It is drawn under the modal screens too -- a confirmation, an open field, the
-// import plan -- and under those every keystroke belongs to the layer on top,
-// so the three leaders would do nothing. A permanently visible affordance that
-// is sometimes false is worse than none at all: the only reason to put it on
-// the screen is that it can be believed.
-func TestAnUnreachableLineOffersNothing(t *testing.T) {
-	out := strip(omnibox.New().SetWidth(100).Reachable(false).View())
+// It is drawn under the modal screens too -- a confirmation, an open field --
+// and under those every keystroke belongs to the layer on top, so the three
+// leaders would do nothing. A permanently visible affordance that is sometimes
+// false is worse than none at all: the only reason to put it on the screen is
+// that it can be believed.
+func TestALineOfferingNothingNamesNoKeys(t *testing.T) {
+	out := strip(omnibox.New().SetWidth(100).Offers("").View())
 	for _, key := range []string{"C-s", "M-g", "M-x", "esc"} {
 		if strings.Contains(out, key) {
 			t.Errorf("an unreachable line still offers %s: %q", key, out)
@@ -282,18 +282,39 @@ func TestAnUnreachableLineOffersNothing(t *testing.T) {
 	// It goes quiet, not away. The row it occupies is the same row, or the
 	// screen would jump every time a confirmation opened -- which is the thing
 	// the fixed height exists to prevent.
-	if omnibox.New().Reachable(false).Height() != 1 {
+	if omnibox.New().Offers("").Height() != 1 {
 		t.Error("an unreachable line gave its row back")
 	}
 
 	// An applied filter is still SAID, because it is a fact about the rows on
 	// screen rather than an invitation to press anything.
 	filtered := typeInto(omnibox.New().Open(omnibox.Filter), "loc:tray").Accept()
-	out = strip(filtered.SetWidth(100).Reachable(false).View())
+	out = strip(filtered.SetWidth(100).Offers("").View())
 	if !strings.Contains(out, "loc:tray") {
 		t.Errorf("an unreachable line stopped saying the list was filtered: %q", out)
 	}
 	if strings.Contains(out, "clear") {
 		t.Errorf("an unreachable line still offers to clear the filter: %q", out)
+	}
+}
+
+// What the line offers is whatever it was told, so a modal screen with its own
+// keys can put them here rather than drawing a hint line of its own.
+//
+// This is what makes the bottom row worth its space on every screen rather than
+// only while browsing: the import plan's keys appear in the same place the
+// three leaders do, because it is the same place.
+func TestTheLineShowsWhateverModeOwnsTheKeyboard(t *testing.T) {
+	got := strip(omnibox.New().SetWidth(100).Offers("enter settle - d drop - A apply").View())
+	for _, want := range []string{"enter settle", "d drop", "A apply"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the line does not offer %q: %q", want, got)
+		}
+	}
+	// And it starts where typed text starts, so the line has one geometry
+	// whatever it is saying.
+	if at := strings.Index(got, "enter settle"); at != strings.Index(
+		strip(typeInto(omnibox.New().SetWidth(100).Open(omnibox.Filter), "rice").View()), "rice") {
+		t.Errorf("the affordance does not sit in the text column: %q", got)
 	}
 }

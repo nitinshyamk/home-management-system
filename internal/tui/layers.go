@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
+	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
 )
 
@@ -19,6 +20,17 @@ type layer struct {
 	name   string
 	active bool
 	handle func(Model, tea.KeyMsg) (Model, tea.Cmd)
+	// offers is the keys this mode takes, for the one permanently visible line
+	// at the bottom of the screen. Empty where the mode draws its own -- a
+	// field and the creation panel put their hints beside the field, and the
+	// confirmation states its two keys in the middle of the screen on purpose,
+	// because friction there is proportional to permanence.
+	//
+	// Declared HERE, beside the mode it belongs to, because this file is
+	// already the one place that says which modes exist and which one owns the
+	// keyboard. A switch somewhere else mapping mode names to hints would be
+	// that list written a second time.
+	offers string
 }
 
 // layers are the modes, innermost first.
@@ -38,15 +50,23 @@ type layer struct {
 // was the bug that put this order in the code to begin with.
 func (m Model) layers() []layer {
 	return []layer{
-		{"confirmation", m.confirm != nil, Model.handleConfirm},
-		{"field", m.editor.IsOpen(), Model.handleEditor},
-		{"panel", m.creator.IsOpen(), Model.handleCreator},
+		{name: "confirmation", active: m.confirm != nil, handle: Model.handleConfirm},
+		{name: "field", active: m.editor.IsOpen(), handle: Model.handleEditor},
+		{name: "panel", active: m.creator.IsOpen(), handle: Model.handleCreator},
 		// After the field and the panel, because they open INSIDE it. Putting
 		// the plan first meant its table ate ctrl+u while someone was clearing
 		// a field, and enter settled the row instead of saving what they had
 		// typed into it.
-		{"import plan", m.flow.reviewing(), Model.handleImport},
-		{"input line", m.box.Mode() != omnibox.Closed, Model.handleOmnibox},
+		{name: "import plan", active: m.flow.reviewing(), handle: Model.handleImport,
+			offers: keys.Hint(keys.Plan,
+				[]keys.Action{keys.Confirm},
+				[]keys.Action{keys.Drop},
+				[]keys.Action{keys.Undrop},
+				[]keys.Action{keys.ApplyAll},
+				[]keys.Action{keys.Quit})},
+		{name: "input line", active: m.box.Mode() != omnibox.Closed, handle: Model.handleOmnibox,
+			// The line is the mode, and it draws its own accept and cancel.
+			offers: ""},
 	}
 }
 
@@ -59,20 +79,29 @@ func (m Model) mode() string {
 	return "browsing"
 }
 
-// lineReachable reports whether a keystroke would reach the input line.
+// offered is what the mode that owns the keyboard takes, for the one
+// permanently visible line at the bottom of the screen.
 //
-// True while browsing, and true while the line itself is the open mode. False
-// under everything else: a confirmation, a field, the creation panel and the
-// import plan each consume every keystroke once active, so the keys the line
-// advertises would do nothing at all.
+// The line is drawn under every screen, so what it advertises has to be true of
+// whichever screen that is. A line naming C-s under a confirmation that ignores
+// every key but two would be worse than a blank one: the only reason to put an
+// affordance on screen permanently is that it can be believed.
 //
-// Asked of the layer stack rather than of the fields, because the stack is
-// already the one place that says which mode owns the keyboard. A second
-// predicate reading m.confirm and m.editor directly would be that answer given
-// twice, and the copies would drift the day a layer is added.
-func (m Model) lineReachable() bool {
+// Browsing is the case with no layer at all, and it offers the three leaders --
+// which is where the footer's five hints went. They rendered only when the
+// status line was entirely empty, which a row count made impossible.
+func (m Model) offered() string {
+	// Browsing is the case with no layer at all. The open line is the other
+	// case that offers these: it IS one of them, and the two it does not have
+	// open are still a keystroke away once it closes.
 	top, ok := m.topLayer()
-	return !ok || top.name == "input line"
+	if !ok || top.name == "input line" {
+		return keys.Hint(keys.Browse,
+			[]keys.Action{keys.Search},
+			[]keys.Action{keys.Jump},
+			[]keys.Action{keys.CommandLine})
+	}
+	return top.offers
 }
 
 // topLayer is the innermost active mode, if any.

@@ -159,3 +159,38 @@ func TestGoldenSomethingInHand(t *testing.T) {
 	s.Send(sim.Press("2"))
 	s.AssertFrame("11e-carrying")
 }
+
+// The import plan, and the same plan having refused to apply.
+//
+// It had no frame at all until now, which is exactly why its facts line ran to
+// 102 columns on a 100-column terminal without anything noticing: a line wider
+// than the screen wraps, and one wrapped line shifts every row above it. The
+// screen nobody looks at is the screen that drifts.
+//
+// Two frames rather than one, because the refusal is the half that was drawn by
+// this screen's own code rather than by the chrome every other screen uses.
+func TestGoldenTheImportPlan(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, messy))
+	s.FitsWidth(sim.Width)
+	s.AssertFrame("11f-import-plan")
+
+	// A is refused while rows are blocked, and the reason goes in the status
+	// block -- the same block, in the same place, as everywhere else.
+	s.Send(sim.Press("A"))
+	s.FitsWidth(sim.Width)
+	s.AssertFrame("11f-import-plan-refused")
+}
+
+// And it fits the narrow terminal too, where the facts line has to give up its
+// tail rather than wrap.
+func TestTheImportPlanFitsANarrowTerminal(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, messy))
+	for _, width := range []int{60, 80, 100, 120} {
+		s.Resize(width, sim.Height)
+		s.FitsWidth(width)
+	}
+}

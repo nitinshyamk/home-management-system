@@ -12,6 +12,7 @@ package planview
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -193,40 +194,65 @@ func why(entry importer.Entry) string {
 
 // View renders the screen: a heading that says what file this is, the rows, and
 // the arithmetic that has to add up to it.
+// View is what the plan IS: its heading and its rows.
+//
+// It used to draw its own counts line and its own key hints underneath, which
+// made this the fifth place in the interface that rendered chrome -- and the
+// only screen whose refusals, filter and status block appeared in a different
+// order from everywhere else. The counts are Facts now, and the keys are what
+// the layer offers the input line, so this screen ends the way every other
+// screen ends.
 func (m Model) View() string {
+	rows := fmt.Sprintf("   %d rows", len(m.plan.Entries))
+	// The file's NAME, not the path to it. You chose the file a moment ago; the
+	// directory it happens to sit in is not what you are reviewing, and an
+	// absolute path ran the heading past the terminal -- 84 columns on an
+	// 80-column screen for an ordinary temporary directory. A line wider than
+	// the screen wraps, and one wrapped line shifts every row below it.
+	//
+	// Still elided, from the START, in case the name itself is long: the end of
+	// a filename is the part that distinguishes it.
+	source := elideStart("IMPORT  "+filepath.Base(m.plan.Source), max(12, m.width-len(rows)))
+	return style.Strong.Render(source) + style.Dim.Render(rows) + "\n" + m.tbl.View()
+}
+
+// elideStart cuts a string to a width, keeping the END.
+func elideStart(s string, width int) string {
+	r := []rune(s)
+	if len(r) <= width {
+		return s
+	}
+	return "…" + string(r[len(r)-width+1:])
+}
+
+// Facts is what is true of the plan: how many rows are in each state, and
+// whether the whole file can be applied yet.
+//
+// The same role the row counts play under a table -- which is why it is handed
+// to the screen to render in the same place rather than drawn here.
+//
+// Returned as PARTS, most useful first, so the screen can drop from the end on
+// a narrow terminal the way it does for every other facts line. As one string
+// it ran to 102 columns on a 100-column terminal with nothing watching: this
+// was the screen with no frame, and the only one no width check ever saw.
+func (m Model) Facts() []string {
 	ready, confirmable, blocked, dropped := m.plan.Counts()
-
-	heading := style.Strong.Render("IMPORT  "+m.plan.Source) + style.Dim.Render(
-		fmt.Sprintf("   %d rows", len(m.plan.Entries)))
-
-	counts := []string{
+	facts := []string{
 		style.Strong.Render(fmt.Sprintf("%d ready", ready)),
 		style.Warn.Render(fmt.Sprintf("%d need confirming", confirmable)),
 		style.Error.Render(fmt.Sprintf("%d blocked", blocked)),
 	}
 	if dropped > 0 {
-		counts = append(counts, style.Dim.Render(fmt.Sprintf("%d dropped", dropped)))
+		facts = append(facts, style.Dim.Render(fmt.Sprintf("%d dropped", dropped)))
 	}
 
+	// Last, because it is the longest and the least surprising: the counts
+	// above already say whether anything is in the way.
 	apply := keys.Show(keys.Plan, keys.ApplyAll)
-	footer := strings.Join(counts, "   ")
 	if reason := m.plan.Why(); reason != "" {
-		footer += style.Dim.Render("   -- " + apply + " is unavailable: " + reason)
-	} else {
-		footer += style.Strong.Render("   " + apply + " applies all of it, in one transaction")
+		return append(facts, style.Dim.Render(apply+" is unavailable: "+reason))
 	}
-
-	return strings.Join([]string{
-		heading,
-		m.tbl.View(),
-		footer,
-		style.Dim.Render(keys.Hint(keys.Plan,
-			[]keys.Action{keys.Confirm},
-			[]keys.Action{keys.Drop},
-			[]keys.Action{keys.Undrop},
-			[]keys.Action{keys.ApplyAll},
-			[]keys.Action{keys.Quit})),
-	}, "\n")
+	return append(facts, style.Strong.Render(apply+" applies all of it, in one transaction"))
 }
 
 // Issues are the whole reason a row is not ready, for the detail line.

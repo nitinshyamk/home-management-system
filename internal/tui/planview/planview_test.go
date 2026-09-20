@@ -28,7 +28,11 @@ func plan(entries ...importer.Entry) importer.Plan {
 	return importer.Plan{Source: "receipt.csv", Entries: entries}
 }
 
-func screen(m planview.Model) string { return text.StripANSI(m.View()) }
+// screen is the plan as the application draws it: the rows, and the facts the
+// application renders under them.
+func screen(m planview.Model) string {
+	return text.StripANSI(m.View() + "\n" + strings.Join(m.Facts(), " - "))
+}
 
 func press(m planview.Model, name string) planview.Model {
 	msg, ok := keys.Named(name)
@@ -145,5 +149,27 @@ func TestAnEmptyPlanStillDraws(t *testing.T) {
 	}
 	if screen(m) == "" {
 		t.Error("an empty plan drew nothing at all")
+	}
+}
+
+// A long path does not push the heading past the terminal. What is shown is the
+// file's name: the directory it happens to sit in is not what is being
+// reviewed, and it was long enough to overflow an 80-column screen.
+func TestALongSourcePathDoesNotOverflow(t *testing.T) {
+	plan := importer.Plan{
+		Source:  "/home/someone/a/very/deeply/nested/directory/that/goes/on/receipt.csv",
+		Entries: []importer.Entry{},
+	}
+	for _, width := range []int{40, 60, 80, 100} {
+		m := planview.New(plan, names{}).SetSize(width, 20)
+		for _, line := range strings.Split(text.StripANSI(m.View()), "\n") {
+			if n := len([]rune(line)); n > width {
+				t.Errorf("a plan line is %d columns in a %d-column terminal: %q", n, width, line)
+			}
+		}
+		// And what survives is the file's name.
+		if !strings.Contains(text.StripANSI(m.View()), "receipt.csv") {
+			t.Errorf("the heading lost the file's name at width %d", width)
+		}
 	}
 }
