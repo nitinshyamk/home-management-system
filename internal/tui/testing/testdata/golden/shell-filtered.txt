@@ -1,0 +1,13 @@
+BY PLACE  the house                                                             4 holdings
+------------------------------------------------------------------------------------------
+  NAME                              │  ITEM ^                        QTY  WHERE           
+  ▾ the house                      4│  Ancho Chile                 100 g  Small Parts Tray
+    ▾ Garage                       3│> Thunderbolt 4 to Dual D…  at rest  Small Parts Tray
+      ▾ Metal Shelving Unit        2│
+        ▾ Bay 3                    2│
+          ▾ Blue Crate             2│
+              Small Parts Tray     2│
+      Left Pantry                  1│
+------------------------------------------------------------------------------------------
+2 of 4 holdings - TAB fold - \ lens - v here only
+  filtered  loc:tray                                                             esc clear

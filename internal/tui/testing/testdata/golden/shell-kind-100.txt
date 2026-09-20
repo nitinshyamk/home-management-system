@@ -1,0 +1,9 @@
+BY KIND  everything                                                                          2 items
+----------------------------------------------------------------------------------------------------
+  NAME                              │  ITEM ^               ON HAND  WHERE             MEASURE      
+  ▾ everything                     2│> Ancho Chile            300 g  3 places          g            
+      Spices                       2│  Thunderbolt 4 to D…   1 held  Small Parts Tray  one of a kind
+----------------------------------------------------------------------------------------------------
+  BY KIND - everything
+Ancho Chile - Spices - measured in g - 300 g on hand
+            o new - e rename - \ lens - M-g jump

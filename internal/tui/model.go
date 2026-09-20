@@ -298,3 +298,15 @@ func (m Model) ContentsView() string {
 	}
 	return sh.body.View()
 }
+
+// Offers is what the open field is suggesting.
+//
+// The rail and the inspector legitimately name places and categories, so
+// "the screen does not show Garage" stopped being a claim about what a
+// destination field offered.
+func (m Model) Offers() []string {
+	if m.creator.IsOpen() {
+		return m.creator.Suggestions()
+	}
+	return m.editor.Suggestions()
+}

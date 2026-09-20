@@ -143,14 +143,14 @@ func TestAnUnknownKeyIsRefusedWithItsLine(t *testing.T) {
 // each labelled, each showing the screen after that keystroke.
 func TestRenderReplaysAScriptIntoFrames(t *testing.T) {
 	var out strings.Builder
-	script := strings.NewReader("# a comment\n2: the locations tree\n4: back to holdings\n")
+	script := strings.NewReader("# a comment\n\\: by kind\n\\: back to the places\n")
 
 	if err := Render(context.Background(), &fakeController{}, script, &out, 100, 24, false); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 
 	got := out.String()
-	for _, want := range []string{"the locations tree", "back to holdings", "Holdings"} {
+	for _, want := range []string{"by kind", "back to the places", "BY KIND", "BY PLACE"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the frames are missing %q:\n%s", want, got)
 		}

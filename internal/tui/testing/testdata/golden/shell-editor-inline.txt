@@ -1,0 +1,16 @@
+BY PLACE  the house > Garage > Metal Shelving Unit                        2 holdings
+------------------------------------------------------------------------------------
+  NAME                           │  ITEM ^                     QTY  WHERE           
+  ▾ the house                   4│  Ancho Chile              100 g  Small Parts Tray
+    ▾ Garage                    3│  Thunderbolt 4 to Dua…  at rest  Small Parts Tray
+>     ▾ Metal Shelving Unit     2│
+  rename ────────────────────────│
+  Metal Shelving Unit            │
+  enter save   esc discard       │
+        ▾ Bay 3                 2│
+          ▾ Blue Crate          2│
+              Small Parts Tray  2│
+      Left Pantry               1│
+------------------------------------------------------------------------------------
+the house > Garage > Metal Shelving Unit - 2 holdings below here - 1 place inside
+

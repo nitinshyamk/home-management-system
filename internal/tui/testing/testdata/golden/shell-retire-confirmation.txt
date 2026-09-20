@@ -1,4 +1,4 @@
- 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+BY PLACE  the house                                                               4 holdings
 --------------------------------------------------------------------------------------------
   retire Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space Grey, 0.8m) > Small Parts Tray?
 
@@ -7,5 +7,5 @@
 
   [enter] go ahead    [esc] back
 --------------------------------------------------------------------------------------------
-1 of 4 holdings - sorted by item a-z - enter for history
+1 of 4 holdings - TAB fold - \ lens - v here only
   filtered  thunder

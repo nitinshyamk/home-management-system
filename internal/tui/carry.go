@@ -35,20 +35,20 @@ type carried struct {
 // The interface says CARRYING rather than "copied", because nothing is copied:
 // there is one thing and it ends up somewhere else. "Copied" belongs to the
 // keys, which are emacs's, and it was the wrong word for what happens.
+// The gesture crosses the panes now: pick up in the contents, put down on the
+// rail. What is picked up is what the contents pane holds -- a Holding in the
+// place lens, an Item in the kind lens -- and each goes to the kind of node
+// the rail is made of.
 func (m Model) copy() Model {
 	if m.onRail() {
-		sel, ok := m.current.Current()
-		if !ok || !sel.Contained {
-			return m.refuse("copy one of the things inside -- a place is moved with %s",
-				keys.Show(keys.Browse, keys.CommandLine)+" reparent location")
-		}
-		return m.carry(carried{Kind: sel.Kind, ID: sel.ID, Name: sel.Name})
+		return m.refuse("pick up one of the things inside -- a place is moved with %s",
+			keys.Show(keys.Browse, keys.CommandLine)+" reparent location")
 	}
-	row, ok := m.currentHolding()
+	sel, ok := m.current.Current()
 	if !ok {
-		return m.refuse("nothing to copy here")
+		return m.refuse("nothing to pick up here")
 	}
-	return m.carry(carried{Kind: "Holding", ID: int64(row.ID), Name: row.Item})
+	return m.carry(carried{Kind: sel.Kind, ID: sel.ID, Name: sel.Name})
 }
 
 // carry picks a thing up, and says so.
@@ -167,21 +167,11 @@ func (m Model) destination() (kind string, id int64, ok bool) {
 	switch {
 	case m.onRail():
 		sel, found := m.current.Current()
-		if !found {
-			return "", 0, false
-		}
-		// A CONTAINED row is not a container. Without this the cursor sitting
-		// on a holding would hand its identifier over as a LocationID and the
-		// put would land in whatever location happens to share that number --
-		// a silent write to the wrong shelf, which is the worst kind of wrong
-		// this interface can be.
-		//
-		// The tree now steps the cursor over these rows while a carry is in
-		// hand, so this should be unreachable -- and it stays, because "should
-		// be" is doing the work of a check that costs one comparison. A filter
-		// that leaves nothing but contained rows on screen reaches it, and so
-		// would any future surface that learns to show them.
-		if sel.Contained {
+		// The synthetic root is the whole house, not a shelf in it. Handing
+		// its identifier over would put stock in location 0, which no table
+		// has -- the same class of silent wrong write the contained-row guard
+		// used to exist for.
+		if !found || m.atRailRoot() {
 			return "", 0, false
 		}
 		return sel.Kind, sel.ID, true

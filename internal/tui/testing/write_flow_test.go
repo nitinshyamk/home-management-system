@@ -541,27 +541,49 @@ func indexOfCursor(lines []string) int {
 // 10e: the creation panel
 // ---------------------------------------------------------------------------
 
-// The panel is in the LIST, like the editor. A creation form that replaces the
-// view costs you the context that tells you whether the thing already exists.
-func TestTheCreationPanelOpensInTheList(t *testing.T) {
+// The panel does not replace the house. A creation form that took the screen
+// would cost you the context that says whether the thing already exists.
+//
+// It is BELOW the house rather than spliced into it, which the one-line
+// editor still is. A form with completions under it needs the full width: in
+// the rail it came out a third of the screen wide, with "Garage > Metal
+// Shelving Unit" cut off mid-path. So the panel names its parent in words
+// where position used to imply it.
+func TestTheCreationPanelDoesNotReplaceTheHouse(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.ByKind()
 	s.OnContents()
-	before := strings.Split(s.PlainView(), "\n")
-	cursorAt := indexOfCursor(before)
 
 	s.Send(sim.Press("o"))
-	after := strings.Split(s.PlainView(), "\n")
+	s.ShowsText("new item")
 
-	if indexOfCursor(after) != cursorAt {
-		t.Errorf("opening the panel moved the row from line %d to %d", cursorAt, indexOfCursor(after))
+	// The house is still there, both halves of it.
+	s.RailShows("Spices")
+	s.ContentsShow("Ancho Chile")
+
+	// And the form is below it, not inside either pane.
+	lines := strings.Split(s.PlainView(), "\n")
+	panelAt := lineWith(lines, "new item")
+	if panelAt < 0 {
+		t.Fatalf("no panel on screen:\n%s", s.PlainView())
 	}
-	if !strings.Contains(after[cursorAt+1], "new item") {
-		t.Errorf("the panel is not at the row; line %d is %q", cursorAt+1, after[cursorAt+1])
+	if at := lineWith(lines, "Ancho Chile"); at > panelAt {
+		t.Errorf("the panel is at line %d and the house at %d; the panel is inside the house",
+			panelAt, at)
 	}
-	// The rows the panel pushed down are still there.
-	s.ShowsText("Ancho Chile")
+	if strings.Contains(lines[panelAt], "│") {
+		t.Errorf("the panel is squeezed into a pane: %q", lines[panelAt])
+	}
+}
+
+func lineWith(lines []string, text string) int {
+	for i, line := range lines {
+		if strings.Contains(line, text) {
+			return i
+		}
+	}
+	return -1
 }
 
 // All three kinds create, through the same panel and the same confirmation.

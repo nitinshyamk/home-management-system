@@ -16,18 +16,15 @@ func (m Model) View() string {
 	if !m.ready {
 		return "loading..."
 	}
-	// The editor's lines go INTO the surface, spliced after the row they belong
-	// to, rather than under the whole list. Under the list is not inline; it is
-	// a second place to look.
-	overlay := m.field().Lines()
-	if m.creator.IsOpen() {
-		overlay = m.creator.SetWidth(m.width).Lines()
-	}
-
-	// Every surface scrolls itself, so each renders straight rather than
-	// through a viewport somebody else owns. Two things scrolling one list is
-	// how a cursor ends up off screen with nothing obviously wrong.
-	body := m.current.SetOverlay(overlay).View()
+	// The one-line field goes INTO the surface, spliced after the row it
+	// belongs to. Under the list is not inline; it is a second place to look.
+	//
+	// The creation PANEL does not, any more. It is a form with completions
+	// under it, and splicing it into a pane a third of the screen wide cut
+	// "Garage > Metal Shelving Unit" off mid-path and the hint off mid-word.
+	// It is drawn full width below the house instead, which states the parent
+	// in words where position used to imply it.
+	body := m.current.SetOverlay(m.field().Lines()).View()
 	if m.confirm != nil {
 		body = m.confirmView()
 	}
@@ -70,7 +67,11 @@ func (m Model) View() string {
 			m.chrome(text.JoinWhatFits(m.width, m.flow.plan.Facts()))...), "\n")
 	}
 
-	return strings.Join(append([]string{m.header(), body}, m.chrome(m.facts())...), "\n")
+	parts := []string{m.header(), body}
+	if m.creator.IsOpen() {
+		parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
+	}
+	return strings.Join(append(parts, m.chrome(m.facts())...), "\n")
 }
 
 // chrome is everything below the body: the rule, then the one status block,
@@ -116,15 +117,14 @@ func (m Model) field() editor.Model {
 
 // bodyHeight is the room left once the chrome has taken its lines.
 //
-// Five are fixed -- two for the tabs and their rule, one for the rule below the
-// body, one for the facts, one for the line -- and the status block takes what
-// it needs on top. The fixed five are why opening the input line no longer
-// resizes the list: its height stopped being a variable.
+// Five are fixed -- the header and its rule, the rule below the body, the
+// facts, the line -- and the status block takes what it needs on top.
 //
-// The editor is NOT subtracted: it takes its lines from inside the surface
-// rather than from around it, so the screen keeps its shape.
+// The one-line editor is NOT subtracted: it takes its lines from inside the
+// surface. The creation panel is, because it sits below the house rather than
+// in it.
 func (m Model) bodyHeight() int {
-	if h := m.height - 5 - m.say.Height(m.width); h > 3 {
+	if h := m.height - 5 - m.say.Height(m.width) - m.creator.Height(); h > 3 {
 		return h
 	}
 	return 3

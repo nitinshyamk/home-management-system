@@ -150,7 +150,13 @@ func (m Model) inspectItem(sel selection) []string {
 	if !ok {
 		return nil
 	}
-	parts := []string{style.Strong.Render(item.Name), item.Category, item.Measure}
+	// The measure reads as a column heading on its own -- "Ancho Chile -
+	// Spices - g" -- so in prose it gets the verb that makes it a sentence.
+	measure := item.Measure
+	if measure != "" && measure != "one of a kind" {
+		measure = "measured in " + measure
+	}
+	parts := []string{style.Strong.Render(item.Name), item.Category, measure}
 	if item.OnHand != "" {
 		parts = append(parts, item.OnHand+" on hand")
 	}
@@ -169,7 +175,7 @@ func (m Model) inspectNode() []string {
 	spec := m.lens.spec()
 	parts := []string{
 		style.Strong.Render(strings.Join(sh.pathTo(node.Key()), pathSeparator)),
-		fmt.Sprintf("%d %s below here", node.Count, spec.unit),
+		fmt.Sprintf("%d %s below here", node.Count, plural(spec.unit, node.Count)),
 	}
 	if n := sh.childCount(node.Key()); n > 0 {
 		word := spec.kids

@@ -371,19 +371,15 @@ func TestFoldsDoNotCrossBetweenTrees(t *testing.T) {
 func TestCopyAndPutMovesAHoldingInTheLocationsTree(t *testing.T) {
 	s := sim.New(t)
 	rice, pantry := stockedTree(t, s)
-	s.ByPlace()
-	s.OnRail()
-	s.Send(sim.Press("v"))
 
-	// Onto the rice, inside the Left Pantry, and pick it up.
-	s.Send(sim.CtrlN)
-	s.Send(sim.CtrlN)
-	s.Send(sim.CtrlN)
+	// Pick up in the contents pane, put down on the rail: the gesture spans
+	// the two halves now rather than two tabs.
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltW)
 	s.ShowsText("carrying")
 
-	// Onto the Kitchen, which is a place, and put it there.
-	s.Send(sim.AltLess)
+	s.GoTo("Kitchen")
 	s.Send(sim.CtrlY)
 
 	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
@@ -399,16 +395,12 @@ func TestCopyAndPutReclassifiesAnItemInTheCategoriesTree(t *testing.T) {
 	grains := s.HasCategory("Grains")
 
 	s.ByKind()
-	s.OnRail()
-	s.Send(sim.Press("v"))
-	// Grains sorts before Pantry, and is empty, so the rice is two rows down.
-	s.Send(sim.CtrlN)
-	s.Send(sim.CtrlN)
+	s.OnContents()
 	s.ShowsText("Basmati Rice")
 	s.Send(sim.AltW)
 	s.ShowsText("carrying")
 
-	s.Send(sim.AltLess) // onto Grains
+	s.GoTo("Grains")
 	s.Send(sim.CtrlY)
 
 	if got := categoryOf(t, s, rice); got != grains {
@@ -417,15 +409,11 @@ func TestCopyAndPutReclassifiesAnItemInTheCategoriesTree(t *testing.T) {
 }
 
 // The prompt is the other half: for when you already know where it goes.
-func TestThePromptMovesAThingInATree(t *testing.T) {
+func TestThePromptMovesAThing(t *testing.T) {
 	s := sim.New(t)
 	rice, pantry := stockedTree(t, s)
 	s.ByPlace()
-	s.OnRail()
-	s.Send(sim.Press("v"))
-	s.Send(sim.CtrlN)
-	s.Send(sim.CtrlN)
-	s.Send(sim.CtrlN)
+	s.OnContents()
 
 	s.Send(sim.Press("m"))
 	s.ShowsText("where to")
@@ -445,9 +433,7 @@ func TestThePromptAsksTheRightQuestionForTheKind(t *testing.T) {
 	stockedTree(t, s)
 
 	s.ByKind()
-	s.OnRail()
-	s.Send(sim.Press("v"))
-	s.Send(sim.CtrlN)
+	s.OnContents()
 	s.Send(sim.Press("m"))
 	s.ShowsText("file it under")
 	s.HidesText("where to")
@@ -461,11 +447,7 @@ func TestPuttingAThingWhereItCannotGoIsRefused(t *testing.T) {
 	rice, pantry := stockedTree(t, s)
 
 	s.ByPlace()
-	s.OnRail()
-	s.Send(sim.Press("v"))
-	s.Send(sim.CtrlN)
-	s.Send(sim.CtrlN)
-	s.Send(sim.CtrlN)
+	s.OnContents()
 	s.Send(sim.AltW)
 
 	s.ByKind()
@@ -571,11 +553,9 @@ func TestTheBannerSaysWhereTheThingCanGo(t *testing.T) {
 	s.ShowsText("puts it in a place")
 
 	s.Send(sim.Esc)
-	// An Item, picked up in the Categories tree.
+	// An Item, picked up in the kind lens, where the contents are Items.
 	s.ByKind()
-	s.OnRail()
-	s.Send(sim.Press("v"))
-	moveTo(t, s, "Basmati Rice")
+	s.OnContents()
 	s.Send(sim.AltW)
 	s.ShowsText("files it under a classification")
 }
@@ -618,9 +598,7 @@ func TestTheMoveKeyPicksItUpAsWell(t *testing.T) {
 	s.HidesText("where to")
 	s.ShowsText("carrying")
 
-	s.ByPlace()
-	s.OnRail()
-	moveTo(t, s, "Kitchen")
+	s.GoTo("Kitchen")
 	s.Send(sim.CtrlY)
 
 	s.HidesText("carrying")
@@ -654,34 +632,34 @@ func TestATypedAnswerPutsDownWhatMPickedUp(t *testing.T) {
 // The seam between the two kinds of list.
 //
 // While the prompt is open every keystroke is the prompt's, so C-n walks the
-// DROPDOWN and the tree cursor does not move. Close the prompt and the same key
-// walks the TREE. One key, two meanings, and which one is in force is exactly
-// what the prompt being open decides.
-func TestCNWalksTheDropdownThenTheTree(t *testing.T) {
+// DROPDOWN and the cursor underneath does not move. Close the prompt and the
+// same key walks the house. One key, two meanings, and which one is in force
+// is exactly what the prompt being open decides.
+func TestCNWalksTheDropdownThenTheHouse(t *testing.T) {
 	s := sim.New(t)
 	stockedTree(t, s)
 	s.ByPlace()
-	s.OnRail()
-	s.Send(sim.Press("v"))
-	moveTo(t, s, "Basmati Rice")
+	s.GoTo("Kitchen")
 
-	row := cursorLine(s)
+	under := s.Model().RailName()
+	s.OnContents()
 	s.Send(sim.Press("m"))
+	s.Send(sim.Type("k")) // enough to offer the Kitchen and its pantry
 	s.Send(sim.CtrlN)
-	if got := cursorLine(s); got != row {
-		t.Errorf("C-n moved the tree cursor from %q to %q while a prompt was open", row, got)
+	if got := s.Model().RailName(); got != under {
+		t.Errorf("C-n moved the rail from %q to %q while a prompt was open", under, got)
 	}
 	s.ShowsText("TAB to take it")
 
-	// C-p rather than C-n for the tree half: `m` only opens on a contained row,
-	// and the only one in this house is the last row of the tree, so there is
-	// nothing below it to move to.
+	// Out of the dropdown, then out of the prompt, then the same key walks
+	// the contents pane it was opened over.
 	s.Send(sim.Esc, sim.Esc)
-	s.Send(sim.CtrlP)
-	if got := cursorLine(s); got == row {
-		t.Errorf("C-p did not move the tree cursor once the prompt was closed: %q", got)
-	}
 	s.HidesText("TAB to take it")
+	s.OnRail()
+	s.Send(sim.CtrlN)
+	if got := s.Model().RailName(); got == under {
+		t.Errorf("C-n did not move the rail once the prompt was closed: %q", got)
+	}
 }
 
 // locationOf is where a holding of an item is stowed.
