@@ -6,6 +6,7 @@ import (
 
 	"context"
 	"home-management-system/internal/tui/keys"
+	"home-management-system/internal/tui/text"
 )
 
 // The script format has to be able to express every key the interface uses,
@@ -153,7 +154,7 @@ func TestTheHelpLineFitsTheTerminal(t *testing.T) {
 		keys.Hint(keys.Browse, []keys.Action{keys.Quit}),
 	}
 	for _, width := range []int{40, 60, 80, 100, 120} {
-		got := joinWhatFits(width, parts)
+		got := text.JoinWhatFits(width, parts)
 		if n := len([]rune(got)); n > width {
 			t.Errorf("the help line is %d columns in a %d-column terminal: %q", n, width, got)
 		}

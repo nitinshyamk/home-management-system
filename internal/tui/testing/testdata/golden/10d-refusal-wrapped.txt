@@ -9,3 +9,4 @@
   g was asked for -- it does not come in packages to open
 ----------------------------------------------------------------
 4 holdings - sorted by item a-z
+            C-s search - M-g jump - M-x command

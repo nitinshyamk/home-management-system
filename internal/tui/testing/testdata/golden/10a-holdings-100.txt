@@ -7,3 +7,4 @@
   Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space Grey, 0.8m)  at rest  Small Parts Tray       
 ----------------------------------------------------------------------------------------------------
 4 holdings - enter for history - sorted by item a-z
+            C-s search - M-g jump - M-x command

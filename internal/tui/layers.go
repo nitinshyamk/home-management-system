@@ -59,6 +59,22 @@ func (m Model) mode() string {
 	return "browsing"
 }
 
+// lineReachable reports whether a keystroke would reach the input line.
+//
+// True while browsing, and true while the line itself is the open mode. False
+// under everything else: a confirmation, a field, the creation panel and the
+// import plan each consume every keystroke once active, so the keys the line
+// advertises would do nothing at all.
+//
+// Asked of the layer stack rather than of the fields, because the stack is
+// already the one place that says which mode owns the keyboard. A second
+// predicate reading m.confirm and m.editor directly would be that answer given
+// twice, and the copies would drift the day a layer is added.
+func (m Model) lineReachable() bool {
+	top, ok := m.topLayer()
+	return !ok || top.name == "input line"
+}
+
 // topLayer is the innermost active mode, if any.
 func (m Model) topLayer() (layer, bool) {
 	for _, l := range m.layers() {

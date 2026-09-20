@@ -145,14 +145,30 @@ func TestTypingIsNotNavigation(t *testing.T) {
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("jar"))
 
-	if !strings.Contains(s.PlainView(), "I-search: jar") {
+	if !typedInto(s, "I-search", "jar") {
 		t.Errorf("typing jar did not reach the input line:\n%s", s.PlainView())
 	}
 	// And q did not quit, and 2 did not change view.
 	s.Send(sim.Type("q2"))
-	if !strings.Contains(s.PlainView(), "I-search: jarq2") {
+	if !typedInto(s, "I-search", "jarq2") {
 		t.Errorf("q and 2 were taken as commands while typing:\n%s", s.PlainView())
 	}
+}
+
+// typedInto reports whether the text landed on the line with this prompt.
+//
+// It asks for the two on ONE line rather than for a spelling like
+// "I-search: jar", because what the test is about is that the keystroke reached
+// the input line rather than the table -- and the prompt's exact spacing is a
+// layout decision the goldens already guard. Pinning it here too meant a
+// behavioural test failing for a cosmetic reason.
+func typedInto(s *sim.Simulator, prompt, text string) bool {
+	for _, line := range strings.Split(s.PlainView(), "\n") {
+		if strings.Contains(line, prompt) && strings.Contains(line, text) {
+			return true
+		}
+	}
+	return false
 }
 
 // A tree filter keeps the ancestors of a match, because what a tree adds over a
