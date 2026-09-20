@@ -31,7 +31,8 @@ func TestGoldenHoldingsTable(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s.Resize(tc.width, tc.height)
-			s.Send(sim.Press("4"))
+			s.ByPlace()
+			s.OnContents()
 			s.AssertFrame(tc.name)
 		})
 	}
@@ -44,7 +45,8 @@ func TestGoldenHoldingsWithASelection(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(100, 22)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.Space, sim.Space, sim.Space)
 	s.AssertFrame("10a-holdings-selected")
 }
@@ -53,7 +55,8 @@ func TestGoldenItemsTable(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(100, 22)
-	s.Send(sim.Press("3"))
+	s.ByKind()
+	s.OnContents()
 	s.AssertFrame("10a-items-100")
 }
 
@@ -67,7 +70,8 @@ func TestGoldenLocationTree(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(84, 22)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.AssertFrame("10b-locations-84")
 
 	// Collapsed is the overview, and it is a different layout question.
@@ -80,7 +84,9 @@ func TestGoldenFilterAndJumpDoNotLookAlike(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Resize(90, 20)
 
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:tray"))
 	s.Send(sim.Enter)
 	s.AssertFrame("10c-filtered")
@@ -101,7 +107,8 @@ func TestGoldenInlineEditor(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(84, 20)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.CtrlN, sim.CtrlN)
 	s.Send(sim.Press("e"))
 	s.AssertFrame("10d-editor-inline")
@@ -111,7 +118,9 @@ func TestGoldenTheConfirmation(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(92, 18)
-	s.Send(sim.Press("4"), sim.AltX)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.AltX)
 	s.Send(sim.Type("new item Turmeric counting measured unit g package 2000 category Spices"))
 	s.Send(sim.Enter)
 	s.AssertFrame("10d-confirmation")
@@ -121,7 +130,9 @@ func TestGoldenARefusal(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(64, 18)
-	s.Send(sim.Press("4"), sim.AltX)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.AltX)
 	s.Send(sim.Type("consume 5kg"))
 	s.Send(sim.Enter)
 	s.AssertFrame("10d-refusal-wrapped")
@@ -136,7 +147,9 @@ func TestGoldenTheRetirementConfirmation(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(92, 18)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("thunder"))
 	s.Send(sim.Enter)
 	s.Send(sim.CtrlK)
@@ -153,10 +166,12 @@ func TestGoldenSomethingInHand(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(84, 22)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltW)
 	// Across a view switch, which is where it used to vanish.
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.AssertFrame("11e-carrying")
 }
 

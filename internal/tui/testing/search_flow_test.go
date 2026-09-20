@@ -15,10 +15,9 @@ import (
 func TestFilteringNarrowsAndSaysSo(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
-
-	before := strings.Count(s.PlainView(), "Ancho Chile")
-	if before != 3 {
+	s.ByPlace()
+	s.OnContents()
+	if before := s.CountRows("Ancho Chile"); before != 3 {
 		t.Fatalf("expected 3 Ancho rows to start, got %d", before)
 	}
 
@@ -26,7 +25,9 @@ func TestFilteringNarrowsAndSaysSo(t *testing.T) {
 	s.Send(sim.Type("thunder"))
 	s.Send(sim.Enter)
 
-	s.HidesText("Ancho Chile")
+	if got := s.CountRows("Ancho Chile"); got != 0 {
+		t.Errorf("the filter left %d Ancho rows, want none", got)
+	}
 	s.ShowsText("Thunderbolt")
 	// The count says what it did AND what it is a fraction of.
 	s.ShowsText("of 4")
@@ -45,8 +46,8 @@ func TestFilteringNarrowsAndSaysSo(t *testing.T) {
 func TestAFacetRestrictsItsFieldOnly(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:garage"))
 	s.Send(sim.Enter)
@@ -68,8 +69,8 @@ func TestAFacetRestrictsItsFieldOnly(t *testing.T) {
 func TestFilterAndJumpAreVisiblyDifferent(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("shelf"))
 	filtering := s.PlainView()
@@ -96,7 +97,8 @@ func TestFilterAndJumpAreVisiblyDifferent(t *testing.T) {
 func TestJumpingGoesToTheThing(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4")) // start in Holdings
+	s.ByPlace()
+	s.OnContents()
 
 	s.Send(sim.AltG)
 	s.Send(sim.Type("blue crate"))
@@ -120,7 +122,8 @@ func TestJumpingGoesToTheThing(t *testing.T) {
 func TestCancellingAJumpChangesNothing(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
@@ -141,7 +144,8 @@ func TestCancellingAJumpChangesNothing(t *testing.T) {
 func TestTypingIsNotNavigation(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("jar"))
 
@@ -176,7 +180,8 @@ func typedInto(s *sim.Simulator, prompt, text string) bool {
 func TestFilteringATreeKeepsThePath(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("small parts"))
 	s.Send(sim.Enter)
@@ -216,7 +221,9 @@ func TestSearchFitsNarrowTerminals(t *testing.T) {
 	awkwardHouse(t, s)
 	for _, width := range []int{60, 80, 120} {
 		s.Resize(width, 24)
-		s.Send(sim.Press("4"), sim.CtrlS)
+		s.ByPlace()
+		s.OnContents()
+		s.Send(sim.CtrlS)
 		s.Send(sim.Type("loc:garage ancho"))
 		s.FitsWidth(width)
 		s.Send(sim.Enter)
@@ -235,8 +242,8 @@ func TestSearchFitsNarrowTerminals(t *testing.T) {
 func TestAbandoningAFilterEditRestoresTheOldOne(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
@@ -257,8 +264,8 @@ func TestAbandoningAFilterEditRestoresTheOldOne(t *testing.T) {
 func TestAbandoningAFirstFilterLeavesEverything(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("zzzz"))
 	s.Send(sim.Esc)
@@ -272,7 +279,8 @@ func TestAbandoningAFirstFilterLeavesEverything(t *testing.T) {
 func TestTheFooterDescribesThePaletteWhileJumping(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltG)
 	s.Send(sim.Type("shelf"))
 

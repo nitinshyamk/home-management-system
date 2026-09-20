@@ -20,10 +20,11 @@ func TestKeysGoInAndTheDatabaseComesOut(t *testing.T) {
 	s := sim.New(t)
 	seedHouse(t, s)
 
-	s.Send(sim.Press("2")) // the Locations view
+	s.ByPlace()
+	s.OnRail()
 	s.ShowsText("Pantry")
 
-	s.Send(sim.Press("4")) // the Holdings view
+	s.OnContents()
 	s.ShowsText("Basmati Rice")
 }
 

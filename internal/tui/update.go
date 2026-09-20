@@ -5,7 +5,6 @@ import (
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/resolve"
-	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/tree"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,11 +15,8 @@ import (
 // loadedMsg carries a rendered view. Exactly one of rows and cells is set: the
 // tree and report views render to lines, the table views to cells.
 type loadedMsg struct {
-	view        view
-	rows        []string
-	cells       []table.Row
-	nodes       []tree.Node
-	holdingRows map[int64]app.HoldingRow
+	view view
+	rows []string
 	// headings are the rows that begin a section, for the prose views that have
 	// sections. Only Help does; the others send none and their TAB does nothing.
 	headings []int
@@ -28,6 +24,17 @@ type loadedMsg struct {
 	// which is all a load has ever had to say. It was called status, and that
 	// name is why three unrelated things ended up sharing one field.
 	hint string
+}
+
+// shellMsg carries a loaded shell: the rail AND what is inside the node it
+// points at, in one message, because they are one screen.
+type shellMsg struct {
+	view  view
+	nodes []tree.Node
+	total int64
+	unit  string
+	hint  string
+	contents
 }
 
 type errMsg struct{ err error }
@@ -66,13 +73,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.refreshJump()
 		return m, nil
 
+	case shellMsg:
+		m.view = msg.view
+		m.say = m.say.SetHint(msg.hint)
+		m.holdingRows, m.itemRows, m.total = msg.holdings, msg.items, msg.total
+
+		// Where the cursor was, so a reload can put it back. Reloading happens
+		// after every write, and a cursor that jumped to the top each time
+		// would make acting twice on one row impossible -- the second t of a
+		// checkout-and-return would land on whatever had sorted first.
+		//
+		// Only within the SAME LENS, and that is not a precaution. The two
+		// lenses key their rows from different tables: a Holding's identifier
+		// and a Category's are both small integers, so restoring a remembered
+		// Holding key into the kind lens lands the cursor on whichever
+		// Category happens to share the number. That is not a hypothetical --
+		// it is what flipping to BY KIND did, silently, and it put the rail on
+		// Electronics while the contents pane correctly showed Dried Peppers.
+		var wasOn int64 = -1
+		if sh, ok := m.shell(); ok && sh.lens == m.lens && sh.on == paneBody {
+			if sel, ok := sh.Current(); ok {
+				wasOn = sel.Key
+			}
+		}
+		// The folds, saved under the lens they belong to, before the tree they
+		// came from is thrown away.
+		if sh, ok := m.shell(); ok {
+			m.folds[sh.lens] = sh.Folds()
+		}
+
+		m.current = m.shellFor(msg)
+		m = m.aiming()
+		m = m.applyFilter()
+		if wasOn >= 0 {
+			m = m.focusKey(wasOn)
+		}
+		if m.pending != nil {
+			m = m.focusKey(keyOf(*m.pending))
+			m.pending = nil
+		}
+		m = m.rememberRail()
+		return m, nil
+
 	case loadedMsg:
 		was := m.view
 		// The hint, and ONLY the hint. A load used to overwrite the one status
 		// string, which is what destroyed the feedback for every write and
 		// made the carry invisible.
 		m.view, m.say = msg.view, m.say.SetHint(msg.hint)
-		m.holdingRows = msg.holdingRows
 
 		// A filter belongs to the VIEW it narrowed. `/rice` means nothing in
 		// the Locations tree, and carrying it there filtered the whole house
@@ -100,10 +148,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// collapsing it pointless. Saved under the view being LEFT, which is
 		// the case that loses them: switching away and back is the reload that
 		// does not mention the tree it is replacing.
-		if folds, ok := m.current.(folding); ok && forest(was) {
-			m.folds[was] = folds.Folds()
+		if sh, ok := m.shell(); ok {
+			m.folds[sh.lens] = sh.Folds()
 		}
-		m.current = m.surfaceFor(msg)
+		m.current = newSectionedText(msg.rows, msg.headings, m.width, m.bodyHeight())
 		// A fresh surface knows nothing about what is in hand, and a carry
 		// outlives every load it takes to go and find the destination.
 		m = m.aiming()
@@ -173,7 +221,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				rowsPhrase(msg.rows), rowsPhrase(msg.earlier))
 		}
 		m.say = m.say.Report(outcome)
-		m.view = viewHoldings
+		m.view = viewShell
 		return m, m.load(m.view)
 
 	case appliedMsg:

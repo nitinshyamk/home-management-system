@@ -8,8 +8,6 @@ import (
 
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
-	"home-management-system/internal/tui/table"
-	"home-management-system/internal/tui/tree"
 
 	"home-management-system/internal/tui/style"
 )
@@ -56,11 +54,15 @@ type selection struct {
 	Contained bool
 }
 
-// surface is the thing a view draws itself on: a table, a tree, or scrolling
+// surface is the thing a screen draws itself on: the shell, or scrolling
 // prose. It is the answer to `if tabular(m.view) ... if forest(m.view) ...`,
 // which this package wrote thirty-five times before this existed and got
 // subtly wrong twice -- restoreCursor and land are the same function, and only
 // one of them knew that a tree key is not a row key.
+//
+// There used to be three implementations and one of them per browse tab. The
+// tabs are gone: shellSurface (shell.go) is the tree AND the table, side by
+// side, which is what those four views had been between them all along.
 //
 // Every method that changes anything returns a surface rather than mutating,
 // matching the widgets underneath, which are values.
@@ -85,164 +87,13 @@ type surface interface {
 	Focus(key int64) surface
 }
 
-// folding is the part of a tree no other surface has. Kept off the surface
-// interface and reached by assertion, because a table asked for its folds would
-// have to invent an answer, and an invented answer is the thing that goes stale.
-type folding interface {
-	Folds() map[int64]bool
-}
-
-// targeting is the other part, and it is a tree's alone for the same reason.
+// targeting is the part of a rail no other surface has: something is being
+// carried, and this tree is being read for somewhere to put it down.
 //
-// A tree shows containers AND the things inside them, so it is the only
-// surface where half the rows are somewhere to put a thing down and half are
-// not. The Holdings table has no such split -- every row is in a place, and
-// putting a thing on any of them means that place -- so a table asked to rule
-// rows out would have to invent which.
+// Kept off the surface interface and reached by assertion, because a page of
+// prose asked to rule rows out would have to invent which.
 type targeting interface {
 	SetTargeting(on bool) surface
-}
-
-// ---------------------------------------------------------------------------
-// The table surface: Holdings and Items.
-// ---------------------------------------------------------------------------
-
-// tableSurface adapts table.Model. It carries the view because only the view
-// knows which column a facet restricts and which cell holds the place.
-type tableSurface struct {
-	model table.Model
-	view  view
-}
-
-func (s tableSurface) with(m table.Model) surface { s.model = m; return s }
-
-func (s tableSurface) Update(msg tea.KeyMsg) (surface, bool) {
-	next, handled := s.model.Update(msg)
-	return s.with(next), handled
-}
-
-func (s tableSurface) View() string                  { return s.model.View() }
-func (s tableSurface) SetSize(w, h int) surface      { return s.with(s.model.SetSize(w, h)) }
-func (s tableSurface) SetOverlay(l []string) surface { return s.with(s.model.SetOverlay(l)) }
-func (s tableSurface) SelectionCount() int           { return s.model.SelectionCount() }
-func (s tableSurface) Filtered() bool                { return s.model.Filtered() }
-func (s tableSurface) Counts() (int, int)            { return s.model.Counts() }
-func (s tableSurface) SortDescription() string       { return s.model.SortDescription() }
-
-func (s tableSurface) SetFilter(q omnibox.Query) surface {
-	return s.with(s.model.SetFilter(table.Filter{Text: q.Text, Facets: facetTests(s.view, q)}))
-}
-
-// rowSelection reads a row the one way, so the cursor and the selection cannot
-// disagree about what they are pointing at.
-//
-// Both table views name an Item in their first column, which is what lets
-// `:consume 100g` on a row mean the same thing the `c` keystroke will.
-func (s tableSurface) rowSelection(r table.Row) selection {
-	sel := selection{
-		Key: r.Key, ID: r.Key, Name: r.Cells[0],
-		Kind:    string(spec(s.view).rowKind()),
-		Subject: "Item",
-	}
-	if s.view == viewHoldings && len(r.Cells) > 2 {
-		sel.At = r.Cells[2]
-	}
-	return sel
-}
-
-func (s tableSurface) Current() (selection, bool) {
-	row, ok := s.model.Current()
-	if !ok {
-		return selection{}, false
-	}
-	return s.rowSelection(row), true
-}
-
-func (s tableSurface) Selected() []selection {
-	picked := map[int64]bool{}
-	for _, key := range s.model.Selected() {
-		picked[key] = true
-	}
-	var out []selection
-	for _, row := range s.model.Rows() {
-		if picked[row.Key] {
-			out = append(out, s.rowSelection(row))
-		}
-	}
-	return out
-}
-
-func (s tableSurface) Focus(key int64) surface {
-	for i, row := range s.model.Rows() {
-		if row.Key == key {
-			return s.with(s.model.SetCursor(i))
-		}
-	}
-	return s
-}
-
-// ---------------------------------------------------------------------------
-// The tree surface: Categories and Locations.
-// ---------------------------------------------------------------------------
-
-type treeSurface struct{ model tree.Model }
-
-func (s treeSurface) with(m tree.Model) surface { s.model = m; return s }
-
-func (s treeSurface) Update(msg tea.KeyMsg) (surface, bool) {
-	next, handled := s.model.Update(msg)
-	return s.with(next), handled
-}
-
-func (s treeSurface) View() string                  { return s.model.View() }
-func (s treeSurface) SetSize(w, h int) surface      { return s.with(s.model.SetSize(w, h)) }
-func (s treeSurface) SetOverlay(l []string) surface { return s.with(s.model.SetOverlay(l)) }
-func (s treeSurface) SelectionCount() int           { return s.model.SelectionCount() }
-func (s treeSurface) Filtered() bool                { return s.model.Filtered() }
-func (s treeSurface) Counts() (int, int)            { return s.model.Counts() }
-func (s treeSurface) SortDescription() string       { return "" }
-func (s treeSurface) Folds() map[int64]bool         { return s.model.Folds() }
-func (s treeSurface) Focus(key int64) surface       { return s.with(s.model.Focus(key)) }
-
-func (s treeSurface) SetTargeting(on bool) surface { return s.with(s.model.Targeting(on)) }
-
-// A tree filters on text alone: its facets would name columns it does not have.
-func (s treeSurface) SetFilter(q omnibox.Query) surface {
-	return s.with(s.model.SetFilter(q.Text))
-}
-
-// nodeSelection reads the NODE, not the view. Reading the view was safe while a
-// tree held only its own kind and stopped being safe the moment a Category
-// could show its Items.
-func nodeSelection(n tree.Node) selection {
-	// A tree node names itself: what it is and what a command calls it are the
-	// same thing.
-	return selection{
-		Key: n.Key(), ID: n.ID, Name: n.Name,
-		Kind: n.Kind, Subject: n.Kind, Contained: n.Contained(),
-	}
-}
-
-func (s treeSurface) Current() (selection, bool) {
-	node, ok := s.model.Current()
-	if !ok {
-		return selection{}, false
-	}
-	return nodeSelection(node), true
-}
-
-func (s treeSurface) Selected() []selection {
-	picked := map[int64]bool{}
-	for _, key := range s.model.Selected() {
-		picked[key] = true
-	}
-	var out []selection
-	for _, node := range s.model.Nodes() {
-		if picked[node.Key()] {
-			out = append(out, nodeSelection(node))
-		}
-	}
-	return out
 }
 
 // ---------------------------------------------------------------------------

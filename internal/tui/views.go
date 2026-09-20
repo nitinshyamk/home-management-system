@@ -3,130 +3,88 @@ package tui
 import (
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/creator"
-	"home-management-system/internal/tui/table"
+)
+
+// The four kinds of row, as the strings selection.Kind carries. Named so a
+// switch reads as a question about the row rather than a string comparison.
+const (
+	kindCategory = string(resolve.KindCategory)
+	kindLocation = string(resolve.KindLocation)
+	kindItem     = string(resolve.KindItem)
+	kindHolding  = string(resolve.KindHolding)
 )
 
 // surfaceKind is what a view draws itself on.
-//
-// Three answers, not two: hierarchy is not something a flat table shows, so
-// Categories and Locations are trees; Holdings and Items are tables; and
-// Integrity, History and Help are prose that scrolls.
 type surfaceKind int
 
 const (
 	surfaceText surfaceKind = iota
-	surfaceTable
-	surfaceTree
+	surfaceShell
 )
 
-// viewSpec is everything that differs between one view and the next.
-//
-// It exists because these facts used to live in nine separate switches, and a
-// view was correct only if you remembered all nine. Adding one to a table is a
-// thing the compiler and the reader can both see; forgetting a case in the
-// ninth switch was silent, and stayed silent until somebody pressed a key.
+// viewSpec describes the screens that are not the shell. Columns, facets and
+// units moved to lensSpec, because what varies is which tree the rail shows.
 type viewSpec struct {
-	// name is the tab label and the header's suffix.
 	name string
-	// noun is what the footer counts -- "3 of 12 holdings". Empty for the
-	// views that are not a list of anything, which is how countPhrase knows to
-	// say nothing rather than to say "0".
+	// noun is what the footer counts, empty where the view is not a list.
 	noun string
 	kind surfaceKind
-
-	// columns declares a table's shape, and with it what a narrow terminal
-	// loses. Drop order is a decision recorded here rather than an accident of
-	// layout arithmetic.
-	columns []table.Column
-	// facets says which column each facet name restricts. Only the view knows
-	// that `loc:` means the LOCATION column here and nothing at all in Items.
-	facets map[string]int
-
-	// unit names what a tree's rollup counts, which is also the count column's
-	// title.
-	unit string
-
-	// creates is what `o` makes here, or "" where it makes nothing. Holdings
-	// create nothing on purpose: stock arrives by acquiring it, and a Holding
-	// is a placement rather than a name.
-	creates creator.Kind
-
-	// holds are the kinds of thing that live in this view, which is what a jump
-	// reads to know where it is going.
-	holds []resolve.Kind
 }
 
+// view is which screen is showing. The four browse tabs collapsed into
+// viewShell; the rest are places you go to and come back from.
+type view int
+
+const (
+	viewShell view = iota
+	viewIntegrity
+	viewHistory
+	viewHelp
+)
+
 var specs = map[view]viewSpec{
-	viewCategories: {
-		name: "Categories", noun: "categories", kind: surfaceTree,
-		unit: "items", creates: creator.KindCategory,
-		holds: []resolve.Kind{resolve.KindCategory},
-	},
-	viewLocations: {
-		name: "Locations", noun: "locations", kind: surfaceTree,
-		unit: "holdings", creates: creator.KindLocation,
-		holds: []resolve.Kind{resolve.KindLocation},
-	},
-	viewItems: {
-		name: "Items", noun: "items", kind: surfaceTable,
-		creates: creator.KindItem,
-		holds:   []resolve.Kind{resolve.KindItem},
-		columns: []table.Column{
-			{Title: "ITEM", Min: 10, Grow: true},
-			{Title: "ON HAND", Min: 6, Align: table.Right},
-			{Title: "CATEGORY", Min: 8, Drop: 2},
-			{Title: "MEASURE", Min: 8, Drop: 3},
-			{Title: "KIND", Min: 6, Drop: 4},
-		},
-		facets: map[string]int{"item": 0, "name": 0, "cat": 2, "unit": 3, "kind": 4},
-	},
-	viewHoldings: {
-		name: "Holdings", noun: "holdings", kind: surfaceTable,
-		holds: []resolve.Kind{resolve.KindHolding},
-		columns: []table.Column{
-			{Title: "ITEM", Min: 10, Grow: true},
-			// Quantity is never dropped: a holdings table that does not say how
-			// much is a list of things you own, which you already knew.
-			{Title: "QTY", Min: 5, Align: table.Right},
-			// Path: the cell is the shelf's own name, and the ancestors above
-			// it appear when the terminal has room to spare for them. Three
-			// rows of one item in three different Shelf 1s is the case the
-			// holdings table exists to answer, and the leaf alone cannot.
-			{Title: "LOCATION", Min: 12, Drop: 2, Elide: table.ElideStart, Path: true},
-			{Title: "FLAGS", Min: 6, Drop: 3},
-		},
-		facets: map[string]int{"item": 0, "qty": 1, "state": 1, "loc": 2, "at": 2, "flag": 3},
-	},
+	viewShell:     {name: "House", kind: surfaceShell},
 	viewIntegrity: {name: "Integrity", kind: surfaceText},
 	viewHistory:   {name: "History", kind: surfaceText},
 	viewHelp:      {name: "Help", kind: surfaceText},
 }
 
-// rowKind is what a row of this view IS. A view holds one kind of thing; the
-// trees are the exception, and their rows say their own kind.
-func (v viewSpec) rowKind() resolve.Kind {
-	if len(v.holds) == 0 {
-		return ""
-	}
-	return v.holds[0]
-}
-
-// spec is the view's description. An unknown view reads as an empty text view,
-// which renders as nothing rather than panicking -- the same answer the nine
-// switches gave by falling through.
+// spec is the view's description. An unknown view reads as empty prose rather
+// than panicking.
 func spec(v view) viewSpec { return specs[v] }
 
-// forest reports whether a view is a tree.
-func forest(v view) bool { return specs[v].kind == surfaceTree }
-
-// viewFor is where a kind of thing lives.
-func viewFor(k resolve.Kind) view {
-	for v, s := range specs {
-		for _, held := range s.holds {
-			if held == k {
-				return v
-			}
-		}
+// creates is what `o` makes here: the rail makes what the rail is made of,
+// the contents pane makes what it contains. No Holding, deliberately -- stock
+// arrives by being acquired.
+func (m Model) creates() creator.Kind {
+	switch {
+	case m.view != viewShell:
+		return ""
+	case m.onRail() && m.lens == lensPlace:
+		return creator.KindLocation
+	case m.onRail():
+		return creator.KindCategory
+	case m.lens == lensKind:
+		return creator.KindItem
 	}
-	return viewHoldings
+	return ""
+}
+
+// onRail asks what forest(m.view) used to: is the cursor on structure. Naming
+// the tab stopped answering it once one screen had both.
+func (m Model) onRail() bool {
+	sh, ok := m.shell()
+	return ok && sh.on == paneRail
+}
+
+func (m Model) shell() (shellSurface, bool) {
+	sh, ok := m.current.(shellSurface)
+	return sh, ok
+}
+
+// atRailRoot reports the cursor sitting on the rail's synthetic top, which is
+// the whole house rather than any node of it.
+func (m Model) atRailRoot() bool {
+	sh, ok := m.shell()
+	return ok && sh.on == paneRail && sh.atRoot()
 }

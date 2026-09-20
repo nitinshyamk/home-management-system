@@ -141,6 +141,15 @@ type Model struct {
 	// being edited and the rows around it stay where the eye left them.
 	overlay []string
 
+	// blurred means this table is on screen beside another one that has the
+	// keyboard.
+	//
+	// It exists because the shell puts two of these side by side, and two
+	// cursor marks on one screen is two claims about where a keystroke will
+	// land. The default is focused, so a table that is the only thing showing
+	// never has to say so.
+	blurred bool
+
 	width, height int
 }
 
@@ -236,6 +245,14 @@ const gutter = 2
 // caller's order is what makes the stated order true.
 func New(cols []Column) Model {
 	return Model{cols: cols, selected: map[int64]bool{}, width: 80, height: 20}
+}
+
+// Focused says whether this table has the keyboard. A blurred one keeps its
+// cursor -- so returning to it returns to the row you left -- but does not
+// draw it, because the mark means "a keystroke lands here".
+func (m Model) Focused(on bool) Model {
+	m.blurred = !on
+	return m
 }
 
 // Fixed marks the rows as arriving in an order the caller owns.

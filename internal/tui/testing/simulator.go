@@ -214,3 +214,77 @@ func (s *Simulator) RunCommand(cmd tea.Cmd) { s.runCmd(cmd) }
 func (s *Simulator) Contains(text string) bool {
 	return strings.Contains(s.View(), text)
 }
+
+// Navigating the shell, by intent rather than by keystroke.
+//
+// The tests used to press a digit to reach a tab. Saying where they want to
+// be instead means the keymap can move without 134 call sites moving with it,
+// which is what happened when the tabs became one screen.
+
+// ByPlace and ByKind put the rail on the tree the test needs. Idempotent, so
+// a test can state where it is without knowing where it was.
+//
+// Both refresh, because a test seeds through the operations layer and the
+// screen it seeded behind is still showing the old house. Pressing a digit
+// used to load the tab; these stand in for that, so they load too.
+func (s *Simulator) ByPlace() { s.t.Helper(); s.setLens(false) }
+func (s *Simulator) ByKind()  { s.t.Helper(); s.setLens(true) }
+
+func (s *Simulator) setLens(kind bool) {
+	if s.model.ShowingKinds() != kind {
+		s.Send(Press("\\"))
+	}
+	s.Send(Press("g"))
+}
+
+// OnRail and OnContents move the cursor between the two halves. Repeating
+// ctrl+b is how a table walks out of its columns, and a test that has sorted
+// by the third one should still end up on the rail.
+func (s *Simulator) OnRail() {
+	s.t.Helper()
+	for range 8 {
+		if s.model.OnRail() {
+			return
+		}
+		s.Send(Press("ctrl+b"))
+	}
+	s.t.Fatal("could not reach the rail")
+}
+
+func (s *Simulator) OnContents() {
+	s.t.Helper()
+	if s.model.OnRail() {
+		s.Send(Press("ctrl+f"))
+	}
+}
+
+// GoTo walks the rail to a node by name, unfolding as it goes.
+func (s *Simulator) GoTo(name string) {
+	s.t.Helper()
+	s.OnRail()
+	for range 64 {
+		if s.model.RailName() == name {
+			return
+		}
+		s.Send(Press("ctrl+n"))
+	}
+	s.t.Fatalf("no node called %q on the rail", name)
+}
+
+// ContentRows and RailRows are what each pane is showing, for assertions that
+// mean "how many rows" rather than "how many times does this string appear on
+// screen" -- the inspector names the row under the cursor, so the two stopped
+// being the same number.
+func (s *Simulator) ContentRows() []string { return s.model.ContentRows() }
+func (s *Simulator) RailRows() []string    { return s.model.RailRows() }
+
+// CountRows is how many contents rows contain text.
+func (s *Simulator) CountRows(text string) int {
+	n := 0
+	for _, r := range s.ContentRows() {
+		if strings.Contains(r, text) {
+			n++
+		}
+	}
+	return n
+}

@@ -25,7 +25,8 @@ func TestTheCommandLineWrites(t *testing.T) {
 	rice := s.HasItem("Ancho Chile")
 	s.OnHand(rice, 300*domain.Scale)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("garage"))
 	s.Send(sim.Enter)
@@ -47,7 +48,8 @@ func TestAContextualLineTakesItsSubjectFromTheCursor(t *testing.T) {
 	awkwardHouse(t, s)
 	rice := s.HasItem("Ancho Chile")
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:garage"))
 	s.Send(sim.Enter)
@@ -70,7 +72,8 @@ func TestNamingTheSubjectBeatsTheCursor(t *testing.T) {
 	awkwardHouse(t, s)
 	adapter := s.HasItem("Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space Grey, 0.8m)")
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltX)
 	s.Send(sim.Type(`rename "Ancho Chile" "Ancho Chilli"`))
 	s.Send(sim.Enter)
@@ -87,7 +90,8 @@ func TestNamingTheSubjectBeatsTheCursor(t *testing.T) {
 func TestRenamingInPlaceDoesNotMoveTheList(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.CtrlN, sim.CtrlN)
 
 	before := cursorLine(s)
@@ -112,7 +116,8 @@ func TestRenamingInPlaceDoesNotMoveTheList(t *testing.T) {
 func TestAbandoningAnEditChangesNothing(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.CtrlN)
 
 	s.Send(sim.Press("e"))
@@ -129,7 +134,8 @@ func TestCreatingAsksFirstAndSaysWhatIsPermanent(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltX)
 	s.Send(sim.Type("new item Turmeric counting measured unit g package 2000 category Spices"))
 	s.Send(sim.Enter)
@@ -151,7 +157,8 @@ func TestConfirmingCreates(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltX)
 	s.Send(sim.Type("new item Turmeric counting measured unit g category Spices"))
 	s.Send(sim.Enter)
@@ -165,12 +172,13 @@ func TestOnlyEnterAndEscapeReachTheConfirmation(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltX)
 	s.Send(sim.Type("new item Turmeric counting measured unit g category Spices"))
 	s.Send(sim.Enter)
 
-	s.Send(sim.CtrlN, sim.Press("q"), sim.Press("2"), sim.CtrlS, sim.AltG)
+	s.Send(sim.CtrlN, sim.Press("q"), sim.Press("\\"), sim.CtrlS, sim.AltG)
 	s.ShowsText("permanent")
 	s.HasNoItem("Turmeric")
 }
@@ -181,7 +189,8 @@ func TestARefusalIsASentence(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:garage"))
 	s.Send(sim.Enter)
@@ -210,7 +219,8 @@ func TestAnUnbuildableCommandNamesTheField(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltX)
 	s.Send(sim.Type("new item Turmeric counting measured unit g"))
 	s.Send(sim.Enter)
@@ -233,7 +243,8 @@ func TestEscapeLeavesExactlyOneMode(t *testing.T) {
 	awkwardHouse(t, s)
 
 	// Three things on at once: a filter, a selection, and an open command line.
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
@@ -270,7 +281,8 @@ func TestEscapeUnwindsTheDeepestState(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
@@ -292,7 +304,8 @@ func TestEscapeUnwindsTheDeepestState(t *testing.T) {
 func TestEscapeFromAnEditorLeavesOnlyTheEditor(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("garage"))
 	s.Send(sim.Enter)
@@ -338,7 +351,8 @@ func TestACommandActsOnEverySelectedRow(t *testing.T) {
 	ancho := s.HasItem("Ancho Chile")
 	s.OnHand(ancho, 300*domain.Scale)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
@@ -366,7 +380,8 @@ func TestASelectionIsOneUnitOfWork(t *testing.T) {
 	awkwardHouse(t, s)
 	ancho := s.HasItem("Ancho Chile")
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
@@ -389,7 +404,8 @@ func TestASelectionIsOneUnitOfWork(t *testing.T) {
 func TestABatchSummaryDoesNotRepeatItself(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
@@ -409,7 +425,8 @@ func TestABatchSummaryDoesNotRepeatItself(t *testing.T) {
 func TestTheEditorOpensAtTheRow(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.CtrlN, sim.CtrlN)
 
 	before := strings.Split(s.PlainView(), "\n")
@@ -442,7 +459,8 @@ func TestARefusalWrapsRatherThanTruncating(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(64, 24)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:garage"))
 	s.Send(sim.Enter)
@@ -469,7 +487,8 @@ func TestARefusalIsNotQuiet(t *testing.T) {
 
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:garage"))
 	s.Send(sim.Enter)
@@ -495,7 +514,8 @@ func TestARefusalIsNotQuiet(t *testing.T) {
 func TestARefusalDoesNotWearACallStack(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltX)
 	s.Send(sim.Type("consume 5kg"))
 	s.Send(sim.Enter)
@@ -510,7 +530,7 @@ func TestARefusalDoesNotWearACallStack(t *testing.T) {
 
 func indexOfCursor(lines []string) int {
 	for i, line := range lines {
-		if strings.HasPrefix(line, ">") {
+		if hasCursor(line) {
 			return i
 		}
 	}
@@ -526,8 +546,8 @@ func indexOfCursor(lines []string) int {
 func TestTheCreationPanelOpensInTheList(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("3"))
-
+	s.ByKind()
+	s.OnContents()
 	before := strings.Split(s.PlainView(), "\n")
 	cursorAt := indexOfCursor(before)
 
@@ -549,17 +569,23 @@ func TestAllThreeKindsCreate(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("1"), sim.Press("o"))
+	s.ByKind()
+	s.OnRail()
+	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Preserves"))
 	s.Send(sim.Enter, sim.Enter)
 	s.HasCategory("Preserves")
 
-	s.Send(sim.Press("2"), sim.Press("o"))
+	s.ByPlace()
+	s.OnRail()
+	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Cellar"))
 	s.Send(sim.Enter, sim.Enter)
 	s.HasLocation("Cellar")
 
-	s.Send(sim.Press("3"), sim.Press("o"))
+	s.ByKind()
+	s.OnContents()
+	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Turmeric"))
 	s.Send(sim.Tab, sim.Tab) // past counting, onto unit
 	s.Send(sim.Type("g"))
@@ -577,7 +603,9 @@ func TestEscapeFromTheConfirmationReturnsToThePanel(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("3"), sim.Press("o"))
+	s.ByKind()
+	s.OnContents()
+	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Turmeric"))
 	s.Send(sim.Tab, sim.Tab)
 	s.Send(sim.Type("g"))
@@ -602,7 +630,9 @@ func TestASecondPanelStartsClean(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("3"), sim.Press("o"))
+	s.ByKind()
+	s.OnContents()
+	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Abandoned"))
 	s.Send(sim.Esc)
 
@@ -616,7 +646,9 @@ func TestThePanelIsRefusedLikeTheLine(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("3"), sim.Press("o"))
+	s.ByKind()
+	s.OnContents()
+	s.Send(sim.Press("o"))
 	s.Send(sim.Enter) // no name
 	s.ShowsText("name is required")
 	s.ShowsText("new item") // still open
@@ -636,7 +668,9 @@ func TestThePanelIsRefusedLikeTheLine(t *testing.T) {
 func TestThereIsNoPanelForAHolding(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"), sim.Press("o"))
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.Press("o"))
 	s.ShowsText("acquire")
 	s.HidesText("new holding")
 }
@@ -645,7 +679,8 @@ func TestThereIsNoPanelForAHolding(t *testing.T) {
 func TestCreatingInsideTheCursorsNode(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	// onto the Garage
 	moveTo(t, s, "Garage")
 	s.Send(sim.Press("o"))
@@ -674,7 +709,9 @@ func TestAutocompleteInThePanel(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("3"), sim.Press("o"))
+	s.ByKind()
+	s.OnContents()
+	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Turmeric"))
 	s.Send(sim.Tab, sim.Tab) // unit
 	s.Send(sim.Type("g"))
@@ -701,7 +738,8 @@ func TestThePanelCompletesTheRightKind(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Cellar"))
 	s.Send(sim.Tab)   // under, pre-filled with the cursor's node
@@ -730,7 +768,9 @@ func TestAnUnknownNameStillRefuses(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
-	s.Send(sim.Press("3"), sim.Press("o"))
+	s.ByKind()
+	s.OnContents()
+	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Turmeric"))
 	s.Send(sim.Tab, sim.Tab)
 	s.Send(sim.Type("g"))
@@ -751,7 +791,8 @@ func TestAnUnknownNameStillRefuses(t *testing.T) {
 func TestEscapeLeavesTheListBeforeThePanel(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Cellar"))
 	s.Send(sim.Tab) // onto `under`, whose dropdown opens on arrival
@@ -778,7 +819,8 @@ func TestEscapeLeavesTheListBeforeThePanel(t *testing.T) {
 func TestShiftTabDismissesThenStepsBack(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Cellar"))
 	s.Send(sim.Tab)
@@ -801,7 +843,8 @@ func TestShiftTabDismissesThenStepsBack(t *testing.T) {
 func TestTheDropdownChoosesAndTakes(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Cellar"))
 	s.Send(sim.Tab)
@@ -827,7 +870,8 @@ func TestTheDropdownChoosesAndTakes(t *testing.T) {
 func TestTheUnitFieldOffersTheUnits(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("3"))
+	s.ByKind()
+	s.OnContents()
 	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Lentils"))
 	s.Send(sim.Tab) // counting
@@ -849,7 +893,8 @@ func TestTheUnitFieldOffersTheUnits(t *testing.T) {
 func TestTheNameWarnsAndDoesNotComplete(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("3"))
+	s.ByKind()
+	s.OnContents()
 	s.Send(sim.Press("o"))
 	s.Send(sim.Type("Ancho"))
 

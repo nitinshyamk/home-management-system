@@ -63,14 +63,14 @@ func awkwardHouse(t *testing.T, s *sim.Simulator) {
 func TestTheHoldingsTableShowsWhatIsThere(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	s.ShowsText("ITEM")
 	s.ShowsText("QTY")
 	s.ShowsText("Ancho Chile")
 	// One item in three places is three rows, not one.
-	if got := strings.Count(s.View(), "Ancho Chile"); got != 3 {
-		t.Errorf("Ancho Chile appears %d times, want 3 -- it is kept in three places", got)
+	if got := s.CountRows("Ancho Chile"); got != 3 {
+		t.Errorf("Ancho Chile is on %d rows, want 3 -- it is kept in three places", got)
 	}
 }
 
@@ -80,11 +80,12 @@ func TestTheHoldingsTableShowsWhatIsThere(t *testing.T) {
 func TestALongNameStaysIdentifiable(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	for _, width := range []int{80, 120, 200} {
 		s.Resize(width, 30)
-		s.Send(sim.Press("4"))
+		s.ByPlace()
+		s.OnContents()
 		if !strings.Contains(s.View(), "Thunderbolt") {
 			t.Errorf("at %d columns the adapter is unidentifiable:\n%s", width, s.View())
 		}
@@ -100,7 +101,8 @@ func TestSortingAndSelectingWriteNothing(t *testing.T) {
 	awkwardHouse(t, s)
 	before := s.CountHoldings()
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.Press("s"), sim.Press("s"), sim.CtrlF, sim.Press("s"))
 	s.Send(sim.Space, sim.Space, sim.AltH, sim.Esc)
 	s.Send(sim.AltGreat, sim.AltLess)
@@ -118,7 +120,8 @@ func TestTheCursorIsAlwaysVisible(t *testing.T) {
 
 	for _, height := range []int{10, 14, 30} {
 		s.Resize(100, height)
-		s.Send(sim.Press("4"))
+		s.ByPlace()
+		s.OnContents()
 		for _, script := range [][]any{
 			{sim.AltGreat},
 			{sim.AltLess},
@@ -128,7 +131,7 @@ func TestTheCursorIsAlwaysVisible(t *testing.T) {
 			{sim.Press("z"), sim.Press("z")},
 		} {
 			s.Send(script...)
-			if !strings.Contains(stripEscapes(s.View()), "\n>") {
+			if !s.ShowsCursor() {
 				t.Errorf("at height %d the cursor is off screen after %v:\n%s",
 					height, script, stripEscapes(s.View()))
 			}
@@ -183,8 +186,8 @@ func TestTheLocationColumnShowsTheWholeTreeWhenThereIsRoom(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(220, 24)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	s.ShowsText("Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray")
 
 	// A root has no ancestors and must not grow an ellipsis pretending it has.
@@ -199,10 +202,10 @@ func TestTheLocationColumnGivesBackTheTreeWhenThereIsNot(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(80, 24)
-	s.Send(sim.Press("4"))
-
-	s.ShowsText("Small Parts Tray")
-	s.HidesText("Metal Shelving Unit")
+	s.ByPlace()
+	s.OnContents()
+	s.ContentsShow("Small Parts Tray")
+	s.ContentsHide("Metal Shelving Unit")
 }
 
 // The path is shown, never matched. `loc:garage` means the Garage itself, not
@@ -212,8 +215,8 @@ func TestTheLocationPathIsNotFiltered(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(220, 24)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:garage"))
 	s.Send(sim.Enter)

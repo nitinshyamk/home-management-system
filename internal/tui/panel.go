@@ -15,17 +15,15 @@ import (
 
 // openCreator starts a panel, defaulted to create inside what the cursor is on.
 func (m Model) openCreator() Model {
-	kind := spec(m.view).creates
+	kind := m.creates()
 	if kind == "" {
 		return m.refuse("stock arrives by acquiring it -- try :acquire")
 	}
 	parent := ""
-	if sel, ok := m.current.Current(); ok && forest(m.view) {
-		// A contained row is not somewhere to create INSIDE. Offering its name
-		// as the parent would file a new category under an item.
-		if sel.Contained {
-			return m.refuseContained(sel.Kind, "create inside")
-		}
+	// The synthetic root is the whole house rather than a node of it, so
+	// creating there means creating at the top -- no parent, not a parent
+	// called "the house".
+	if sel, ok := m.current.Current(); ok && m.onRail() && !m.atRailRoot() {
 		parent = sel.Name
 	}
 	m.say = m.say.Clear()
