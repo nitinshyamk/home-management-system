@@ -270,10 +270,6 @@ type textSurface struct {
 	headings []int
 }
 
-func newTextSurface(rows []string, width, height int) surface {
-	return newSectionedText(rows, nil, width, height)
-}
-
 // newSectionedText is a text surface whose rows have headings worth jumping
 // between.
 func newSectionedText(rows []string, headings []int, width, height int) surface {
