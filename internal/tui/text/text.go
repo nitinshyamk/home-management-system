@@ -67,3 +67,27 @@ func forEachVisible(s string, visit func(rune)) {
 		}
 	}
 }
+
+// JoinWhatFits joins as many parts as the width allows, dropping from the end.
+//
+// The parts are given most-useful-first, so what survives a narrow terminal is
+// what was worth keeping. A line wider than the screen WRAPS, and one wrapped
+// line shifts every row below it -- which is the same reason the table drops
+// columns instead of overflowing.
+//
+// Named apart from table.fit, which cuts ONE string to a width. Two functions
+// called fit that do different things is a name that has to be read twice.
+func JoinWhatFits(width int, parts []string) string {
+	line := ""
+	for _, part := range parts {
+		next := part
+		if line != "" {
+			next = line + " - " + part
+		}
+		if VisibleWidth(next) > width {
+			break
+		}
+		line = next
+	}
+	return line
+}

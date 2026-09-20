@@ -6,6 +6,7 @@ import (
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
 	"home-management-system/internal/tui/style"
+	"home-management-system/internal/tui/text"
 	"strings"
 )
 
@@ -72,13 +73,19 @@ func (m Model) View() string {
 		parts = append(parts, style.Strong.Render(line))
 	}
 	parts = append(parts, body)
-	if line := m.box.View(); line != "" {
-		parts = append(parts, line)
-	}
 	for _, line := range m.problemLines() {
 		parts = append(parts, style.Error.Render(line))
 	}
-	return strings.Join(append(parts, m.footer()), "\n")
+	parts = append(parts, m.footer())
+	// LAST, and always. The bottom row of the screen is the one place a
+	// permanently visible line can be relied upon to be, which is what makes it
+	// findable -- the same reason a minibuffer lives there.
+	//
+	// Sized here, because SetWidth had never been called anywhere: the line
+	// rendered against its default 80 whatever the terminal was, which a
+	// flush-right tail turns from a latent bug into a visible one.
+	parts = append(parts, m.box.SetWidth(m.width).Reachable(m.lineReachable()).View())
+	return strings.Join(parts, "\n")
 }
 
 // field is the inline editor, told the one thing it cannot know: whether esc
@@ -214,31 +221,12 @@ func (m Model) tabLabels(withName bool) string {
 	return s
 }
 
-// joinWhatFits joins as many hints as the width allows, dropping from the end.
-//
-// Named apart from table.fit, which cuts ONE string to a width. Two functions
-// called fit that do different things is a name that has to be read twice.
-func joinWhatFits(width int, parts []string) string {
-	line := ""
-	for _, part := range parts {
-		next := part
-		if line != "" {
-			next = line + " - " + part
-		}
-		if len([]rune(next)) > width {
-			break
-		}
-		line = next
-	}
-	return line
-}
-
 func (m Model) footer() string {
 	// Named in the order they would be given up, most useful first, and cut to
 	// the terminal rather than allowed to wrap. A line wider than the screen
 	// wraps, and one wrapped line shifts every row below it -- which is the
 	// same reason the table drops columns instead of overflowing.
-	help := joinWhatFits(m.width, []string{
+	help := text.JoinWhatFits(m.width, []string{
 		keys.Hint(keys.Table,
 			[]keys.Action{keys.MoveDown, keys.MoveUp},
 			[]keys.Action{keys.MoveLeft, keys.MoveRight}),

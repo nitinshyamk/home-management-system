@@ -6,6 +6,6 @@
                 the history stays; the holding does not
 
   [enter] go ahead    [esc] back
-filtered thunder   esc clear
 --------------------------------------------------------------------------------------------
 1 of 4 holdings - sorted by item a-z
+  filtered  thunder
