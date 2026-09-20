@@ -245,7 +245,7 @@ func (p *Processor) archiveDestination(
 		if err != nil {
 			return sql.NullInt64{}, fmt.Errorf("ledger: read location %d: %w", *moveTo, err)
 		}
-		if exists == 0 {
+		if !exists {
 			return sql.NullInt64{}, fmt.Errorf("%w: location %d", ErrNotFound, *moveTo)
 		}
 		// Moving contents into a descendant would strand them under an
