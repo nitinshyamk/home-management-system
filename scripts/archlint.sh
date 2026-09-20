@@ -235,6 +235,35 @@ for path in origin ledger annotate query; do
   fi
 done
 
+echo "archlint: storage location"
+
+# Where the data lives is decided in exactly one place. Everything hms persists
+# goes in one directory so that "where is my data" has a single answer -- and a
+# second package that knows the default filename, or reads HMS_DB_PATH for
+# itself, is a second answer waiting to disagree with the first.
+#
+# cmd is exempt: it is the composition root, and its --db-path help text has to
+# be able to say what it overrides. Naming the setting is not deciding it.
+#
+# Comments are stripped before re-testing, for the same reason as the
+# transaction rules below: a rule that fires on a comment forbids explaining
+# the boundary it protects.
+if [ -d internal/config ]; then
+  hits="$(grep -rnE --include='*.go' -- 'hms\.db|HMS_DB_PATH|HMS_HOME' internal tools 2>/dev/null \
+          | grep -v '^internal/config/' \
+          | grep -v '_test\.go:' \
+          | sed 's|//.*||' \
+          | grep -E -- 'hms\.db|HMS_DB_PATH|HMS_HOME' || true)"
+  if [ -n "$hits" ]; then
+    report "the database location is decided only in internal/config"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "the database location is decided only in internal/config"
+  fi
+else
+  skip "the database location is decided only in internal/config" "internal/config"
+fi
+
 echo "archlint: package purity"
 
 # The probe package exists only to attempt writes the schema must reject.

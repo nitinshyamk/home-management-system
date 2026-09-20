@@ -15,6 +15,7 @@ import (
 	"os"
 	"time"
 
+	"home-management-system/internal/config"
 	"home-management-system/internal/db"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ledger"
@@ -30,22 +31,23 @@ func main() {
 }
 
 func run() error {
-	dbPath := flag.String("db-path", "", "path to the SQLite database")
+	dbPath := flag.String("db-path", "", "path to the SQLite database (overrides HMS_DB_PATH and ~/hms/.hms.json)")
 	reset := flag.Bool("reset", false, "delete the database first and build a fresh house")
 	flag.Parse()
 
-	cfg := db.DefaultConfig()
-	if *dbPath != "" {
-		cfg.DSN = *dbPath
+	source, err := config.Resolve(*dbPath)
+	if err != nil {
+		return err
 	}
+	dsn := source.Path
 
 	if *reset {
-		if err := os.Remove(cfg.DSN); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("reset %s: %w", cfg.DSN, err)
+		if err := os.Remove(dsn); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("reset %s: %w", dsn, err)
 		}
 	}
 
-	conn, err := db.Open(cfg)
+	conn, err := db.Open(db.Config{DSN: dsn})
 	if err != nil {
 		return err
 	}
@@ -55,12 +57,12 @@ func run() error {
 	}
 
 	ctx := context.Background()
-	s, err := seed(ctx, conn, cfg.DSN, time.Now().UTC().Add(-90*24*time.Hour))
+	s, err := seed(ctx, conn, dsn, time.Now().UTC().Add(-90*24*time.Hour))
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("seeded %s\n", cfg.DSN)
+	fmt.Printf("seeded %s\n", dsn)
 	fmt.Printf("  %d categories, %d locations, %d items, %d holdings, %d events\n",
 		s.categories, s.locations, s.items, s.holdings, s.events)
 	return nil
