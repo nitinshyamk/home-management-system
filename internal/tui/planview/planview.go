@@ -33,32 +33,33 @@ type Model struct {
 	tbl  table.Model
 	// names renders identifiers back into names for the summary column.
 	names Namer
-	// stage is which half of a two-stage import this is, or the zero value for
-	// a file that has only one.
+	// stage is which stage of a staged import this is, or the zero value for a
+	// file that has only one.
 	stage Stage
 	// note is what the stage before this one did, said once at the top of the
-	// screen. A two-stage import applies in two transactions, and a screen that
-	// did not say what the first one did would be asking for the second on the
-	// strength of something the person has no record of.
+	// screen. A staged import applies in a transaction per stage, and a screen
+	// that did not say what the ones before it did would be asking for another
+	// on the strength of something the person has no record of.
 	note  string
 	width int
 }
 
-// Stage is which half of a two-stage import this screen is showing.
+// Stage is which stage of a staged import this screen is showing.
 //
-// The zero value is an import with one stage, which says nothing about stages
-// at all -- a file of holdings proposes no classification, and telling somebody
-// they are on "stage 1 of 1" is chrome that describes the screen rather than
-// the file.
+// An import with one stage says nothing about stages at all -- a file of
+// holdings proposes no classification and no places, and telling somebody they
+// are on "stage 1 of 1" is chrome that describes the screen rather than the
+// file.
 type Stage struct {
 	// Name is what this stage is about, in the words the footer uses.
 	Name string
 	// Number and Of place it in the sequence.
 	Number, Of int
 	// Skippable says the whole stage can be set aside without applying any of
-	// it. Only the categories stage is: skipping it leaves the house exactly as
-	// it was, and the review screen can still file a row into a category that
-	// already exists.
+	// it. The structural stages are -- the categories and the places -- and
+	// only where something follows: skipping leaves the house exactly as it
+	// was, and the stages behind can still file a row into a category or a
+	// place that already exists.
 	Skippable bool
 	// InPasses says this stage applies by the tree's rule rather than the
 	// receipt's -- the ready rows now, the rest on another pass. See
@@ -68,6 +69,19 @@ type Stage struct {
 
 // shown reports whether there is a sequence worth naming.
 func (s Stage) shown() bool { return s.Of > 1 }
+
+// Lead names the stage at the start of a line reporting what it did, or says
+// nothing at all when the import has only one.
+//
+// The same rule the heading goes by, for the same reason: "stage 1 of 1"
+// describes the screen rather than the file, and the one line saying what was
+// written to the house is the last place to start being chrome about it.
+func (s Stage) Lead() string {
+	if !s.shown() {
+		return ""
+	}
+	return fmt.Sprintf("stage %d (%s) ", s.Number, s.Name)
+}
 
 // more reports whether another stage follows this one, which is what makes
 // applying this one something other than the end of the import.
@@ -103,7 +117,7 @@ func New(plan importer.Plan, names Namer) Model {
 // is the opposite of what a caller asks for by calling this.
 func (m Model) WithNames(names Namer) Model { m.names = names; return m.refresh() }
 
-// WithStage says which half of the import this screen is.
+// WithStage says which stage of the import this screen is.
 //
 // It redraws, because the rows hold their reasons as text and one of those
 // reasons -- "waits for row 2" -- is true only on a stage that applies in
@@ -114,7 +128,7 @@ func (m Model) WithStage(stage Stage) Model { m.stage = stage; return m.refresh(
 // WithNote records what the stage before this one did.
 func (m Model) WithNote(note string) Model { m.note = note; return m }
 
-// Stage is which half of the import is on screen, so the caller that has to
+// Stage is which stage of the import is on screen, so the caller that has to
 // decide what applying it means does not have to remember.
 func (m Model) Stage() Stage { return m.stage }
 
@@ -268,8 +282,9 @@ func (m Model) why(at int, entry importer.Entry) string {
 		return "dropped"
 	}
 	// A row whose parent is made by another row of the same file is not waiting
-	// for a person at all. Saying "would create a category" there invited
-	// somebody to make a second one, which is precisely what it must not do.
+	// for a person at all. Saying "would create a category" or "would create a
+	// location" there invited somebody to make a second one, which is precisely
+	// what it must not do.
 	//
 	// Only on a stage that applies in PASSES, because only there does waiting
 	// come to anything: a stage that applies all at once can never make the
@@ -300,9 +315,9 @@ func (m Model) why(at int, entry importer.Entry) string {
 // screen ends.
 func (m Model) View() string {
 	rows := "   " + plural(len(m.plan.Entries))
-	// Which half of the import this is, and only when there are two: a file of
-	// holdings proposes no classification, and "stage 1 of 1" describes the
-	// screen rather than the file.
+	// Which stage of the import this is, and only when there are several: a
+	// file of holdings proposes no shape at all, and "stage 1 of 1" describes
+	// the screen rather than the file.
 	var stage string
 	if m.stage.shown() {
 		stage = fmt.Sprintf("   STAGE %d OF %d - %s",

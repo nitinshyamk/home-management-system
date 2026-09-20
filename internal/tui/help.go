@@ -244,11 +244,11 @@ func (m Model) generalHelp() []helpSection {
 				"it names", keys.Confirm),
 			pair(keys.Plan, "drop a row, or take it back", keys.Drop, keys.Undrop),
 			pair(keys.Plan, "apply the stage on screen, in one transaction", keys.ApplyAll),
-			// A file that proposes categories is reviewed in two stages, and the
-			// first one is optional. Saying so here is the only place somebody
-			// who has not met one yet will read it.
-			pair(keys.Plan, "skip the bulk category upload, applying none of it, "+
-				"and go on to the items and holdings", keys.SkipStage),
+			// A file that proposes categories or places is reviewed in stages,
+			// and each of those is optional. Saying so here is the only place
+			// somebody who has not met one yet will read it.
+			pair(keys.Plan, "skip a bulk upload of categories or places, applying "+
+				"none of it, and go on to the next stage", keys.SkipStage),
 		}},
 	}
 

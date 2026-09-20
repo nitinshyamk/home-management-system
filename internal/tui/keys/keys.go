@@ -99,8 +99,9 @@ const (
 	Drop
 	Undrop
 	ApplyAll
-	// SkipStage sets a whole stage aside without applying any of it. Only the
-	// category upload offers it, and only when something follows.
+	// SkipStage sets a whole stage aside without applying any of it. Only a
+	// stage that proposes a shape -- the categories, the places -- offers it,
+	// and only when something follows.
 	SkipStage
 
 	// Editing a line.

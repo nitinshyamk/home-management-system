@@ -261,7 +261,7 @@ func bindRow(vocabulary *command.Vocabulary, row Row) Entry {
 	// A row is Confirmable when every issue is one a person can settle from
 	// this screen: a suggestion to accept, or a name that is not there and
 	// could be made. Anything else needs the row edited or dropped.
-	entry.Creates = creations(result.Issues)
+	entry.Creates = creations(spec, result.Issues)
 	if len(entry.Creates) > 0 || allSuggested(result.Issues) {
 		entry.State = Confirmable
 	}
@@ -297,37 +297,31 @@ func allSuggested(issues []command.Issue) bool {
 //
 // Every issue has to be creatable, or the row is blocked. A row with one
 // creatable name and one genuinely broken field is not half-acceptable.
-func creations(issues []command.Issue) []Creation {
+//
+// What a field refers to is read off the ROW's own spec. An earlier version
+// looked the field name up across the whole vocabulary, on the grounds that
+// `at` means a Location in every command that has one -- but `under` does not
+// work that way: it is a Category in `new category` and a Location in `new
+// location`. The first spec in alphabetical order won, so every `new location
+// … under Kitchen` whose parent did not exist yet said it would create a
+// CATEGORY called Kitchen, opened the category panel for it, and left a row
+// waiting on a sibling unable to recognise what it was waiting for.
+func creations(spec command.Spec, issues []command.Issue) []Creation {
 	var out []Creation
 	for _, issue := range issues {
 		missing, ok := issue.Outcome.(resolve.Missing)
 		if !ok {
 			return nil
 		}
-		kinds := fieldKinds(issue.Field)
-		if len(kinds) != 1 {
+		field, ok := spec.Field(issue.Field)
+		if !ok || field.Type != command.FieldName || len(field.Kinds) != 1 {
 			// A field that could mean several kinds cannot be created from,
 			// because nothing says WHICH to make.
 			return nil
 		}
-		out = append(out, Creation{Kind: kinds[0], Name: missing.Query})
+		out = append(out, Creation{Kind: field.Kinds[0], Name: missing.Query})
 	}
 	return out
-}
-
-// fieldKinds is what a named field refers to, looked up wherever it appears.
-//
-// By field NAME across the whole vocabulary rather than per op, because the
-// issue does not carry its op -- and `at` means a Location in every command
-// that has one, which is a property worth relying on rather than working
-// around.
-func fieldKinds(name string) []resolve.Kind {
-	for _, spec := range command.Specs() {
-		if field, ok := spec.Field(name); ok && field.Type == command.FieldName {
-			return field.Kinds
-		}
-	}
-	return nil
 }
 
 // MergeCreations reports the distinct things a plan would create.

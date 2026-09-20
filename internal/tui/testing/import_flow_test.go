@@ -818,8 +818,11 @@ new category,Flours,Baking
 	s.Send(sim.Press("A"))
 
 	// Still the import: the row that was waiting is here, bound against the
-	// category the pass created.
+	// category the pass created. What the pass wrote is reported without
+	// naming a stage, because there is only the one.
 	s.ShowsText(`create category "Flours" under Baking`)
+	s.ShowsText("applied 1 row in one transaction")
+	s.HidesText("stage")
 	s.Send(sim.Enter)
 	s.Send(sim.Press("A"))
 
@@ -829,5 +832,345 @@ new category,Flours,Baking
 	parent, child := s.HasCategory("Baking"), s.HasCategory("Flours")
 	if under := parentOf(t, s, child); under != parent {
 		t.Errorf("Flours is filed under %d, want Baking (%d)", under, parent)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// The places
+//
+// A file written from a photograph proposes where things are exactly as
+// readily as it proposes what they are, and a row kept in a place the same file
+// is about to create has nothing to resolve against. So the places are a bulk
+// upload of their own, on the same terms as the categories: their own screen,
+// their own transaction, built from the top down, and skippable.
+// ---------------------------------------------------------------------------
+
+// places is a file that says something about where things are kept and
+// something about what is in them.
+const places = `op,name,under,item,qty,at
+new location,Top Shelf,,,,
+acquire,,,Basmati Rice,100,Shelf 1
+`
+
+// The places are their own stage, and the screen says which one you are on.
+func TestAFileThatProposesPlacesIsReviewedInTwoStages(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, places))
+
+	s.ShowsText("STAGE 1 OF 2 - PLACES")
+	// Only the place row is on this screen. The acquire row is not something to
+	// review yet -- it will be bound again once this stage has been settled.
+	s.ShowsText("PLACES   1 row")
+	s.ShowsText("1 need confirming")
+	s.ShowsText("S skip the stage")
+}
+
+// The place stage applies in its own transaction and hands over to the review,
+// which says what it did.
+func TestThePlaceStageAppliesAndThenHandsOverToTheReview(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, places))
+
+	s.Send(sim.Enter) // agree to the place this row would create
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+
+	s.ShowsText("STAGE 2 OF 2 - ITEMS AND HOLDINGS")
+	s.ShowsText("stage 1 (places) applied 1 row in one transaction")
+	s.HasLocation("Top Shelf")
+
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 600*domain.Scale)
+}
+
+// The point of applying the places first: a row kept in one of them is bound
+// AGAIN afterwards, against a house that now has it. Nobody retypes anything.
+func TestTheReviewIsBoundAgainstThePlacesTheFirstStageMade(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, `op,name,item,qty,at
+new location,Top Shelf,,,
+acquire,,Basmati Rice,100,Top Shelf
+`))
+
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	// Before the first stage was applied this row could not resolve its place.
+	s.ShowsText("STAGE 2 OF 2")
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 600*domain.Scale)
+}
+
+// The place stage can be skipped, and skipping it writes nothing.
+func TestThePlaceStageCanBeSkipped(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, places))
+
+	s.Send(sim.Press("S"))
+	s.ShowsText("STAGE 2 OF 2")
+	s.ShowsText("skipped")
+	s.ShowsText("the house is as it was")
+	if got := countLocationsNamed(t, s, "Top Shelf"); got != 0 {
+		t.Errorf("%d places called Top Shelf after skipping the stage, want none", got)
+	}
+
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 600*domain.Scale)
+}
+
+// A file that proposes both trees is three stages, in the order the domain
+// names them: what a thing is, then where it is kept, then the things.
+func TestAFileThatProposesBothTreesIsReviewedInThreeStages(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, `op,name,under,item,qty,at
+new category,Baking,,,,
+new location,Top Shelf,,,,
+acquire,,,Basmati Rice,100,Shelf 1
+`))
+
+	s.ShowsText("STAGE 1 OF 3 - CATEGORIES")
+	s.Send(sim.Enter)
+	// What a stage applies is what a STAGE applies -- saying "all of it" here
+	// would be a promise about rows that are not on this screen.
+	s.ShowsText("A applies the categories, then stage 2")
+	s.Send(sim.Press("A"))
+
+	s.ShowsText("STAGE 2 OF 3 - PLACES")
+	s.ShowsText("stage 1 (categories) applied 1 row in one transaction")
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	s.ShowsText("STAGE 3 OF 3 - ITEMS AND HOLDINGS")
+	s.ShowsText("stage 2 (places) applied 1 row in one transaction")
+	s.HasCategory("Baking")
+	s.HasLocation("Top Shelf")
+
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 600*domain.Scale)
+	s.ShowsText("after 2 rows earlier -- one transaction each")
+}
+
+// The whole reason the two trees are two stages: each is skipped on its own.
+//
+// A file whose proposed classification is nonsense but whose places are right
+// costs one keystroke. One stage for both would have made that a choice between
+// fixing the categories row by row and throwing the places away with them.
+func TestSkippingTheCategoriesLeavesThePlacesToReview(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under,item,qty,at
+new category,Baking,,,,
+new location,Top Shelf,,,,
+acquire,,,Basmati Rice,100,Shelf 1
+`))
+
+	s.Send(sim.Press("S"))
+	s.ShowsText("STAGE 2 OF 3 - PLACES")
+	s.ShowsText("stage 1 (categories) skipped")
+	if got := countCategoriesNamed(t, s, "Baking"); got != 0 {
+		t.Errorf("%d categories called Baking after skipping the stage, want none", got)
+	}
+
+	// And the places are still there, still reviewable, still applied on their
+	// own terms.
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+	s.ShowsText("STAGE 3 OF 3")
+	s.HasLocation("Top Shelf")
+}
+
+// A proposed tree of places is built from the top down, exactly as a proposed
+// classification is: the ready rows now, the rest bound again against what the
+// pass just created.
+func TestAPlaceTreeIsBuiltFromTheTopDown(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under
+new location,Top Shelf,
+new location,Back Corner,Top Shelf
+`))
+
+	// The second row is waiting for the first, and says so instead of offering
+	// to make a second Top Shelf.
+	s.ShowsText("waits for row 2")
+
+	s.Send(sim.Enter)
+	s.ShowsText("A applies the 1 row ready now")
+	s.Send(sim.Press("A"))
+
+	s.ShowsText(`create location "Back Corner" under Top Shelf`)
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	parent, child := s.HasLocation("Top Shelf"), s.HasLocation("Back Corner")
+	if under := parentOfLocation(t, s, child); under != parent {
+		t.Errorf("Back Corner is inside %d, want Top Shelf (%d)", under, parent)
+	}
+}
+
+// A place row waiting for another row must not offer to make the thing it is
+// waiting for -- and must not offer to make a CATEGORY of that name either.
+//
+// `under` is a Category in `new category` and a Location in `new location`, so
+// a plan that read a field's kind by name across the vocabulary got this row
+// exactly backwards: it said the row would create a category, opened the
+// category panel for it, and could not see that the row above was already
+// making the place.
+func TestAPlaceRowWaitingForAnotherRowDoesNotOfferToMakeItAgain(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under
+new location,Top Shelf,
+new location,Back Corner,Top Shelf
+`))
+
+	s.HidesText("would create a category")
+
+	s.Send(sim.CtrlN) // onto the row that is waiting
+	s.Send(sim.Enter)
+
+	s.HidesText("what it is called") // no creation panel opened
+	s.ShowsText("row 2 creates that")
+	if got := countLocationsNamed(t, s, "Top Shelf"); got != 0 {
+		t.Errorf("%d places called Top Shelf were made by a keystroke that should have refused", got)
+	}
+	if got := countCategoriesNamed(t, s, "Top Shelf"); got != 0 {
+		t.Errorf("%d CATEGORIES called Top Shelf were made for a row about a place", got)
+	}
+}
+
+// Two rows creating one place must create it once, for the same reason two rows
+// creating one category must: sibling uniqueness was never an integrity rule.
+func TestASecondRowCreatingTheSamePlaceIsRefused(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under
+new location,Top Shelf,
+new location,top shelf,
+`))
+	s.ShowsText("2 need confirming")
+
+	s.Send(sim.Enter)
+	s.Send(sim.CtrlN)
+	s.Send(sim.Enter)
+	s.ShowsText("already creates that")
+
+	s.Send(sim.Press("d"))
+	s.Send(sim.Press("A"))
+	if got := countLocationsNamed(t, s, "Top Shelf"); got != 1 {
+		t.Errorf("%d places called Top Shelf, want 1", got)
+	}
+}
+
+// A row that moves a thing names a place and belongs with the things, not with
+// the shape of the house. It is the case a rule reading "any row that names a
+// location" would get wrong.
+func TestARowThatMovesAThingIsNotAPlaceRow(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under,item,qty,at,to
+new location,Top Shelf,,,,,
+move,,,Basmati Rice,,Shelf 1,Top Shelf
+`))
+
+	s.ShowsText("STAGE 1 OF 2 - PLACES")
+	s.ShowsText("PLACES   1 row")
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	// The move is on the review screen, bound against the place just made.
+	s.ShowsText("STAGE 2 OF 2 - ITEMS AND HOLDINGS")
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+	if got := holdingsAt(t, s, s.HasLocation("Top Shelf")); got != 1 {
+		t.Errorf("%d holdings on Top Shelf after the move, want 1", got)
+	}
+}
+
+func countLocationsNamed(t *testing.T, s *sim.Simulator, name string) int {
+	t.Helper()
+	nodes, err := s.Reader().LocationForest(s.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, node := range nodes {
+		if strings.EqualFold(node.Location.Name, name) && !node.Location.IsArchived() {
+			n++
+		}
+	}
+	return n
+}
+
+func parentOfLocation(t *testing.T, s *sim.Simulator, id domain.LocationID) domain.LocationID {
+	t.Helper()
+	nodes, err := s.Reader().LocationForest(s.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range nodes {
+		if node.Location.ID != id {
+			continue
+		}
+		if node.Location.Parent == nil {
+			return 0
+		}
+		return *node.Location.Parent
+	}
+	t.Fatalf("no location %d", id)
+	return 0
+}
+
+func holdingsAt(t *testing.T, s *sim.Simulator, at domain.LocationID) int {
+	t.Helper()
+	n, err := s.Reader().CountHoldingsInLocationTree(s.Context(), at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return int(n)
+}
+
+// A file of nothing but places is one stage, and says nothing about stages --
+// not in the heading, and not in the line reporting what a pass wrote. "Stage
+// 1 of 1" describes the screen rather than the file, and the one line saying
+// what was written to the house is the last place to start being chrome.
+func TestAFileOfOnlyPlacesIsOneStageThatStillAppliesInPasses(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under
+new location,Top Shelf,
+new location,Back Corner,Top Shelf
+`))
+	s.HidesText("STAGE")
+	s.HidesText("skip the stage")
+	s.ShowsText("waits for row 2")
+
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	// The row that was waiting is here, bound against the place the pass made,
+	// and the report of that pass names no stage.
+	s.ShowsText("applied 1 row in one transaction")
+	s.HidesText("stage")
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	s.ShowsText("applied 1 row, after 1 row earlier")
+	s.HidesText("IMPORT")
+	parent, child := s.HasLocation("Top Shelf"), s.HasLocation("Back Corner")
+	if under := parentOfLocation(t, s, child); under != parent {
+		t.Errorf("Back Corner is inside %d, want Top Shelf (%d)", under, parent)
 	}
 }
