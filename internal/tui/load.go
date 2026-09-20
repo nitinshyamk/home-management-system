@@ -35,23 +35,23 @@ func (m Model) load(v view) tea.Cmd {
 		// be loaded as one shape and then drawn as another.
 		switch spec(v).kind {
 		case surfaceTree:
-			nodes, status, err := m.renderTree(v)
+			nodes, hint, err := m.renderTree(v)
 			if err != nil {
 				return errMsg{err}
 			}
-			return loadedMsg{view: v, nodes: nodes, status: status}
+			return loadedMsg{view: v, nodes: nodes, hint: hint}
 		case surfaceTable:
-			cells, byKey, status, err := m.renderTable(v)
+			cells, byKey, hint, err := m.renderTable(v)
 			if err != nil {
 				return errMsg{err}
 			}
-			return loadedMsg{view: v, cells: cells, holdingRows: byKey, status: status}
+			return loadedMsg{view: v, cells: cells, holdingRows: byKey, hint: hint}
 		default:
-			rows, status, err := m.render(v, 0)
+			rows, hint, err := m.render(v, 0)
 			if err != nil {
 				return errMsg{err}
 			}
-			return loadedMsg{view: v, rows: rows, status: status}
+			return loadedMsg{view: v, rows: rows, hint: hint}
 		}
 	}
 }
@@ -80,11 +80,11 @@ func (m Model) surfaceFor(msg loadedMsg) surface {
 
 func (m Model) loadHistory(id domain.HoldingID) tea.Cmd {
 	return func() tea.Msg {
-		rows, status, err := m.render(viewHistory, id)
+		rows, hint, err := m.render(viewHistory, id)
 		if err != nil {
 			return errMsg{err}
 		}
-		return loadedMsg{view: viewHistory, rows: rows, status: status}
+		return loadedMsg{view: viewHistory, rows: rows, hint: hint}
 	}
 }
 
@@ -104,11 +104,11 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error
 
 	case viewHelp:
 		lines := m.helpLines(m.helpTopic)
-		status := "every key and every command"
+		hint := "every key and every command"
 		if m.helpTopic != "" {
-			status = m.helpTopic
+			hint = m.helpTopic
 		}
-		return lines, status, nil
+		return lines, hint, nil
 
 	case viewIntegrity:
 		report, err := m.ctrl.Integrity(m.ctx)
@@ -143,12 +143,12 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error
 					n.Item, n.Category, n.Siblings))
 			}
 		}
-		status := "clean"
+		hint := "clean"
 		if !report.Clean() {
-			status = style.Strong.Render(fmt.Sprintf("%d discrepancies, %d orphans",
+			hint = style.Strong.Render(fmt.Sprintf("%d discrepancies, %d orphans",
 				len(report.Discrepancies), len(report.Orphans)))
 		}
-		return out, status, nil
+		return out, hint, nil
 
 	case viewHistory:
 		rows, err := m.ctrl.HoldingHistory(m.ctx, subject)
@@ -238,24 +238,6 @@ func (m Model) renderTree(v view) ([]tree.Node, string, error) {
 		[]keys.Action{keys.FoldToggle},
 		[]keys.Action{keys.FoldCycleAll}) + " - " +
 		keys.Hint(keys.Browse, []keys.Action{keys.ShowContents}), nil
-}
-
-// reloadKeepingStatus re-reads the current view without discarding what the
-// last action said it did.
-//
-// A status that vanished on reload would mean the feedback for a write was
-// visible for exactly as long as it took to refresh, which is to say never.
-func (m Model) reloadKeepingStatus() tea.Cmd {
-	said := m.status
-	reload := m.load(m.view)
-	return func() tea.Msg {
-		msg := reload()
-		if loaded, ok := msg.(loadedMsg); ok {
-			loaded.status = said
-			return loaded
-		}
-		return msg
-	}
 }
 
 // focusKey puts the cursor on a row by identity, and does nothing if that row

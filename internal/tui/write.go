@@ -86,6 +86,21 @@ func summarise(summaries []string) string {
 	return fmt.Sprintf("%d rows - %s", len(summaries), strings.Join(distinct, "; "))
 }
 
+// workingOn names the command in flight, so the screen is not silent between
+// the keystroke and the answer.
+//
+// It quotes the line rather than saying "working...", because what a person
+// wants to know while waiting is WHICH of the things they typed is still
+// running -- and on a slow write that is the only evidence the keystroke
+// landed at all.
+func workingOn(line string) string {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return "working ..."
+	}
+	return fmt.Sprintf("%s ...", line)
+}
+
 // apply commits a plan and reports what happened.
 func (m Model) apply(plan app.Plan, summary string) tea.Cmd {
 	return func() tea.Msg {

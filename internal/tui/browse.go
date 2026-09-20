@@ -49,7 +49,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// gesture as making one. Stepping through the matches is M-n and M-p, in
 	// the table.
 	case keys.Search:
-		m.problem = nil
+		m.say = m.say.Clear()
 		m.box = m.box.Open(omnibox.Filter)
 		m = m.applyLive()
 		return m, nil
@@ -58,7 +58,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m = m.refreshJump()
 		return m, m.loadCandidates()
 	case keys.CommandLine:
-		m.problem = nil
+		m.say = m.say.Clear()
 		m.box = m.box.Open(omnibox.Command)
 		return m, nil
 
@@ -100,9 +100,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		// it. Dropping a carry with a filter on takes two escapes, which is
 		// the same shape as every other nested mode here.
 		if m.copied != nil {
-			m.status = fmt.Sprintf("put %q down", m.copied.Name)
-			m.copied = nil
-			return m.aiming(), nil
+			name := m.copied.Name
+			m = m.drop()
+			m.say = m.say.Report(fmt.Sprintf("put %q down", name))
+			return m, nil
 		}
 
 	case keys.ViewCategories:
@@ -196,8 +197,7 @@ func (m Model) handleAction(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 // Leaving the old status underneath a refusal reads as though both were true --
 // the screen saying "counted 50" while also saying the action was impossible.
 func (m Model) refuse(format string, args ...any) Model {
-	m.problem = []string{fmt.Sprintf(format, args...)}
-	m.status = ""
+	m.say = m.say.Refuse(fmt.Sprintf(format, args...))
 	return m
 }
 
