@@ -2,6 +2,6 @@
 ------------------------------------------------------------------------------------------
   KIND  NAME                                                                              
   (nothing here)
- JUMP  shelf   enter go   esc cancel
 ------------------------------------------------------------------------------------------
 0 matches across every kind - enter go - esc cancel
+  JUMP      shelf                                                    enter go   esc cancel

@@ -2,6 +2,7 @@ package omnibox
 
 import (
 	"fmt"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -10,6 +11,7 @@ import (
 	"home-management-system/internal/tui/line"
 
 	"home-management-system/internal/tui/style"
+	"home-management-system/internal/tui/text"
 )
 
 // Mode is what the line is for. The leader key chooses it, and the rendering
@@ -20,7 +22,9 @@ import (
 type Mode int
 
 const (
-	// Closed is the resting state: no line, no cost.
+	// Closed is the resting state. The line is still drawn -- dim, naming the
+	// keys that open it -- because a line that vanished was a line nobody knew
+	// was there.
 	Closed Mode = iota
 	// Filter narrows the rows in front of you.
 	Filter
@@ -48,6 +52,14 @@ type Model struct {
 	// box, not a filter.
 	applied string
 	width   int
+	// reachable says whether a keystroke would arrive here at all.
+	//
+	// The line is drawn under every screen, including the modal ones -- a
+	// confirmation, an open field, the import plan -- and under those the keys
+	// it names would do nothing at all. A permanently visible affordance that
+	// is sometimes false is worse than none: the whole reason to put it on
+	// screen is that it can be trusted.
+	reachable bool
 }
 
 var (
@@ -62,9 +74,57 @@ var (
 		Background(lipgloss.AdaptiveColor{Light: "24", Dark: "24"})
 )
 
-func New() Model { return Model{width: 80} }
+// The gutter labels, one per state of the line.
+//
+// They are declared together because their WIDTHS have to be compared: the
+// input begins at the same column in every state, which means the gutter is as
+// wide as the widest of these and no state may size itself.
+const (
+	labelFilter   = "I-search"
+	labelJump     = "JUMP"
+	labelFiltered = "filtered"
+)
+
+// labelCommand spells the key that opens it, the way emacs does -- so it is
+// read from the keymap rather than written down, and a rebinding cannot leave
+// the gutter advertising a key that is gone.
+var labelCommand = keys.Show(keys.Browse, keys.CommandLine)
+
+// indent is the left margin the whole bottom block shares, so the line's left
+// edge agrees with the carry banner and the refusals above it.
+const indent = "  "
+
+// separator is the gap between the gutter and the text.
+const separator = "  "
+
+// gutterWidth is the widest label, computed rather than written down.
+//
+// A hardcoded column is a column that is right until somebody adds a mode, and
+// wrong silently afterwards: the input would start one place in three states
+// and another in the fourth, which is precisely the jitter the fixed gutter
+// exists to remove.
+var gutterWidth = func() int {
+	width := 0
+	for _, label := range []string{labelFilter, labelJump, labelCommand, labelFiltered} {
+		if n := len([]rune(label)); n > width {
+			width = n
+		}
+	}
+	return width
+}()
+
+// textColumn is where the typed text begins, in every state without exception.
+var textColumn = len(indent) + gutterWidth + len(separator)
+
+func New() Model { return Model{width: 80, reachable: true} }
 
 func (m Model) SetWidth(w int) Model { m.width = w; return m }
+
+// Reachable tells the line whether a keystroke would arrive here, which only
+// the application knows: it owns the stack of modes, and the line is one of
+// them. Told rather than guessed, because a widget guessing at what is open
+// over it would be a second answer to a question layers.go already answers.
+func (m Model) Reachable(ok bool) Model { m.reachable = ok; return m }
 
 // Mode reports what the line is doing.
 func (m Model) Mode() Mode { return m.mode }
@@ -138,45 +198,109 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	return m, false
 }
 
-// View renders the line, or nothing when it is closed and no filter is applied.
+// View renders the line. It is ALWAYS one line, in every state.
 //
-// The two modes are told apart by their PROMPT and their framing, not by their
-// contents. A person glancing at the screen has to know which one they are in
-// before reading what they typed.
+// The line used to disappear when it was closed with no filter on, which is
+// most of the time, and that cost three things at once: nothing on screen said
+// the line existed or which keys opened it; the body resized whenever it
+// opened, so starting a search shifted the rows being read; and the four states
+// began their text at four different columns, so switching modes slid what you
+// were typing sideways.
+//
+// So: fixed position, fixed height, fixed text column. What changes between
+// resting and interacting is EMPHASIS -- a dim gutter and a dim affordance at
+// rest, the mode's own lit badge and a block cursor when focused.
+//
+// The three modes still differ from each other in KIND rather than by degree,
+// which is a different question from telling focused from resting: a person has
+// to know whether they are filtering or jumping before reading a word, and
+// badges inside a fixed gutter answer both questions at once.
 func (m Model) View() string {
-	hint := func(accept string) string {
-		return style.Dim.Render("  " + keys.Show(keys.Line, keys.Confirm) + " " + accept +
-			"   " + keys.Show(keys.Line, keys.Cancel) + " cancel")
+	badge, body, tail := m.parts()
+	if !m.reachable {
+		// Something modal is over the list, so the keys this line names would
+		// do nothing. It goes quiet rather than away: the hints stop being
+		// offered, but an applied filter is still SAID, because that is a fact
+		// about the rows on screen rather than an invitation to press anything.
+		tail = ""
+		if m.mode == Closed && m.applied == "" {
+			body = ""
+		}
 	}
+	// The gutter is padded to its column OUTSIDE the badge's own styling, so a
+	// tinted background stays the width of its word rather than stretching to
+	// the column.
+	gutter := badge + strings.Repeat(" ", max(0, gutterWidth-text.VisibleWidth(badge)))
+	return strings.TrimRight(indent+gutter+separator+m.withTail(body, tail), " ")
+}
+
+// parts is what each state puts in the gutter, in the text column, and in the
+// tail.
+//
+// One function returning all three rather than a switch per region, because the
+// states differ ONLY in these three strings -- and writing them together is
+// what makes that visible to whoever adds the fourth.
+func (m Model) parts() (badge, body, tail string) {
+	confirm, cancel := keys.Show(keys.Line, keys.Confirm), keys.Show(keys.Line, keys.Cancel)
 	switch {
 	case m.mode == Filter:
 		// The prompt is isearch's, because the key is isearch's. It used to be
 		// a bare `/`, which named the key that opened it -- and that key is
 		// gone, so the prompt would have been advertising a keystroke that no
 		// longer does anything.
-		return style.Strong.Render("I-search: ") + line.Render(m.input, m.cursor) + hint("apply")
+		return style.Strong.Render(labelFilter), line.Render(m.input, m.cursor),
+			confirm + " apply   " + cancel + " cancel"
 	case m.mode == Jump:
-		return style.Highlight.Render(" JUMP ") + " " + line.Render(m.input, m.cursor) + hint("go")
+		return style.Highlight.Render(labelJump), line.Render(m.input, m.cursor),
+			confirm + " go   " + cancel + " cancel"
 	case m.mode == Command:
-		// A third prompt, distinct from both, and it spells its own key. M-x
+		// A third badge, distinct from both, and it spells its own key. M-x
 		// reads as a command line to anyone who has ever used emacs; what it
 		// must not do is look like the filter.
-		return commandStyle.Render(" "+keys.Show(keys.Browse, keys.CommandLine)+" ") + " " +
-			line.Render(m.input, m.cursor) + hint("run")
+		return commandStyle.Render(labelCommand), line.Render(m.input, m.cursor),
+			confirm + " run   " + cancel + " cancel"
 	case m.applied != "":
-		return style.Dim.Render("filtered ") + style.Strong.Render(m.applied) +
-			style.Dim.Render("   "+keys.Show(keys.Browse, keys.Cancel)+" clear")
+		// Resting, but not idle: a narrowed list that does not say so is a list
+		// that lies about what you own. Dim label, strong value.
+		return style.Dim.Render(labelFiltered), style.Strong.Render(m.applied),
+			keys.Show(keys.Browse, keys.Cancel) + " clear"
 	}
-	return ""
+	// Resting and empty. The gutter is blank and the affordance sits in the
+	// TEXT column -- where what you type will appear -- so the line teaches its
+	// own geometry along with its keys.
+	return "", style.Dim.Render(m.affordance()), ""
 }
 
-// Height is how many lines the omnibox occupies, which the layout needs before
-// it knows what the omnibox will draw.
-func (m Model) Height() int {
-	if m.mode == Closed && m.applied == "" {
-		return 0
-	}
-	return 1
+// affordance is the three keys that open the line, for the resting state.
+//
+// Read from the keymap rather than written out, so a rebinding cannot leave the
+// one permanently visible line on the screen naming a key that is gone.
+func (m Model) affordance() string {
+	return text.JoinWhatFits(m.width-textColumn, []string{
+		keys.Hint(keys.Browse, []keys.Action{keys.Search}),
+		keys.Hint(keys.Browse, []keys.Action{keys.Jump}),
+		keys.Hint(keys.Browse, []keys.Action{keys.CommandLine}),
+	})
 }
+
+// withTail puts the hints flush right, so they occupy a fixed column too.
+//
+// Dropped rather than wrapped once the text grows into them: a long command is
+// the thing being read, and a hint that pushed it onto a second line would
+// shift every row on the screen to say something the person already knows.
+func (m Model) withTail(body, tail string) string {
+	if tail == "" {
+		return body
+	}
+	room := m.width - textColumn - text.VisibleWidth(body) - text.VisibleWidth(tail)
+	if room < 3 {
+		return body
+	}
+	return body + strings.Repeat(" ", room) + style.Dim.Render(tail)
+}
+
+// Height is how many lines the omnibox occupies. Always one: the line is
+// furniture, and furniture that moves is the thing this is here to stop.
+func (m Model) Height() int { return 1 }
 
 func (m Model) String() string { return fmt.Sprintf("omnibox(%v, %q)", m.mode, m.input) }
