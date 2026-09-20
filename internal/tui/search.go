@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"home-management-system/internal/domain"
+	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
-	"home-management-system/internal/tui/table"
+	"home-management-system/internal/tui/tree"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -76,31 +78,61 @@ func (m Model) filterWith(q omnibox.Query) Model {
 	return m
 }
 
-// facetTests resolves facet names to columns, dropping the ones this view has
-// no field for.
-func facetTests(v view, q omnibox.Query) []table.FacetTest {
-	columns := spec(v).facets
-	var out []table.FacetTest
-	for _, f := range q.Facets {
-		if column, ok := columns[f.Key]; ok && !f.Any() {
-			out = append(out, table.FacetTest{Column: column, Value: f.Value})
-		}
-	}
-	return out
-}
-
-// acceptJump goes to the chosen thing: the view it lives in, cursor on its row.
+// acceptJump goes to the chosen thing: the lens it lives in, the rail pointed
+// at the node that contains it, cursor on its row.
 //
-// WHERE a jump lands is the application's: it owns the views. What the palette
-// is showing, and which row of it is under the cursor, is the widget's.
+// All three, because a jump that only moved the cursor would land it in a
+// contents pane that does not hold the thing. Where a jump lands is the
+// application's business -- it owns the rail -- and what the palette is
+// showing is the widget's.
 func (m Model) acceptJump() (Model, tea.Cmd) {
 	target, ok := m.box.Chosen()
 	m.box = m.box.Cancel()
 	if !ok {
 		return m, nil
 	}
+	l, ok := lensFor(target.Kind)
+	if !ok {
+		return m, nil
+	}
+	m.lens = l
+	if key, ok := m.railFor(target); ok {
+		m.railKey[l] = key
+	}
 	m.pending = &target
-	return m, m.load(viewFor(target.Kind))
+	return m, m.load(viewShell)
+}
+
+// railFor is the rail node that has to be showing for a jump target to be
+// reachable: itself, when the target IS structure, and the node it sits in
+// when it is something inside one.
+func (m Model) railFor(t resolve.Candidate) (int64, bool) {
+	switch t.Kind {
+	case resolve.KindLocation, resolve.KindCategory:
+		return tree.Node{ID: t.ID, Kind: string(t.Kind)}.Key(), true
+
+	case resolve.KindItem:
+		// Free: every Item is already in hand, because the inspector needs
+		// them all anyway.
+		if row, ok := m.item(domain.ItemID(t.ID)); ok {
+			return tree.Node{ID: int64(row.CategoryID), Kind: kindCategory}.Key(), true
+		}
+
+	case resolve.KindHolding:
+		// Not free, and not avoidable: a Candidate carries a path rather than
+		// a parent identifier, and resolving the name back to a place is the
+		// round trip through text that this interface refuses to make.
+		rows, err := m.ctrl.Holdings(m.ctx)
+		if err != nil {
+			return 0, false
+		}
+		for _, r := range rows {
+			if int64(r.ID) == t.ID {
+				return tree.Node{ID: int64(r.LocationID), Kind: kindLocation}.Key(), true
+			}
+		}
+	}
+	return 0, false
 }
 
 // refreshJump sizes the palette to the space the list it replaces had, and

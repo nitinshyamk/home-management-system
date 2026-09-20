@@ -9,6 +9,7 @@ import (
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
+	"home-management-system/internal/tui/tree"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -25,8 +26,21 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// The surface sees motion, selection, and sorting first. It reports what it
 	// did not use, so the keys that belong to the application -- views, quit,
 	// enter -- still reach it.
+	was := m.railAt()
 	if next, handled := m.current.Update(msg); handled {
 		m.current = next
+		// The rail moving is the one motion that changes what the other half
+		// should be showing, and the contents of a node is the controller's
+		// answer rather than something the surface can filter its way to. So
+		// the cursor landing on a different node is a load.
+		//
+		// Only on a CHANGE: stepping through the contents pane moves a cursor
+		// inside a list that is already correct, and reloading for that would
+		// be a query per keystroke for no new rows.
+		if at := m.railAt(); at != was {
+			m = m.rememberRail()
+			return m, m.load(viewShell)
+		}
 		return m, nil
 	}
 
@@ -73,13 +87,18 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.openCreator(), m.loadCandidates()
 
 	case keys.Confirm:
-		// In a table C-f and C-b move between columns, so enter is the only way
-		// down into a row -- which is also what it means everywhere else.
-		if m.view == viewHoldings {
-			if sel, ok := m.current.Current(); ok {
-				m.fromView = m.view
-				return m, m.loadHistory(domain.HoldingID(sel.Key))
+		// Enter goes INTO the thing under the cursor, which is one idea with
+		// two landings: on the rail it is the contents of the node, and in the
+		// contents pane there is nothing further in but the ledger.
+		if m.view == viewShell && m.onRail() {
+			if next, handled := m.current.Update(rightKey); handled {
+				m.current = next
 			}
+			return m, nil
+		}
+		if sel, ok := m.current.Current(); ok && sel.Kind == kindHolding {
+			m.fromView = m.view
+			return m, m.loadHistory(domain.HoldingID(sel.Key))
 		}
 	case keys.Cancel:
 		// Escaping in the LIST clears an applied filter -- a different escape
@@ -107,28 +126,127 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-	case keys.ViewCategories:
-		return m, m.load(viewCategories)
-	case keys.ViewLocations:
-		return m, m.load(viewLocations)
-	case keys.ViewItems:
-		return m, m.load(viewItems)
-	case keys.ViewHoldings:
-		return m, m.load(viewHoldings)
-	case keys.ViewIntegrity:
+	case keys.ViewAttention:
+		m.fromView = viewShell
 		return m, m.load(viewIntegrity)
 	case keys.Refresh:
 		return m, m.load(m.view)
-	case keys.ShowContents:
-		// A tree only. The tables already show what they hold -- that is what
-		// a table is -- so the key has nothing to say there.
-		if !forest(m.view) {
+
+	case keys.LensFlip:
+		return m.flipLens()
+
+	case keys.ToggleDepth:
+		if m.view != viewShell {
 			return m, nil
 		}
-		m.contents[m.view] = !m.contents[m.view]
+		m.deep = !m.deep
+		if m.deep {
+			m.say = m.say.Report("showing everything below here")
+		} else {
+			m.say = m.say.Report("showing only what is filed here")
+		}
 		return m, m.load(m.view)
 	}
 	return m, nil
+}
+
+// rightKey is a synthetic C-f, for the one place the application means "do
+// what the right arrow does" rather than handling a key itself.
+//
+// Enter on the rail and the right arrow on the rail are the same intent --
+// go into this -- and writing it as a call rather than as duplicated pane
+// logic is what keeps them from drifting apart.
+var rightKey = tea.KeyMsg{Type: tea.KeyCtrlF}
+
+// flipLens swaps the rail between the places and the kinds, KEEPING what is
+// under the cursor.
+//
+// This is the whole reason the two trees stopped being two tabs. Standing on a
+// pile of chile in the garage and asking "what kind of thing is this" should
+// land on Dried Peppers, not at the top of the taxonomy -- and the reverse
+// should come back to a shelf the item is actually on. A flip that lost the
+// subject would be two tabs with a different key.
+func (m Model) flipLens() (Model, tea.Cmd) {
+	if m.view != viewShell {
+		return m, nil
+	}
+	to := m.lens.other()
+	if key, said, ok := m.crossing(to); ok {
+		m.railKey[to] = key
+		m.say = m.say.Report(said)
+	} else {
+		m.say = m.say.Report(to.spec().name + " - " + to.spec().root)
+	}
+	m.lens = to
+	return m, m.load(m.view)
+}
+
+// crossing is where the thing under the cursor lives in the other lens.
+//
+// Four cases, because there are four kinds of row and each crosses
+// differently: an Item is classified, a Holding is classified through its
+// Item, a Location has no kind of its own, and a Category has no place.
+// The two that cannot cross say so by returning false rather than by landing
+// somewhere arbitrary.
+func (m Model) crossing(to lens) (key int64, said string, ok bool) {
+	sel, has := m.current.Current()
+	if !has {
+		return 0, "", false
+	}
+	switch to {
+	case lensKind:
+		var item app.ItemRow
+		switch sel.Kind {
+		case kindHolding:
+			row, found := m.holding(sel.Key)
+			if !found {
+				return 0, "", false
+			}
+			item, found = m.item(row.ItemID)
+			if !found {
+				return 0, "", false
+			}
+		case kindItem:
+			var found bool
+			item, found = m.item(domain.ItemID(sel.ID))
+			if !found {
+				return 0, "", false
+			}
+		default:
+			return 0, "", false
+		}
+		return tree.Node{ID: int64(item.CategoryID), Kind: kindCategory}.Key(),
+			fmt.Sprintf("by kind - %q is filed in %s", item.Name, item.Category), true
+
+	case lensPlace:
+		var id domain.ItemID
+		switch sel.Kind {
+		case kindItem:
+			id = domain.ItemID(sel.ID)
+		case kindHolding:
+			row, found := m.holding(sel.Key)
+			if !found {
+				return 0, "", false
+			}
+			id = row.ItemID
+		default:
+			return 0, "", false
+		}
+		rows, err := m.ctrl.HoldingsOfItem(m.ctx, id)
+		if err != nil || len(rows) == 0 {
+			return 0, "", false
+		}
+		where := rows[0].LocationPath
+		if where == "" {
+			where = rows[0].Location
+		}
+		if len(rows) > 1 {
+			where = fmt.Sprintf("%s, and %d other places", where, len(rows)-1)
+		}
+		return tree.Node{ID: int64(rows[0].LocationID), Kind: kindLocation}.Key(),
+			fmt.Sprintf("by place - %q is in %s", rows[0].Item, where), true
+	}
+	return 0, "", false
 }
 
 // handleAction takes the keys that act on whatever the cursor is on.
@@ -151,18 +269,20 @@ func (m Model) handleAction(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	if action == keys.Copy {
 		return m.copy(), nil, true
 	}
-	// Moving a thing the tree is SHOWING is the other half of the same idea:
-	// the trees display holdings and items, and the one thing a person wants to
-	// do to something they can see somewhere wrong is put it somewhere right.
-	if forest(m.view) {
+	// On the rail, the only verb is move: a place or a category is renamed
+	// with `e`, created with `o`, and otherwise reorganised rather than
+	// consumed.
+	if m.onRail() {
 		if action == keys.MoveTo {
 			next, cmd := m.promptForNode()
 			return next, cmd, true
 		}
 		return m, nil, false
 	}
-	// Everything else acts on a Holding, so it needs the view that has them.
-	if m.view != viewHoldings {
+	// Everything below acts on a Holding, and only the place lens has them:
+	// the kind lens's rows are Items, which are a definition rather than a
+	// thing on a shelf. Consuming one would have to ask which pile.
+	if !m.onHoldings() {
 		return m, nil, false
 	}
 
@@ -202,16 +322,19 @@ func (m Model) refuse(format string, args ...any) Model {
 	return m
 }
 
-// rowsByKey is the holdings currently on screen, by identifier, so a keystroke
-// can reach the identifiers behind the row it is on.
-func (m Model) holding(key int64) (app.HoldingRow, bool) {
-	row, ok := m.holdingRows[key]
-	return row, ok
+// onHoldings reports that the cursor is in a contents pane whose rows are
+// Holdings -- the place lens, in the shell, not on the rail.
+//
+// This is what `m.view == viewHoldings` used to ask, and the question has not
+// changed: is the thing under the cursor a physical pile somebody can consume
+// from. What changed is that the answer is no longer the name of a tab.
+func (m Model) onHoldings() bool {
+	return m.view == viewShell && m.lens == lensPlace && !m.onRail()
 }
 
-// currentHolding is the row under the cursor, in the Holdings view.
+// currentHolding is the row under the cursor, where that is a Holding.
 func (m Model) currentHolding() (app.HoldingRow, bool) {
-	if m.view != viewHoldings {
+	if !m.onHoldings() {
 		return app.HoldingRow{}, false
 	}
 	sel, ok := m.current.Current()
@@ -224,7 +347,7 @@ func (m Model) currentHolding() (app.HoldingRow, bool) {
 // selectedHoldings is what an action should act on: the explicit selection, or
 // the row under the cursor when nothing is picked.
 func (m Model) selectedHoldings() []app.HoldingRow {
-	if m.view != viewHoldings {
+	if !m.onHoldings() {
 		return nil
 	}
 	var out []app.HoldingRow

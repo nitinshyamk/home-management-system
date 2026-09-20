@@ -81,19 +81,23 @@ const (
 	Kill
 	Quit
 
-	// Views.
-	ViewCategories
-	ViewLocations
-	ViewItems
-	ViewHoldings
-	ViewIntegrity
+	// The rail.
+	//
+	// LensFlip swaps the rail between the places and the kinds. It is one
+	// action rather than two view keys because it is one question asked two
+	// ways, and because a flip KEEPS what you are looking at -- which two
+	// separate destinations could not.
+	LensFlip
+	// ViewAttention is what needs answering: the ledger's disagreements, and
+	// the nudges.
+	ViewAttention
 
 	// Folding.
 	FoldToggle
 	FoldCycleAll
-	// ShowContents toggles whether a tree shows what its nodes CONTAIN --
-	// a Category's Items, a Location's Holdings.
-	ShowContents
+	// ToggleDepth swaps the contents pane between rolling up the whole
+	// subtree and showing only what is filed at the node itself.
+	ToggleDepth
 
 	// The import plan.
 	Drop
@@ -206,10 +210,10 @@ var contexts = map[Context][]binding{
 		{Search, []string{"ctrl+s"}, "search"},
 		{Jump, []string{"alt+g"}, "jump"},
 		{CommandLine, []string{"alt+x"}, "command"},
-		{EditInPlace, []string{"e"}, "edit"},
+		{EditInPlace, []string{"e"}, "rename"},
 		{Create, []string{"o"}, "new"},
 		{Refresh, []string{"g"}, "refresh"},
-		{ShowContents, []string{"v"}, "contents"},
+		{ToggleDepth, []string{"v"}, "here only"},
 		{Consume, []string{"c"}, "consume"},
 		{Count, []string{"#"}, "count"},
 		{MoveTo, []string{"m"}, "move"},
@@ -217,11 +221,10 @@ var contexts = map[Context][]binding{
 		{Copy, []string{"alt+w"}, "copy"},
 		{Paste, []string{"ctrl+y"}, "put"},
 		{Kill, []string{"ctrl+k"}, "retire"},
-		{ViewCategories, []string{"1"}, "categories"},
-		{ViewLocations, []string{"2"}, "locations"},
-		{ViewItems, []string{"3"}, "items"},
-		{ViewHoldings, []string{"4"}, "holdings"},
-		{ViewIntegrity, []string{"5"}, "integrity"},
+		// The backslash, because it is unshifted, unused by readline, and not
+		// a character anything in this house is called.
+		{LensFlip, []string{"\\"}, "lens"},
+		{ViewAttention, []string{"!"}, "attention"},
 	}...),
 
 	Line: lineBindings(),

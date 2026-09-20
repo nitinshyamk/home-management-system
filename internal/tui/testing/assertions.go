@@ -211,3 +211,50 @@ func (s *Simulator) EventTypes(id domain.HoldingID) []string {
 	}
 	return rows
 }
+
+// ShowsCursor reports whether the cursor mark is drawn anywhere on screen.
+//
+// It sits at the start of a line in the rail and immediately after the rule
+// in the contents pane, so looking for "\n>" alone stopped being the whole
+// answer once there were two panes.
+func (s *Simulator) ShowsCursor() bool {
+	v := text.StripANSI(s.View())
+	return strings.Contains(v, "\n>") || strings.Contains(v, "│>")
+}
+
+// ---------------------------------------------------------------------------
+// One pane at a time
+// ---------------------------------------------------------------------------
+
+// The shell shows structure and contents together, so "the screen does not
+// show X" became ambiguous: folding a branch away in the rail leaves the
+// place named in the contents pane's WHERE column, and that is correct. These
+// say which half is meant.
+
+func (s *Simulator) RailShows(want string) {
+	s.t.Helper()
+	if !strings.Contains(text.StripANSI(s.model.RailView()), want) {
+		s.t.Errorf("the rail does not show %q:\n%s", want, text.StripANSI(s.model.RailView()))
+	}
+}
+
+func (s *Simulator) RailHides(unwanted string) {
+	s.t.Helper()
+	if strings.Contains(text.StripANSI(s.model.RailView()), unwanted) {
+		s.t.Errorf("the rail still shows %q:\n%s", unwanted, text.StripANSI(s.model.RailView()))
+	}
+}
+
+func (s *Simulator) ContentsShow(want string) {
+	s.t.Helper()
+	if !strings.Contains(text.StripANSI(s.model.ContentsView()), want) {
+		s.t.Errorf("the contents pane does not show %q:\n%s", want, text.StripANSI(s.model.ContentsView()))
+	}
+}
+
+func (s *Simulator) ContentsHide(unwanted string) {
+	s.t.Helper()
+	if strings.Contains(text.StripANSI(s.model.ContentsView()), unwanted) {
+		s.t.Errorf("the contents pane still shows %q:\n%s", unwanted, text.StripANSI(s.model.ContentsView()))
+	}
+}

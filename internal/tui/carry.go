@@ -36,7 +36,7 @@ type carried struct {
 // there is one thing and it ends up somewhere else. "Copied" belongs to the
 // keys, which are emacs's, and it was the wrong word for what happens.
 func (m Model) copy() Model {
-	if forest(m.view) {
+	if m.onRail() {
 		sel, ok := m.current.Current()
 		if !ok || !sel.Contained {
 			return m.refuse("copy one of the things inside -- a place is moved with %s",
@@ -165,7 +165,7 @@ func (m Model) put() (Model, tea.Cmd) {
 // is, which is what a put needs to know before it can mean anything.
 func (m Model) destination() (kind string, id int64, ok bool) {
 	switch {
-	case forest(m.view):
+	case m.onRail():
 		sel, found := m.current.Current()
 		if !found {
 			return "", 0, false
@@ -185,7 +185,7 @@ func (m Model) destination() (kind string, id int64, ok bool) {
 			return "", 0, false
 		}
 		return sel.Kind, sel.ID, true
-	case m.view == viewHoldings:
+	case m.onHoldings():
 		row, found := m.currentHolding()
 		if !found {
 			return "", 0, false

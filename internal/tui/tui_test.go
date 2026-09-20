@@ -75,6 +75,54 @@ func (f *fakeController) Holdings(context.Context) ([]app.HoldingRow, error) {
 	}, nil
 }
 
+// The three contents queries, answered by filtering what the fake already
+// returns -- which is the same shape the real controller has, and keeps the
+// fake from becoming a second implementation with its own opinions.
+func (f *fakeController) HoldingsUnder(ctx context.Context, root *domain.LocationID, deep bool) ([]app.HoldingRow, error) {
+	f.calls = append(f.calls, "HoldingsUnder")
+	rows, err := f.Holdings(ctx)
+	if err != nil || root == nil {
+		return rows, err
+	}
+	var out []app.HoldingRow
+	for _, r := range rows {
+		if r.LocationID == *root {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeController) ItemsUnder(ctx context.Context, root *domain.CategoryID, deep bool) ([]app.ItemRow, error) {
+	f.calls = append(f.calls, "ItemsUnder")
+	rows, err := f.Items(ctx)
+	if err != nil || root == nil {
+		return rows, err
+	}
+	var out []app.ItemRow
+	for _, r := range rows {
+		if r.CategoryID == *root {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeController) HoldingsOfItem(ctx context.Context, id domain.ItemID) ([]app.HoldingRow, error) {
+	f.calls = append(f.calls, "HoldingsOfItem")
+	rows, err := f.Holdings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []app.HoldingRow
+	for _, r := range rows {
+		if r.ItemID == id {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeController) HoldingHistory(_ context.Context, id domain.HoldingID) ([]app.EventRow, error) {
 	f.historyFor = id
 	f.calls = append(f.calls, "HoldingHistory")
@@ -191,7 +239,7 @@ func keyMsg(key string) tea.KeyMsg {
 	return msg
 }
 
-func TestOpensOnHoldings(t *testing.T) {
+func TestOpensOnTheWholeHouse(t *testing.T) {
 	_, view := drive(t, &fakeController{})
 
 	for _, want := range []string{"Basmati Rice", "800 g", "USB-C Cable", "out 21d"} {
@@ -201,24 +249,59 @@ func TestOpensOnHoldings(t *testing.T) {
 	}
 }
 
-func TestNumberKeysSwitchViews(t *testing.T) {
-	cases := []struct {
-		key  string
-		want string
-	}{
-		{"1", "Dried Peppers"},
-		{"2", "Kitchen"},
-		{"3", "Basmati Rice"},
-		{"4", "USB-C Cable"},
-		{"5", "holdings checked"},
+// The lens replaces four tabs, and the two it shows are the two questions
+// about one holding: where is it, and what kind of thing is it.
+func TestTheLensSwapsWhatTheRailShows(t *testing.T) {
+	_, byPlace := drive(t, &fakeController{})
+	for _, want := range []string{"BY PLACE", "Kitchen", "USB-C Cable"} {
+		if !strings.Contains(byPlace, want) {
+			t.Errorf("the place lens is missing %q:\n%s", want, byPlace)
+		}
 	}
-	for _, tc := range cases {
-		t.Run(tc.key, func(t *testing.T) {
-			_, view := drive(t, &fakeController{}, tc.key)
-			if !strings.Contains(view, tc.want) {
-				t.Errorf("view %s is missing %q:\n%s", tc.key, tc.want, view)
-			}
-		})
+
+	_, byKind := drive(t, &fakeController{}, "\\")
+	for _, want := range []string{"BY KIND", "Dried Peppers", "Basmati Rice"} {
+		if !strings.Contains(byKind, want) {
+			t.Errorf("the kind lens is missing %q:\n%s", want, byKind)
+		}
+	}
+}
+
+// A flip carries the subject across. Standing on a pile of rice and asking
+// what kind of thing it is should land on its category, not at the top of
+// the taxonomy -- that difference is the whole reason the tabs merged.
+func TestTheLensFlipKeepsTheSubject(t *testing.T) {
+	m, view := drive(t, &fakeController{}, "\\")
+
+	if m.lens != lensKind {
+		t.Fatalf("lens = %v, want the kind lens", m.lens)
+	}
+	if !strings.Contains(view, "Pantry") {
+		t.Errorf("the flip did not say where the rice is filed:\n%s", view)
+	}
+	sh, ok := m.shell()
+	if !ok {
+		t.Fatal("no shell after the flip")
+	}
+	node, ok := sh.railNode()
+	if !ok {
+		t.Fatal("the rail has no node after the flip")
+	}
+	// Category 1 is the rice's, and it is also the id of a Location and of an
+	// Item in this fixture -- which is exactly the collision that put the
+	// rail on the wrong node before the cursor stopped being restored across
+	// a lens change.
+	if node.Kind != kindCategory {
+		t.Errorf("the rail landed on a %q, want a Category", node.Kind)
+	}
+}
+
+// The attention screen is reached by name rather than by a digit, and it
+// still refuses to imply it repaired anything.
+func TestAttentionIsOneKeyAway(t *testing.T) {
+	_, view := drive(t, &fakeController{}, "!")
+	if !strings.Contains(view, "holdings checked") {
+		t.Errorf("! did not reach the integrity report:\n%s", view)
 	}
 }
 
@@ -246,15 +329,15 @@ func TestEnterOpensTheSelectedHoldingsHistory(t *testing.T) {
 
 func TestBackReturnsFromHistory(t *testing.T) {
 	m, _ := drive(t, &fakeController{}, "enter", "esc")
-	if m.view != viewHoldings {
-		t.Errorf("view = %v, want holdings", m.view)
+	if m.view != viewShell {
+		t.Errorf("view = %v, want the house", m.view)
 	}
 }
 
 // TestIntegrityViewSaysItDidNotRepair: the report is a defect report, and the
 // UI must not imply anything was fixed.
 func TestIntegrityViewReportsWithoutRepairing(t *testing.T) {
-	_, view := drive(t, &fakeController{}, "5")
+	_, view := drive(t, &fakeController{}, "!")
 
 	if !strings.Contains(view, "DISCREPANCY") {
 		t.Errorf("integrity view does not surface the discrepancy:\n%s", view)
@@ -293,7 +376,8 @@ func TestCursorStaysInBounds(t *testing.T) {
 // TestTheUIMakesNoWrites is the v01 scope stated as a test.
 func TestTheUIMakesNoWrites(t *testing.T) {
 	fake := &fakeController{}
-	drive(t, fake, "1", "2", "3", "4", "5", "enter", "esc", "ctrl+n", "s", "ctrl+space", "g")
+	drive(t, fake, "\\", "!", "esc", "enter", "esc",
+		"ctrl+n", "ctrl+b", "ctrl+f", "tab", "v", "s", "ctrl+space", "g")
 
 	for _, call := range fake.calls {
 		switch call {
@@ -331,24 +415,24 @@ func TestARowSaysWhatItIsAndWhatACommandCallsIt(t *testing.T) {
 
 	sel, ok := m.current.Current()
 	if !ok {
-		t.Fatal("the holdings view has no row under the cursor")
+		t.Fatal("the contents pane has no row under the cursor")
 	}
-	if sel.Kind != "Holding" {
+	if sel.Kind != kindHolding {
 		t.Errorf("a holdings row says it is a %q, want Holding", sel.Kind)
 	}
-	if sel.Subject != "Item" {
+	if sel.Subject != kindItem {
 		t.Errorf("a command naming a holdings row would name a %q, want Item", sel.Subject)
 	}
 	if sel.ID != 7 {
 		t.Errorf("ID = %d, want the holding's own id 7", sel.ID)
 	}
 
-	items, _ := drive(t, &fakeController{}, "3")
+	items, _ := drive(t, &fakeController{}, "\\")
 	sel, ok = items.current.Current()
 	if !ok {
-		t.Fatal("the items view has no row under the cursor")
+		t.Fatal("the kind lens has no row under the cursor")
 	}
-	if sel.Kind != "Item" || sel.Subject != "Item" {
+	if sel.Kind != kindItem || sel.Subject != kindItem {
 		t.Errorf("an items row is %q/%q, want Item/Item", sel.Kind, sel.Subject)
 	}
 }

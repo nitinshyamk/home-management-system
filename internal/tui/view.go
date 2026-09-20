@@ -132,7 +132,7 @@ func (m Model) bodyHeight() int {
 
 // countPhrase says how many, and how many of how many when a filter is on.
 func (m Model) countPhrase() string {
-	noun := spec(m.view).noun
+	noun := m.noun()
 	if noun == "" {
 		return ""
 	}
@@ -157,109 +157,47 @@ func (m Model) counts() (shown, total int, filtered bool) {
 	return 0, 0, false
 }
 
-func (m Model) header() string {
-	// The tab bar drops to numbers alone when the names will not fit.
-	//
-	// Not cosmetic: a line wider than the terminal WRAPS, which shifts every
-	// row below it and makes the whole screen unreadable rather than merely
-	// cramped. Found by the Simulator's width check at 60 columns, where the
-	// full names come to 65.
-	names := len(m.tabLabels(true)) <= m.width
-	var rendered []string
-	for _, t := range m.tabs() {
-		label := t.label(names)
-		if t.view == m.view {
-			rendered = append(rendered, style.Strong.Render("["+label+"]"))
-		} else {
-			rendered = append(rendered, style.Dim.Render(" "+label+" "))
-		}
-	}
-	if m.view == viewHistory || m.view == viewHelp {
-		suffix := spec(m.view).name
-		if !names {
-			suffix = suffix[:1]
-		}
-		rendered = append(rendered, style.Strong.Render("["+suffix+"]"))
-	}
-	return strings.Join(rendered, " ") + "\n" + style.Dim.Render(strings.Repeat("-", max(10, m.width)))
-}
-
-type tab struct {
-	view view
-	name string
-	key  int
-}
-
-func (t tab) label(withName bool) string {
-	if withName {
-		return fmt.Sprintf("%d %s", t.key, t.name)
-	}
-	return fmt.Sprintf("%d", t.key)
-}
-
-func (m Model) tabs() []tab {
-	var out []tab
-	for _, v := range []view{viewCategories, viewLocations, viewItems, viewHoldings, viewIntegrity} {
-		out = append(out, tab{view: v, name: spec(v).name, key: int(v) + 1})
-	}
-	return out
-}
-
-// tabLabels renders the bar as plain text, so its width can be measured before
-// any styling is applied. Styling adds escape sequences that occupy no columns,
-// which is exactly why measuring the rendered string would be wrong.
-func (m Model) tabLabels(withName bool) string {
-	var parts []string
-	for _, t := range m.tabs() {
-		parts = append(parts, " "+t.label(withName)+" ")
-	}
-	s := strings.Join(parts, " ")
-	if m.view == viewHistory {
-		if withName {
-			s += " [History]"
-		} else {
-			s += " [H]"
-		}
-	}
-	return s
-}
-
-// facts is what is true of the list in front of you: how many, how many picked,
-// how sorted, and the one hint the view itself supplies.
+// facts is the inspector: what the cursor is on, said in words.
 //
-// It no longer carries outcomes or refusals. Those have their own lines in the
-// block above, with their own lifetimes, and squeezing them in here is what
-// made the key hints below unreachable -- the hints rendered only when this
-// line was entirely empty, and a count or a view hint is nearly always present,
-// so five hints sat in the code that no screen ever showed.
+// It used to be what is true of the LIST -- how many, how many picked, how
+// sorted -- and that moved: the count to the header, beside the node it
+// counts, and the rest into the one line below. What a person cannot see is
+// the thing under the cursor, and that is what this says now.
 //
-// Assembled as PARTS and joined once, rather than concatenated piece by piece.
-// The first version glued them together with separators baked into each piece
-// and produced "2 items - - sorted by item a-z" the moment one view had nothing
-// to say -- which the golden frames caught.
+// While the palette is up it describes ITSELF, because that is what the
+// person is looking at; counting the list underneath would be describing a
+// screen nobody is reading.
 func (m Model) facts() string {
-	// While the palette is up it is what the person is looking at, so this
-	// describes IT. Counting the list underneath would be describing a screen
-	// nobody is reading.
 	if m.box.Mode() == omnibox.Jump {
 		return style.Dim.Render(fmt.Sprintf("%d matches across every kind", m.box.Matches()))
 	}
 
-	// The count leads, and it is built in one place rather than by each view: a
-	// count assembled per view is a count that says "3 of 12" in only some of
-	// them.
+	// A filter and a selection are things a person DID, and they outrank a
+	// description of where the cursor happens to be: not knowing that three
+	// rows are hidden is how a verb ends up acting on the wrong set.
 	var parts []string
-	if phrase := m.countPhrase(); phrase != "" {
-		parts = append(parts, phrase)
+	if shown, total, filtered := m.counts(); filtered {
+		parts = append(parts, fmt.Sprintf("%d of %d %s", shown, total, m.noun()))
 	}
 	if n := m.selectionCount(); n > 0 {
 		parts = append(parts, fmt.Sprintf("%d selected", n))
 	}
-	if sorted := m.current.SortDescription(); sorted != "" {
-		parts = append(parts, "sorted "+sorted)
+	if len(parts) > 0 {
+		if hint := m.say.Hint(); hint != "" {
+			parts = append(parts, hint)
+		}
+		return style.Dim.Render(text.JoinWhatFits(m.width, parts))
 	}
-	if hint := m.say.Hint(); hint != "" {
-		parts = append(parts, hint)
+	if inspected := m.inspect(); inspected != "" {
+		return inspected
 	}
-	return style.Dim.Render(text.JoinWhatFits(m.width, parts))
+	return style.Dim.Render(text.JoinWhatFits(m.width, []string{m.countPhrase(), m.say.Hint()}))
+}
+
+// noun is what the thing on screen is a list of.
+func (m Model) noun() string {
+	if m.view == viewShell {
+		return m.lens.spec().noun
+	}
+	return spec(m.view).noun
 }

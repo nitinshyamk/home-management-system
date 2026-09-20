@@ -111,10 +111,11 @@ func (m Model) offered() string {
 	// open are still a keystroke away once it closes.
 	top, ok := m.topLayer()
 	if !ok || top.name == "input line" {
-		return keys.Hint(keys.Browse,
-			[]keys.Action{keys.Search},
-			[]keys.Action{keys.Jump},
-			[]keys.Action{keys.CommandLine})
+		// What the cursor is on decides, not which screen is up. A fixed
+		// three-item reminder said the same thing everywhere and therefore
+		// told you nothing about the row you were standing on -- see
+		// Model.verbs.
+		return m.verbs()
 	}
 	return top.offers
 }

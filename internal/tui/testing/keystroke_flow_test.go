@@ -54,7 +54,8 @@ func stocked(t *testing.T, s *sim.Simulator) (rice domain.ItemID, cable domain.I
 func TestTheKeystrokeAndTheLineDoTheSameThing(t *testing.T) {
 	byKeystroke := sim.New(t)
 	rice, _ := stocked(t, byKeystroke)
-	byKeystroke.Send(sim.Press("4"))
+	byKeystroke.ByPlace()
+	byKeystroke.OnContents()
 	byKeystroke.Send(sim.CtrlS)
 	byKeystroke.Send(sim.Type("rice"))
 	byKeystroke.Send(sim.Enter)
@@ -64,7 +65,8 @@ func TestTheKeystrokeAndTheLineDoTheSameThing(t *testing.T) {
 
 	byLine := sim.New(t)
 	riceToo, _ := stocked(t, byLine)
-	byLine.Send(sim.Press("4"))
+	byLine.ByPlace()
+	byLine.OnContents()
 	byLine.Send(sim.CtrlS)
 	byLine.Send(sim.Type("rice"))
 	byLine.Send(sim.Enter)
@@ -88,8 +90,8 @@ func TestTheKeystrokeAndTheLineDoTheSameThing(t *testing.T) {
 func TestTheQuantityPromptOpensAtTheRow(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	before := strings.Split(s.PlainView(), "\n")
 	at := indexOfCursor(before)
 	s.Send(sim.Press("c"))
@@ -106,7 +108,9 @@ func TestTheQuantityPromptOpensAtTheRow(t *testing.T) {
 func TestAbandoningAPromptDoesNothing(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -121,7 +125,9 @@ func TestAbandoningAPromptDoesNothing(t *testing.T) {
 func TestToggleCustodyIsOneKey(t *testing.T) {
 	s := sim.New(t)
 	_, cable := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 
@@ -142,8 +148,8 @@ func TestToggleCustodyIsOneKey(t *testing.T) {
 func TestActingTwiceStaysOnTheRow(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	// Deliberately NOT filtered to one row. With a single row on screen the
 	// cursor lands back on it whatever the code does, so a test that filters
 	// first passes even when nothing restores anything.
@@ -169,7 +175,9 @@ func TestActingTwiceStaysOnTheRow(t *testing.T) {
 func TestAFilterSurvivesAWrite(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 
@@ -182,7 +190,9 @@ func TestAFilterSurvivesAWrite(t *testing.T) {
 func TestAnActionThatDoesNotApplyExplainsItself(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 
@@ -196,7 +206,9 @@ func TestAnActionThatDoesNotApplyExplainsItself(t *testing.T) {
 func TestMoveByKeystroke(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -216,17 +228,21 @@ func TestMoveByKeystroke(t *testing.T) {
 func TestCopyAndPut(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltW)
 	s.ShowsText("carrying")
 
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	moveTo(t, s, "Garage")
 	s.Send(sim.CtrlY)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.OnHand(rice, 500*domain.Scale)
 	if !strings.Contains(s.PlainView(), "Garage") {
 		t.Errorf("the rice did not move:\n%s", s.PlainView())
@@ -245,7 +261,9 @@ func TestAKeystrokeActsOnEverySelectedRow(t *testing.T) {
 		Amount: domain.FromMilli(500 * domain.Scale), Source: "shop",
 	}))
 
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltLess)
@@ -265,7 +283,9 @@ func TestAKeystrokeActsOnEverySelectedRow(t *testing.T) {
 func TestCountByKeystrokeRecordsAndCorrects(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -320,8 +340,8 @@ func equalStrings(a, b []string) bool {
 func TestARefusalClearsTheLastSuccess(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"))
-
+	s.ByPlace()
+	s.OnContents()
 	// Something that works, on the rice.
 	s.Send(sim.Press("c"))
 	s.Send(sim.Type("100"))
@@ -345,7 +365,9 @@ func TestARefusalClearsTheLastSuccess(t *testing.T) {
 func TestMovePromptCompletes(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -360,7 +382,8 @@ func TestMovePromptCompletes(t *testing.T) {
 	s.HidesText("TAB to take it")
 	s.Send(sim.Enter)
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
 	if !strings.Contains(s.PlainView(), "Garage") {
 		t.Errorf("the rice did not move:\n%s", s.PlainView())
@@ -372,7 +395,8 @@ func TestMovePromptCompletes(t *testing.T) {
 func TestTheMovePromptCompletesOnlyPlaces(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.Press("m"))
 	s.Send(sim.Type("grain")) // the Grains CATEGORY, and no location
 
@@ -387,7 +411,8 @@ func TestTheMovePromptCompletesOnlyPlaces(t *testing.T) {
 func TestTheQuantityPromptOffersNothing(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.Press("c"))
 	// Deliberately something that WOULD match a place. Typing "1" proves
 	// nothing: no location in this house contains a 1, so the prompt stays
@@ -408,7 +433,9 @@ func TestTheQuantityPromptOffersNothing(t *testing.T) {
 func TestEnterTakesThePlaceItIsPointingAt(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -426,7 +453,8 @@ func TestEnterTakesThePlaceItIsPointingAt(t *testing.T) {
 
 	s.Send(sim.Enter) // and this moves it
 	s.Send(sim.Esc)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.OnHand(rice, 500*domain.Scale)
 	if !placed(s) {
 		t.Errorf("the move never happened:\n%s", s.PlainView())
@@ -439,7 +467,9 @@ func TestEnterTakesThePlaceItIsPointingAt(t *testing.T) {
 func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -450,7 +480,8 @@ func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
 
 	s.ShowsText("did you mean")
 	s.Send(sim.Esc)
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.OnHand(rice, 500*domain.Scale)
 	if placed(s) {
 		t.Error("a suggestion was applied without being taken")
@@ -484,7 +515,9 @@ func placed(s *sim.Simulator) bool {
 func TestRetiringAsksFirst(t *testing.T) {
 	s := sim.New(t)
 	_, cable := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 
@@ -518,7 +551,9 @@ func TestRetiringAsksFirst(t *testing.T) {
 func TestTheConfirmationUsesTheActsOwnVerb(t *testing.T) {
 	s := sim.New(t)
 	stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("cable"))
 	s.Send(sim.Enter)
 	s.Send(sim.CtrlK)
@@ -532,7 +567,9 @@ func TestTheConfirmationUsesTheActsOwnVerb(t *testing.T) {
 func TestReversibleActionsStillDoNotAsk(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
@@ -616,7 +653,9 @@ func TestTheMoveKeyDoesNotCarryASelection(t *testing.T) {
 	s.Apply(p.NewLocation(ctx, ops.NewLocationRequest{Name: "Shed"}))
 	_ = rice
 
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltLess)
@@ -656,7 +695,9 @@ func TestABatchThatWouldMergeIsRefused(t *testing.T) {
 	}))
 	s.Apply(p.NewLocation(ctx, ops.NewLocationRequest{Name: "Shed"}))
 
-	s.Send(sim.Press("4"), sim.CtrlS)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltLess)

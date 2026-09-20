@@ -245,6 +245,14 @@ func (m Model) Counts() (shown, total int) {
 
 // SetOverlay draws lines after the cursor's row, which is how the editor opens
 // inside the tree rather than beneath it.
+// Focused says whether this tree has the keyboard, which it hands to the
+// table underneath: the cursor mark means "a keystroke lands here", and two
+// of them on one screen is two claims about that.
+func (m Model) Focused(on bool) Model {
+	m.tbl = m.tbl.Focused(on)
+	return m
+}
+
 func (m Model) SetOverlay(lines []string) Model {
 	m.tbl = m.tbl.SetOverlay(lines)
 	return m

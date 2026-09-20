@@ -4,13 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
-
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ops"
 	sim "home-management-system/internal/tui/testing"
-	"home-management-system/internal/tui/text"
 )
 
 // 10b through the Simulator: the trees against a real house, with the five-deep
@@ -19,8 +15,8 @@ import (
 func TestTheLocationTreeShowsTheShapeOfTheHouse(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
-
+	s.ByPlace()
+	s.OnRail()
 	for _, want := range []string{"Garage", "Metal Shelving Unit", "Bay 3", "Blue Crate", "Small Parts Tray"} {
 		s.ShowsText(want)
 	}
@@ -36,20 +32,22 @@ func TestTheLocationTreeShowsTheShapeOfTheHouse(t *testing.T) {
 func TestFoldingHidesASubtreeInTheRealTree(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
-
+	s.ByPlace()
+	s.OnRail()
 	// Down to Garage, then fold it.
 	moveTo(t, s, "Garage")
 	s.Send(sim.Tab)
 
-	s.HidesText("Small Parts Tray")
-	s.ShowsText("Garage")
+	// The RAIL, not the screen: folding a branch away leaves the tray named
+	// in the contents pane's WHERE column, which is correct.
+	s.RailHides("Small Parts Tray")
+	s.RailShows("Garage")
 	if !strings.Contains(cursorLine(s), "Garage") {
 		t.Errorf("folding moved the cursor off Garage: %q", cursorLine(s))
 	}
 
 	s.Send(sim.ShiftTab)
-	s.ShowsText("Small Parts Tray")
+	s.RailShows("Small Parts Tray")
 }
 
 // Browsing a tree is a read, and the Simulator's VerifyAll cleanup would catch
@@ -120,11 +118,17 @@ func nameOn(line string) string {
 
 func cursorLine(s *sim.Simulator) string {
 	for _, line := range strings.Split(s.PlainView(), "\n") {
-		if strings.HasPrefix(line, ">") {
+		if hasCursor(line) {
 			return line
 		}
 	}
 	return ""
+}
+
+// hasCursor finds the mark wherever the shell put it: at the start of a line
+// in the rail, and just after the rule in the contents pane.
+func hasCursor(line string) bool {
+	return strings.HasPrefix(line, ">") || strings.Contains(line, "│>")
 }
 
 // moveTo walks the cursor down to a named row, and gives up rather than
@@ -143,191 +147,128 @@ func moveTo(t *testing.T, s *sim.Simulator, name string) {
 	t.Fatalf("never reached a row containing %q; the screen is:\n%s", name, s.PlainView())
 }
 
-// The trees show what their nodes contain, when asked.
-func TestTheContentsToggleShowsWhatIsInside(t *testing.T) {
+// What a node contains is in the pane beside it, always, rather than spliced
+// into the tree when asked.
+//
+// The toggle it replaces had to exist because there was nowhere else to show
+// contents. Its cost was a tree of two kinds of row -- see
+// TestTheRailHoldsOnlyStructure for what that made possible.
+func TestTheContentsPaneShowsWhatIsInTheNode(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
-	s.HidesText("Ancho Chile")
+	s.ByPlace()
+	s.OnRail()
 
-	s.Send(sim.Press("v"))
-	s.ShowsText("Ancho Chile")
-	// Its own measure, where a container shows its rollup.
-	s.ShowsText("100 g")
-	// And the count still counts PLACES. A footer that said 10 locations the
-	// moment the holdings appeared would be answering a different question
-	// with the same words.
-	s.ShowsText("6 locations")
+	// At the top of the house, everything; and the rail is still only places.
+	s.ContentsShow("Ancho Chile")
+	s.RailHides("Ancho Chile")
+	s.RailShows("Garage")
 
-	s.Send(sim.Press("v"))
-	s.HidesText("Ancho Chile")
+	// Point at one place and the pane follows, without a keystroke that means
+	// "now show me contents".
+	//
+	// GoTo rather than moveTo: a rendered line spans both panes, so matching
+	// on it finds "Left Pantry" in the contents pane's WHERE column before
+	// the rail has gone anywhere.
+	s.GoTo("Left Pantry")
+	s.ContentsShow("Ancho Chile")
+	if got := s.CountRows("Ancho Chile"); got != 1 {
+		t.Errorf("the Left Pantry holds 1 pile of chile, the pane shows %d", got)
+	}
 }
 
-// Categories show Items, Locations show Holdings, and each remembers its own
-// answer -- wanting one is no reason to want the other.
-func TestEachTreeRemembersItsOwnMode(t *testing.T) {
+// v swaps the rollup for what is filed at the node itself, which is how
+// something filed too coarsely becomes findable.
+func TestTheDepthToggleSwapsRollupForHereOnly(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"), sim.Press("v"))
-	s.ShowsText("Ancho Chile")
+	s.ByPlace()
+	s.GoTo("Garage")
 
-	s.Send(sim.Press("1"))
-	s.HidesText("Ancho Chile") // the Categories tree was not asked
+	// Deep: the Garage's own jar and the one on the tray beneath it.
+	if got := s.CountRows("Ancho Chile"); got != 2 {
+		t.Fatalf("the Garage rolls up 2 piles of chile, got %d", got)
+	}
 
-	s.Send(sim.Press("2"))
-	s.ShowsText("Ancho Chile") // and the Locations tree still is
+	s.Send(sim.Press("v"))
+	s.ShowsText("filed here")
+	if got := s.CountRows("Ancho Chile"); got != 1 {
+		t.Errorf("only one pile is filed at the Garage itself, got %d", got)
+	}
+
+	s.Send(sim.Press("v"))
+	if got := s.CountRows("Ancho Chile"); got != 2 {
+		t.Errorf("the rollup did not come back, got %d", got)
+	}
 }
 
-// A contained row is shown, and is a target for nothing.
+// The rail is structure and nothing else, in both lenses.
 //
-// The dangerous one is the put: destination() reads a tree row's identifier as
-// a LocationID, so a holding row taken for a place would move stock to whatever
-// shelf happens to share that number -- a silent write to the wrong place,
-// which is the worst kind of wrong this interface can be.
+// This is what three separate guards used to be for. A tree that showed its
+// contents held two kinds of row, and every verb had to ask which it was on:
+// a put read a row's identifier as a LocationID, so a holding row taken for a
+// place was a silent write to whatever shelf shared that number. Renaming
+// needed its own refusal, folding needed kind-tagged keys, and the cursor had
+// to skip the jars while something was in hand.
 //
-// The refusal that guards it is still in destination(), and is now a backstop:
-// while something is in hand the cursor does not go anywhere that could ask for
-// it, which is what this asserts. A person cannot aim at the wrong answer, so
-// they never have to read why it was wrong.
-func TestAContainedRowIsNotSomewhereToPut(t *testing.T) {
+// None of those questions exist now, so the assertion is the absence.
+func TestTheRailHoldsOnlyStructure(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	for _, tc := range []struct {
+		lens     func()
+		contains string
+		absent   []string
+	}{
+		{s.ByPlace, "Garage", []string{"Ancho Chile", "Thunderbolt"}},
+		{s.ByKind, "Spices", []string{"Ancho Chile", "Thunderbolt"}},
+	} {
+		tc.lens()
+		s.OnRail()
+		s.RailShows(tc.contains)
+		for _, gone := range tc.absent {
+			s.RailHides(gone)
+		}
+	}
+}
+
+// Every row of the rail is somewhere a thing can go.
+//
+// Four tests used to live here, and all four were about one decision: the
+// tree showed what its nodes contained, so half its rows were places and half
+// were not. Each verb needed its own guard. The put was the dangerous one --
+// destination() reads a row's identifier as a LocationID, so a holding row
+// taken for a place was a silent write to whatever shelf shared that number.
+// Rename needed a refusal of its own, folding needed kind-tagged keys, and
+// while something was in hand the cursor had to skip the jars, because a
+// shelf with nine jars on it was nine rows the put was going to refuse.
+//
+// The contents pane took the contents, so the question dissolved rather than
+// being answered better. What is left to assert is that it cannot come back.
+func TestEveryRailRowIsSomewhereAThingCanGo(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stockedTree(t, s)
 
-	s.Send(sim.Press("4"), sim.CtrlS)
-	s.Send(sim.Type("rice"))
-	s.Send(sim.Enter)
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltW)
 	s.ShowsText("carrying")
 
-	// Down the Locations tree as far as it will go, which is one row short of
-	// the holding: Kitchen, Left Pantry, and then the rice, which is not a
-	// place.
-	//
-	// No esc on the way: switching views clears the filter by itself, and esc
-	// now PUTS DOWN what is being carried -- which would leave nothing in hand
-	// and the test passing for the wrong reason.
-	s.Send(sim.Press("2"), sim.Press("v"))
+	// Walk the whole rail with something in hand. Every row it stops on is a
+	// place, so none of them is a row the put would have to refuse.
+	s.OnRail()
 	before := s.CountHoldings()
-	for i := 0; i < 4; i++ {
+	for range 6 {
 		s.Send(sim.CtrlN)
 		if line := cursorLine(s); strings.Contains(line, "Basmati Rice") {
-			t.Fatalf("the cursor came to rest on a holding row while something was in hand: %q", line)
+			t.Fatalf("the rail stopped on a holding: %q", line)
 		}
 	}
-	// Nothing moved on the way there, and nothing was created.
 	if after := s.CountHoldings(); after != before {
-		t.Errorf("walking the tree changed the holdings from %d to %d", before, after)
+		t.Errorf("walking the rail changed the holdings from %d to %d", before, after)
 	}
 	s.OnHand(rice, 500*domain.Scale)
-
-	// And the row is reachable again the moment nothing is in hand, so this is
-	// the carry ruling it out rather than the tree hiding it for good.
-	s.Send(sim.Esc)
-	s.HidesText("carrying")
-	moveTo(t, s, "Basmati Rice")
-}
-
-// The cursor skips to the next PLACE, rather than stopping at every jar on the
-// way.
-//
-// This is the clunkiness the whole thing is about. A tree showing its contents
-// is mostly contents -- one shelf, nine jars -- and pointing at a destination
-// meant walking through all nine, each of them a row the put was going to
-// refuse. The keystrokes now count candidates instead of rows.
-func TestWhileCarryingTheCursorSkipsToTheNextPlace(t *testing.T) {
-	s := sim.New(t)
-	awkwardHouse(t, s)
-
-	s.Send(sim.Press("4"), sim.AltW)
-	s.ShowsText("carrying")
-	s.Send(sim.Press("2"), sim.Press("v"))
-	s.ShowsText("Ancho Chile") // the Garage's own jar, shown and not offered
-
-	// The Garage holds a jar, and its first sub-place is below that jar. One
-	// C-n from the Garage reaches the shelving unit.
-	moveTo(t, s, "Garage")
-	s.Send(sim.CtrlN)
-	if got := cursorLine(s); !strings.Contains(got, "Metal Shelving Unit") {
-		t.Errorf("C-n out of the Garage landed on %q, want the Metal Shelving Unit -- "+
-			"the jar in between is not a place", got)
-	}
-	// And C-f, which aims at the first child, does the same rather than aiming
-	// at the jar and going nowhere.
-	s.Send(sim.AltLess) // back to the Garage, which is the first row
-	s.Send(sim.CtrlF)
-	if got := cursorLine(s); !strings.Contains(got, "Metal Shelving Unit") {
-		t.Errorf("C-f into the Garage landed on %q, want the Metal Shelving Unit", got)
-	}
-}
-
-// And they are drawn as ruled out, so the skipping is explained before it
-// happens rather than felt as a cursor that will not go where it is pushed.
-func TestTheThingsInsideGoFaintWhileCarrying(t *testing.T) {
-	previous := lipgloss.ColorProfile()
-	lipgloss.SetColorProfile(termenv.TrueColor)
-	defer lipgloss.SetColorProfile(previous)
-
-	s := sim.New(t)
-	stockedTree(t, s)
-	s.Send(sim.Press("2"), sim.Press("v"))
-	calm := styledLine(s, "500 g")
-
-	s.Send(sim.Press("4"), sim.AltW)
-	s.Send(sim.Press("2"))
-	s.ShowsText("carrying")
-	carrying := styledLine(s, "500 g")
-
-	if carrying == calm {
-		t.Errorf("the holding row looks the same carrying as not: %q", carrying)
-	}
-	if !strings.Contains(carrying, "\x1b[2m") && !strings.Contains(carrying, ";2m") {
-		t.Errorf("the holding row is not faint while something is in hand: %q", carrying)
-	}
-}
-
-// styledLine is the rendered line for a row, escape sequences and all, which is
-// what a claim about how something LOOKS has to read.
-//
-// Found by the row's MEASURE rather than by its name: the carry banner says the
-// name too, and it is above the body -- so a search for the name reads back the
-// banner's styling and the assertion is about the wrong line entirely.
-func styledLine(s *sim.Simulator, needle string) string {
-	for _, line := range strings.Split(s.View(), "\n") {
-		if strings.Contains(text.StripANSI(line), needle) {
-			return line
-		}
-	}
-	return ""
-}
-
-// And renaming one says so, in terms of the thing.
-func TestRenamingAContainedRowIsRefused(t *testing.T) {
-	s := sim.New(t)
-	stockedTree(t, s)
-	s.Send(sim.Press("1"), sim.Press("v"))
-
-	// Down onto an item under its category.
-	s.Send(sim.CtrlN)
-	s.Send(sim.Press("e"))
-	s.ShowsText("the tree is showing you")
-	s.HidesText("rename ─")
-}
-
-// A Category and an Item numbered the same fold and select independently.
-//
-// They are numbered from different tables, and the identifier used to be the
-// fold key, the selection key and the identity the cursor is restored by --
-// so Category 7 and Item 7 shared all three.
-func TestContainedRowsDoNotCollideWithTheirContainers(t *testing.T) {
-	s := sim.New(t)
-	stockedTree(t, s)
-	s.Send(sim.Press("1"), sim.Press("v"))
-
-	// Fold the first category. Its items go; nothing else does.
-	s.Send(sim.Tab)
-	s.HidesText("Basmati Rice")
-	s.Send(sim.Tab)
-	s.ShowsText("Basmati Rice")
 }
 
 // stockedTree is a house with one category, one item and two holdings, which is
@@ -355,40 +296,38 @@ func stockedTree(t *testing.T, s *sim.Simulator) (rice domain.ItemID, pantry dom
 	return rice, pantry
 }
 
-// Folds survive a reload, so showing contents does not force anything open.
+// A fold survives the reload the depth toggle causes.
 //
 // The tree is rebuilt from scratch after every write, every refresh and every
-// toggle, and it used to arrive unfolded each time. That was invisible until
-// the trees learned to show what they contain: asking for the contents reloaded
-// the tree, the reload discarded the folds, and a house somebody had carefully
-// collapsed sprang open with every holding in it.
-func TestShowingContentsDoesNotForceAnythingOpen(t *testing.T) {
+// toggle, and it used to arrive unfolded each time. Any reload will do to
+// catch that; the depth toggle is the one a person presses most.
+func TestTheDepthToggleDoesNotForceAnythingOpen(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.GoTo("Garage")
 
-	// The cursor starts on the Garage. Shut it: its own row stays, its
-	// descendants go.
+	// Shut the Garage: its own row stays, its descendants go.
 	s.Send(sim.Tab)
-	s.ShowsText("Garage")
-	s.HidesText("Metal Shelving Unit")
+	s.RailShows("Garage")
+	s.RailHides("Metal Shelving Unit")
 
-	// Contents on: what is open shows what it holds, what is shut stays shut.
 	s.Send(sim.Press("v"))
-	s.HidesText("Metal Shelving Unit")
-	s.HidesText("Thunderbolt") // the holding five levels inside it
-	s.ShowsText("Ancho Chile") // but the Left Pantry's, which is not folded
+	s.RailHides("Metal Shelving Unit")
+	s.Send(sim.Press("v"))
+	s.RailHides("Metal Shelving Unit")
 
-	// And the fold is still there afterwards.
+	// And the fold is still a fold, not a thing that stuck.
 	s.Send(sim.Tab)
-	s.ShowsText("Metal Shelving Unit")
+	s.RailShows("Metal Shelving Unit")
 }
 
 // The same for any other reload, which is what the toggle rides on.
 func TestFoldsSurviveAWrite(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.Tab)
 	s.HidesText("Metal Shelving Unit")
 
@@ -407,14 +346,17 @@ func TestFoldsSurviveAWrite(t *testing.T) {
 func TestFoldsDoNotCrossBetweenTrees(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.Tab)
 	s.HidesText("Metal Shelving Unit")
 
-	s.Send(sim.Press("1"))
+	s.ByKind()
+	s.OnRail()
 	s.ShowsText("Spices") // nothing in the Categories tree was folded
 
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.HidesText("Metal Shelving Unit") // and the Locations tree kept its own
 }
 
@@ -429,7 +371,9 @@ func TestFoldsDoNotCrossBetweenTrees(t *testing.T) {
 func TestCopyAndPutMovesAHoldingInTheLocationsTree(t *testing.T) {
 	s := sim.New(t)
 	rice, pantry := stockedTree(t, s)
-	s.Send(sim.Press("2"), sim.Press("v"))
+	s.ByPlace()
+	s.OnRail()
+	s.Send(sim.Press("v"))
 
 	// Onto the rice, inside the Left Pantry, and pick it up.
 	s.Send(sim.CtrlN)
@@ -454,7 +398,9 @@ func TestCopyAndPutReclassifiesAnItemInTheCategoriesTree(t *testing.T) {
 	s.Apply(s.Planner().NewCategory(s.Context(), ops.NewCategoryRequest{Name: "Grains"}))
 	grains := s.HasCategory("Grains")
 
-	s.Send(sim.Press("1"), sim.Press("v"))
+	s.ByKind()
+	s.OnRail()
+	s.Send(sim.Press("v"))
 	// Grains sorts before Pantry, and is empty, so the rice is two rows down.
 	s.Send(sim.CtrlN)
 	s.Send(sim.CtrlN)
@@ -474,7 +420,9 @@ func TestCopyAndPutReclassifiesAnItemInTheCategoriesTree(t *testing.T) {
 func TestThePromptMovesAThingInATree(t *testing.T) {
 	s := sim.New(t)
 	rice, pantry := stockedTree(t, s)
-	s.Send(sim.Press("2"), sim.Press("v"))
+	s.ByPlace()
+	s.OnRail()
+	s.Send(sim.Press("v"))
 	s.Send(sim.CtrlN)
 	s.Send(sim.CtrlN)
 	s.Send(sim.CtrlN)
@@ -496,7 +444,9 @@ func TestThePromptAsksTheRightQuestionForTheKind(t *testing.T) {
 	s := sim.New(t)
 	stockedTree(t, s)
 
-	s.Send(sim.Press("1"), sim.Press("v"))
+	s.ByKind()
+	s.OnRail()
+	s.Send(sim.Press("v"))
 	s.Send(sim.CtrlN)
 	s.Send(sim.Press("m"))
 	s.ShowsText("file it under")
@@ -510,13 +460,16 @@ func TestPuttingAThingWhereItCannotGoIsRefused(t *testing.T) {
 	s := sim.New(t)
 	rice, pantry := stockedTree(t, s)
 
-	s.Send(sim.Press("2"), sim.Press("v"))
+	s.ByPlace()
+	s.OnRail()
+	s.Send(sim.Press("v"))
 	s.Send(sim.CtrlN)
 	s.Send(sim.CtrlN)
 	s.Send(sim.CtrlN)
 	s.Send(sim.AltW)
 
-	s.Send(sim.Press("1")) // the Categories tree
+	s.ByKind()
+	s.OnRail()
 	s.Send(sim.CtrlY)
 	s.ShowsText("is stock")
 
@@ -533,7 +486,9 @@ func TestPuttingAThingWhereItCannotGoIsRefused(t *testing.T) {
 func TestCopyingAContainerIsRefused(t *testing.T) {
 	s := sim.New(t)
 	stockedTree(t, s)
-	s.Send(sim.Press("2"), sim.Press("v"))
+	s.ByPlace()
+	s.OnRail()
+	s.Send(sim.Press("v"))
 
 	s.Send(sim.AltW)
 	s.ShowsText("reparent location")
@@ -588,7 +543,8 @@ func TestWhatIsCarriedIsSaidInEveryView(t *testing.T) {
 	rice, _ := stockedTree(t, s)
 	_ = rice
 
-	s.Send(sim.Press("4"))
+	s.ByPlace()
+	s.OnContents()
 	s.Send(sim.AltW)
 	s.ShowsText("carrying")
 
@@ -609,12 +565,16 @@ func TestTheBannerSaysWhereTheThingCanGo(t *testing.T) {
 	s := sim.New(t)
 	stockedTree(t, s)
 
-	s.Send(sim.Press("4"), sim.AltW)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.AltW)
 	s.ShowsText("puts it in a place")
 
 	s.Send(sim.Esc)
 	// An Item, picked up in the Categories tree.
-	s.Send(sim.Press("1"), sim.Press("v"))
+	s.ByKind()
+	s.OnRail()
+	s.Send(sim.Press("v"))
 	moveTo(t, s, "Basmati Rice")
 	s.Send(sim.AltW)
 	s.ShowsText("files it under a classification")
@@ -625,13 +585,16 @@ func TestEscPutsDownWhatIsBeingCarried(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stockedTree(t, s)
 
-	s.Send(sim.Press("4"), sim.AltW)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.AltW)
 	s.ShowsText("carrying")
 	s.Send(sim.Esc)
 	s.HidesText("carrying")
 
 	// And it really is down: a put afterwards has nothing to put.
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	s.Send(sim.CtrlY)
 	s.ShowsText("nothing in hand")
 	s.OnHand(rice, 500*domain.Scale)
@@ -644,7 +607,9 @@ func TestTheMoveKeyPicksItUpAsWell(t *testing.T) {
 	s := sim.New(t)
 	rice, pantry := stockedTree(t, s)
 
-	s.Send(sim.Press("4"), sim.Press("m"))
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.Press("m"))
 	s.ShowsText("carrying")
 
 	// Out of the dropdown, then out of the prompt. Each esc leaves exactly one
@@ -653,7 +618,8 @@ func TestTheMoveKeyPicksItUpAsWell(t *testing.T) {
 	s.HidesText("where to")
 	s.ShowsText("carrying")
 
-	s.Send(sim.Press("2"))
+	s.ByPlace()
+	s.OnRail()
 	moveTo(t, s, "Kitchen")
 	s.Send(sim.CtrlY)
 
@@ -671,7 +637,9 @@ func TestATypedAnswerPutsDownWhatMPickedUp(t *testing.T) {
 	s := sim.New(t)
 	rice, pantry := stockedTree(t, s)
 
-	s.Send(sim.Press("4"), sim.Press("m"))
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.Press("m"))
 	s.Send(sim.Type("Kitchen"))
 	s.Send(sim.Enter)
 	s.Send(sim.Enter) // the first took the completion, the second confirms
@@ -692,7 +660,9 @@ func TestATypedAnswerPutsDownWhatMPickedUp(t *testing.T) {
 func TestCNWalksTheDropdownThenTheTree(t *testing.T) {
 	s := sim.New(t)
 	stockedTree(t, s)
-	s.Send(sim.Press("2"), sim.Press("v"))
+	s.ByPlace()
+	s.OnRail()
+	s.Send(sim.Press("v"))
 	moveTo(t, s, "Basmati Rice")
 
 	row := cursorLine(s)

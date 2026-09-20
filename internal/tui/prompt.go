@@ -180,7 +180,7 @@ func (m Model) actOnPrompt() (Model, tea.Cmd) {
 	purpose := m.editor.Purpose()
 	rows := m.selectedHoldings()
 	subject, kind := m.editor.Subject(), m.editor.Kind()
-	inTree := forest(m.view)
+	inTree := m.onRail()
 	m.editor = m.editor.Close()
 	// Answering the prompt finishes the move, so whatever `m` picked up is put
 	// down with it. Without this, naming the destination would relocate the

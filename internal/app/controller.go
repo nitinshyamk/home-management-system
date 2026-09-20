@@ -40,6 +40,13 @@ type Controller interface {
 	LocationTree(ctx context.Context, withContents bool) ([]TreeRow, error)
 	Items(ctx context.Context) ([]ItemRow, error)
 	Holdings(ctx context.Context) ([]HoldingRow, error)
+
+	// What is inside one node of a tree. A nil root means the whole house,
+	// which is the one node a forest does not have.
+	HoldingsUnder(ctx context.Context, root *domain.LocationID, deep bool) ([]HoldingRow, error)
+	ItemsUnder(ctx context.Context, root *domain.CategoryID, deep bool) ([]ItemRow, error)
+	HoldingsOfItem(ctx context.Context, id domain.ItemID) ([]HoldingRow, error)
+
 	HoldingHistory(ctx context.Context, id domain.HoldingID) ([]EventRow, error)
 	Integrity(ctx context.Context) (IntegrityRow, error)
 	SearchIndex(ctx context.Context) (*resolve.Index, error)

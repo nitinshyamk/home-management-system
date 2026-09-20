@@ -189,7 +189,7 @@ func (m Model) generalHelp() []helpSection {
 		{topic: "trees", what: "folding, and showing what a node contains", title: "IN A TREE", rows: [][2]string{
 			pair(keys.Tree, "fold the node under the cursor", keys.FoldToggle),
 			pair(keys.Tree, "fold everything, or unfold it", keys.FoldCycleAll),
-			pair(keys.Browse, "show what the nodes contain -- items, or holdings", keys.ShowContents),
+			pair(keys.Browse, "show what the nodes contain -- items, or holdings", keys.ToggleDepth),
 		}},
 		// Its own section, because the gesture is not a tree's.
 		//
