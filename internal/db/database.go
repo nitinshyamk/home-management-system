@@ -1,20 +1,17 @@
 // Package db owns the SQLite connection and the migration runner. It contains
 // no domain concepts — those arrive in internal/domain and the migrations that
 // follow 0001_bootstrap.
+//
+// It does not decide WHICH database to open. A caller hands it a DSN, and
+// internal/config is the one place that works out what that DSN should be.
 package db
 
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
-)
-
-const (
-	defaultPath = "./hms.db"
-	envPath     = "HMS_DB_PATH"
 )
 
 // Config describes how to reach the database.
@@ -27,15 +24,6 @@ type Config struct {
 	// must use 1, because the database lives only as long as a connection to it
 	// does. Zero leaves the pool unbounded, which is correct for file databases.
 	MaxOpenConns int
-}
-
-// DefaultConfig reads HMS_DB_PATH, falling back to ./hms.db.
-func DefaultConfig() Config {
-	path := os.Getenv(envPath)
-	if path == "" {
-		path = defaultPath
-	}
-	return Config{DSN: path}
 }
 
 // Open connects to SQLite and verifies the connection is usable.

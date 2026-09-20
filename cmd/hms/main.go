@@ -21,6 +21,7 @@ import (
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
+	"home-management-system/internal/config"
 	"home-management-system/internal/db"
 	"home-management-system/internal/importer"
 	"home-management-system/internal/ledger"
@@ -36,7 +37,7 @@ func main() {
 }
 
 func run() error {
-	dbPath := flag.String("db-path", "", "path to the SQLite database (overrides HMS_DB_PATH)")
+	dbPath := flag.String("db-path", "", "path to the SQLite database (overrides HMS_DB_PATH and ~/hms/.hms.json)")
 	verify := flag.Bool("verify", false, "run the integrity check and report discrepancies")
 	checkpoint := flag.Bool("checkpoint", false, "record a replay checkpoint for every holding")
 	info := flag.Bool("info", false, "print database details and exit")
@@ -49,12 +50,12 @@ func run() error {
 	colour := flag.Bool("color", false, "keep colour in --render output (pipe to less -R)")
 	flag.Parse()
 
-	cfg := db.DefaultConfig()
-	if *dbPath != "" {
-		cfg.DSN = *dbPath
+	source, err := config.Resolve(*dbPath)
+	if err != nil {
+		return err
 	}
 
-	conn, err := db.Open(cfg)
+	conn, err := db.Open(db.Config{DSN: source.Path})
 	if err != nil {
 		return err
 	}
@@ -79,7 +80,8 @@ func run() error {
 
 	if *info {
 		fmt.Printf("home-management-system\n")
-		fmt.Printf("  database:          %s\n", cfg.DSN)
+		fmt.Printf("  database:          %s\n", source.Path)
+		fmt.Printf("  configured by:     %s\n", source.Source)
 		fmt.Printf("  migration version: %d\n", version)
 		fmt.Printf("  schema generation: %d\n", generation)
 		return nil

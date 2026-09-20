@@ -1,4 +1,8 @@
 bin/
+
+# Databases never belong in the repository. The real one lives in ~/hms (see
+# internal/config); these patterns catch the scratch ones a --db-path leaves
+# behind in a checkout.
 *.db
 *.db-shm
 *.db-wal
