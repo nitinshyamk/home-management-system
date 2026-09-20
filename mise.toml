@@ -21,7 +21,7 @@ run = [
 
 [tasks.run]
 description = "Run hms against the configured database (mise run run -- --info)"
-run = "go run ./cmd/hms {{arg(name='args', var=true, default='')}}"
+run = "go run ./cmd/hms"
 
 [tasks.test]
 description = "Run every test"
@@ -91,13 +91,13 @@ echo "generated files are up to date"
 
 [tasks.seed]
 description = "Build a sample house through the real write paths"
-run = "go run ./cmd/seed {{arg(name='args', var=true, default='')}}"
+run = "go run ./cmd/seed"
 
 # Separate from seed, and explicit, because the configured database may be a
 # real one and deleting it is not a thing to do as a side effect.
 [tasks.reseed]
 description = "Throw the sample house away and build it again"
-run = "go run ./cmd/seed --reset {{arg(name='args', var=true, default='')}}"
+run = "go run ./cmd/seed --reset"
 
 [tasks.verify]
 description = "Run the integrity check against the configured database"
