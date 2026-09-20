@@ -114,8 +114,6 @@ type Model struct {
 	units []string
 }
 
-var ()
-
 func New() Model { return Model{width: 80} }
 
 // WithUnits hands the panel the unit vocabulary. It survives Open, because the
@@ -148,8 +146,10 @@ func (m Model) Open(kind Kind, parent string) Model {
 			// naming a new one, and not a thing to offer them.
 			{key: "name", label: "name", hint: "what it is called", warns: "Item"},
 			{key: "counting", label: "counting", hint: "how it is counted -- PERMANENT"},
-			{key: "unit", label: "unit", hint: "what it is measured in -- PERMANENT",
-				measured: true, choices: units},
+			{
+				key: "unit", label: "unit", hint: "what it is measured in -- PERMANENT",
+				measured: true, choices: units,
+			},
 			{key: "package", label: "per package", hint: "how much is in one package", measured: true},
 			{key: "category", label: "category", value: parent, hint: "where to file it", resolves: "Category"},
 		}

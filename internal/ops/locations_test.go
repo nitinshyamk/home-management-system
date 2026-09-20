@@ -48,8 +48,10 @@ func newTree(t *testing.T) *tree {
 	ctx := context.Background()
 	led := ledger.New(conn).WithClock(func() time.Time { return clock })
 
-	tr := &tree{t: t, ctx: ctx, pl: ops.NewPlanner(conn), ex: ops.New(conn),
-		led: led, ann: annotate.New(conn), r: query.New(conn)}
+	tr := &tree{
+		t: t, ctx: ctx, pl: ops.NewPlanner(conn), ex: ops.New(conn),
+		led: led, ann: annotate.New(conn), r: query.New(conn),
+	}
 
 	mk := func(name string, parent *domain.LocationID) domain.LocationID {
 		id, err := led.CreateLocation(ctx, name, parent, "")

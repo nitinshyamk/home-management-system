@@ -266,7 +266,8 @@ func TestAPathIsCutAtTheFront(t *testing.T) {
 	m := table.New([]table.Column{{Title: "LOCATION", Min: 10, Elide: table.ElideStart}}).
 		SetSize(24, 6).
 		SetRows([]table.Row{{Key: 1, Cells: []string{
-			"Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray"}}})
+			"Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray",
+		}}})
 	view := strip(m.View())
 	if !strings.Contains(view, "Small Parts Tray") {
 		t.Errorf("the path lost its leaf, which is the part that identifies it:\n%s", view)
@@ -636,10 +637,14 @@ func pathColumns() []table.Column {
 
 func pathRows() []table.Row {
 	return []table.Row{
-		{Key: 1, Cells: []string{"Ancho", "Shelf 2"},
-			Paths: []string{"", "Kitchen > Spice Cabinet > Shelf 2"}},
-		{Key: 2, Cells: []string{"Cumin", "Garage"},
-			Paths: []string{"", "Garage"}},
+		{
+			Key: 1, Cells: []string{"Ancho", "Shelf 2"},
+			Paths: []string{"", "Kitchen > Spice Cabinet > Shelf 2"},
+		},
+		{
+			Key: 2, Cells: []string{"Cumin", "Garage"},
+			Paths: []string{"", "Garage"},
+		},
 	}
 }
 

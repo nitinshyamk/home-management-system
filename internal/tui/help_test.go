@@ -146,8 +146,10 @@ func TestHelpAsked(t *testing.T) {
 func TestTheHelpFitsTheTerminal(t *testing.T) {
 	for _, width := range []int{60, 80, 100, 120} {
 		m := Model{width: width}
-		for _, topic := range []string{"", "all", "acquire", "new item",
-			"moving", "carrying", "commands", "frobnicate"} {
+		for _, topic := range []string{
+			"", "all", "acquire", "new item",
+			"moving", "carrying", "commands", "frobnicate",
+		} {
 			for _, line := range m.helpLines(topic) {
 				if n := len([]rune(line)); n > width {
 					t.Errorf("a %s help line is %d columns in a %d-column terminal: %q",

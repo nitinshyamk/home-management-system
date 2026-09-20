@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+
 	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/tui/keys"

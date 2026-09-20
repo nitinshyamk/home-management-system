@@ -2,11 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"strings"
+
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/omnibox"
 	"home-management-system/internal/tui/style"
 	"home-management-system/internal/tui/text"
-	"strings"
 )
 
 // Drawing: the screen, and the chrome around whatever is on it.

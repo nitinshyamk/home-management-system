@@ -393,5 +393,7 @@ func TestOracleRejectsUnknownEvents(t *testing.T) {
 	}
 }
 
-var _ = errors.Is
-var _ = ledger.Discrepancy{}
+var (
+	_ = errors.Is
+	_ = ledger.Discrepancy{}
+)

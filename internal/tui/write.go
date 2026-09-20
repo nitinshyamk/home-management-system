@@ -2,9 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"strings"
+
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

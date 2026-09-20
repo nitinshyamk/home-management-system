@@ -20,29 +20,65 @@ func TestTrailingFlags(t *testing.T) {
 		positional []string
 		flags      map[string]string
 	}{
-		{"a bare boolean", []string{"import", "a.csv", "--dry-run"},
-			[]string{"import", "a.csv"}, map[string]string{"dry-run": ""}},
-		{"a value, spaced", []string{"schema", "--format", "json"},
-			[]string{"schema"}, map[string]string{"format": "json"}},
-		{"a value, joined", []string{"schema", "--format=json"},
-			[]string{"schema"}, map[string]string{"format": "json"}},
-		{"one dash", []string{"schema", "-format", "json"},
-			[]string{"schema"}, map[string]string{"format": "json"}},
-		{"both kinds", []string{"import", "a.csv", "--dry-run", "--format", "json"},
-			[]string{"import", "a.csv"}, map[string]string{"dry-run": "", "format": "json"}},
-		{"nothing trailing", []string{"import", "a.csv"},
-			[]string{"import", "a.csv"}, map[string]string{}},
+		{
+			"a bare boolean",
+			[]string{"import", "a.csv", "--dry-run"},
+			[]string{"import", "a.csv"},
+			map[string]string{"dry-run": ""},
+		},
+		{
+			"a value, spaced",
+			[]string{"schema", "--format", "json"},
+			[]string{"schema"},
+			map[string]string{"format": "json"},
+		},
+		{
+			"a value, joined",
+			[]string{"schema", "--format=json"},
+			[]string{"schema"},
+			map[string]string{"format": "json"},
+		},
+		{
+			"one dash",
+			[]string{"schema", "-format", "json"},
+			[]string{"schema"},
+			map[string]string{"format": "json"},
+		},
+		{
+			"both kinds",
+			[]string{"import", "a.csv", "--dry-run", "--format", "json"},
+			[]string{"import", "a.csv"},
+			map[string]string{"dry-run": "", "format": "json"},
+		},
+		{
+			"nothing trailing",
+			[]string{"import", "a.csv"},
+			[]string{"import", "a.csv"},
+			map[string]string{},
+		},
 		// A value-taking flag with nothing after it must not eat a positional
 		// that is not there.
-		{"a dangling value flag", []string{"schema", "--format"},
-			[]string{"schema"}, map[string]string{"format": ""}},
+		{
+			"a dangling value flag",
+			[]string{"schema", "--format"},
+			[]string{"schema"},
+			map[string]string{"format": ""},
+		},
 		// The directory the schema is exported into takes a value too, and it
 		// is written after the positional for the same reason everything else
 		// is: `hms schema --out ./handoff` is how a person writes it.
-		{"a directory to export into", []string{"schema", "--out", "./handoff"},
-			[]string{"schema"}, map[string]string{"out": "./handoff"}},
-		{"a directory as a positional", []string{"schema", "./handoff"},
-			[]string{"schema", "./handoff"}, map[string]string{}},
+		{
+			"a directory to export into",
+			[]string{"schema", "--out", "./handoff"},
+			[]string{"schema"},
+			map[string]string{"out": "./handoff"},
+		},
+		{
+			"a directory as a positional",
+			[]string{"schema", "./handoff"},
+			[]string{"schema", "./handoff"},
+			map[string]string{},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			positional, flags := splitTrailingFlags(tc.args)

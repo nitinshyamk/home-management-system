@@ -57,11 +57,15 @@ func (m Model) layers() []layer {
 		// the plan first meant its table ate ctrl+u while someone was clearing
 		// a field, and enter settled the row instead of saving what they had
 		// typed into it.
-		{name: "import plan", active: m.flow.reviewing(), handle: Model.handleImport,
-			offers: m.planKeys()},
-		{name: "input line", active: m.box.Mode() != omnibox.Closed, handle: Model.handleOmnibox,
+		{
+			name: "import plan", active: m.flow.reviewing(), handle: Model.handleImport,
+			offers: m.planKeys(),
+		},
+		{
+			name: "input line", active: m.box.Mode() != omnibox.Closed, handle: Model.handleOmnibox,
 			// The line is the mode, and it draws its own accept and cancel.
-			offers: ""},
+			offers: "",
+		},
 	}
 }
 

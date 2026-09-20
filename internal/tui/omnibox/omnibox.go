@@ -73,17 +73,15 @@ type Model struct {
 	offers string
 }
 
-var (
-	// A block cursor, so the line looks like somewhere text goes -- the same
-	// cursor the inline field draws, for the same reason.
+// A block cursor, so the line looks like somewhere text goes -- the same
+// cursor the inline field draws, for the same reason.
 
-	// The command prompt is tinted rather than reversed, so the three modes
-	// differ from each other in KIND -- a slash, a reversed badge, a tinted
-	// badge -- rather than by degree of emphasis.
-	commandStyle = lipgloss.NewStyle().Bold(true).
-		Foreground(lipgloss.AdaptiveColor{Light: "231", Dark: "231"}).
-		Background(lipgloss.AdaptiveColor{Light: "24", Dark: "24"})
-)
+// The command prompt is tinted rather than reversed, so the three modes
+// differ from each other in KIND -- a slash, a reversed badge, a tinted
+// badge -- rather than by degree of emphasis.
+var commandStyle = lipgloss.NewStyle().Bold(true).
+	Foreground(lipgloss.AdaptiveColor{Light: "231", Dark: "231"}).
+	Background(lipgloss.AdaptiveColor{Light: "24", Dark: "24"})
 
 // The gutter labels, one per state of the line.
 //

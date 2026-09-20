@@ -13,11 +13,9 @@ import (
 	"home-management-system/internal/origin"
 )
 
-var (
-	// ErrPlan reports a Step that is internally inconsistent -- it refers to
-	// something it did not create. A planning bug, never user input.
-	ErrPlan = errors.New("ops: malformed step")
-)
+// ErrPlan reports a Step that is internally inconsistent -- it refers to
+// something it did not create. A planning bug, never user input.
+var ErrPlan = errors.New("ops: malformed step")
 
 // Executor applies batches.
 type Executor struct {
