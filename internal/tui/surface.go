@@ -261,12 +261,47 @@ type textSurface struct {
 	rows   []string
 	cursor int
 	port   viewport.Model
+	// headings are the rows that start a section, for TAB and S-TAB.
+	//
+	// Line-at-a-time is the only motion a page of prose has, and on a listing
+	// four screens long that is the difference between finding the section you
+	// want and scrolling past it. Empty where the rows have no sections, and
+	// then the keys do nothing rather than something arbitrary.
+	headings []int
 }
 
 func newTextSurface(rows []string, width, height int) surface {
-	s := textSurface{rows: rows, port: viewport.New(width, max(1, height))}
+	return newSectionedText(rows, nil, width, height)
+}
+
+// newSectionedText is a text surface whose rows have headings worth jumping
+// between.
+func newSectionedText(rows []string, headings []int, width, height int) surface {
+	s := textSurface{rows: rows, headings: headings, port: viewport.New(width, max(1, height))}
 	s.port.SetContent(s.content())
 	return s
+}
+
+// nextHeading is the first heading after the cursor, or the last one when there
+// is none -- so TAB at the end stops rather than wrapping round to the top.
+// Wrapping in a document reads as having lost your place.
+func (s textSurface) nextHeading() int {
+	for _, at := range s.headings {
+		if at > s.cursor {
+			return at
+		}
+	}
+	return s.cursor
+}
+
+func (s textSurface) prevHeading() int {
+	found := s.cursor
+	for _, at := range s.headings {
+		if at < s.cursor {
+			found = at
+		}
+	}
+	return found
 }
 
 // content is the rows with the cursor drawn on one of them.
@@ -300,6 +335,21 @@ func (s textSurface) follow() surface {
 }
 
 func (s textSurface) Update(msg tea.KeyMsg) (surface, bool) {
+	// The tree's fold keys, because on a page of sections they mean the same
+	// thing the tree means by them: move by STRUCTURE rather than by line. They
+	// are unbound on a text surface otherwise, and a page with sections and no
+	// way to step between them is a page you read by scrolling past what you
+	// wanted.
+	if len(s.headings) > 0 {
+		switch keys.Lookup(keys.Tree, msg) {
+		case keys.FoldToggle:
+			s.cursor = s.nextHeading()
+			return s.follow(), true
+		case keys.FoldCycleAll:
+			s.cursor = s.prevHeading()
+			return s.follow(), true
+		}
+	}
 	switch keys.Lookup(keys.Browse, msg) {
 	case keys.MoveDown:
 		if s.cursor < len(s.rows)-1 {

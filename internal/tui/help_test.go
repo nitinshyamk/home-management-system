@@ -19,7 +19,7 @@ func helpText(topic string) string {
 // is written -- and it is the one kind of documentation nobody re-reads,
 // because the people who would spot the drift already know the answer.
 func TestTheGeneralHelpListsEveryCommand(t *testing.T) {
-	got := helpText("")
+	got := helpText("all")
 	for _, spec := range command.Specs() {
 		if !strings.Contains(got, string(spec.Op)) {
 			t.Errorf("the help does not mention %q", spec.Op)
@@ -48,7 +48,7 @@ func TestTheGeneralHelpNamesOnlyRealKeys(t *testing.T) {
 		}
 	}
 	m := Model{width: 100}
-	for _, line := range m.helpLines("") {
+	for _, line := range m.helpLines("all") {
 		if !strings.HasPrefix(line, "    ") || strings.HasPrefix(line, "     ") {
 			continue // a heading, or a wrapped description
 		}
@@ -146,13 +146,92 @@ func TestHelpAsked(t *testing.T) {
 func TestTheHelpFitsTheTerminal(t *testing.T) {
 	for _, width := range []int{60, 80, 100, 120} {
 		m := Model{width: width}
-		for _, topic := range []string{"", "acquire", "new item", "frobnicate"} {
+		for _, topic := range []string{"", "all", "acquire", "new item",
+			"moving", "carrying", "commands", "frobnicate"} {
 			for _, line := range m.helpLines(topic) {
 				if n := len([]rune(line)); n > width {
 					t.Errorf("a %s help line is %d columns in a %d-column terminal: %q",
 						topic, n, width, line)
 				}
 			}
+		}
+	}
+}
+
+// `help` alone is an INDEX, not the whole listing.
+//
+// The listing is 102 lines on a 100-column terminal, one section of it is 35
+// rows, and it is drawn on a surface that scrolls a line at a time. That is
+// four screens with no way to find out what is in the other three without
+// going past them. A page nobody reaches the end of teaches whatever is on its
+// first screen and nothing else.
+func TestHelpAloneFitsOneScreen(t *testing.T) {
+	m := Model{width: 100}
+	index := m.helpLines("")
+	if len(index) > 24 {
+		t.Errorf("the help index is %d lines, which is not a screen:\n%s",
+			len(index), strings.Join(index, "\n"))
+	}
+	// And it is shorter than the thing it indexes, by a lot.
+	if all := len(m.helpLines("all")); len(index)*3 > all {
+		t.Errorf("the index is %d lines against a listing of %d: it is not an index",
+			len(index), all)
+	}
+}
+
+// Every section the index names can be asked for, and answers with itself.
+//
+// The two are generated from one list, so a section cannot be advertised and
+// then be missing -- which is the failure a hand-written index has by default.
+func TestEveryTopicTheIndexNamesIsReachable(t *testing.T) {
+	m := Model{width: 100}
+	index := strings.Join(m.helpLines(""), "\n")
+
+	for _, section := range m.generalHelp() {
+		if section.topic == "" {
+			t.Errorf("the section %q has no topic, so nothing can ask for it", section.title)
+			continue
+		}
+		if !strings.Contains(index, section.topic) {
+			t.Errorf("the index does not name %q", section.topic)
+		}
+		got := strings.Join(m.helpLines(section.topic), "\n")
+		if !strings.Contains(got, section.title) {
+			t.Errorf("help %s did not answer with %q:\n%s", section.topic, section.title, got)
+		}
+		// One section, not the whole listing pretending to be one.
+		if n := len(m.helpLines(section.topic)); n > len(m.helpLines("all"))/2 {
+			t.Errorf("help %s is %d lines, which is most of the listing", section.topic, n)
+		}
+	}
+}
+
+// A topic is offered by completion and by the near-miss suggestions, the same
+// way a command name is. A topic nobody is offered is a topic only somebody who
+// already read the index knows about.
+func TestTopicsAreInTheVocabulary(t *testing.T) {
+	m := Model{width: 100}
+	topics := strings.Join(m.helpTopics(), " ")
+	for _, want := range []string{"carrying", "commands", "all", "acquire"} {
+		if !strings.Contains(topics, want) {
+			t.Errorf("help does not complete %q", want)
+		}
+	}
+	// And a near miss on a SECTION is answered like a near miss on a command,
+	// through the same ranked matcher, which offers prefixes and infixes.
+	if got := helpText("carry"); !strings.Contains(got, "carrying") {
+		t.Errorf("a near miss on a topic does not offer it:\n%s", got)
+	}
+}
+
+// help all is still all of it, for anyone who wants to read or search the
+// whole thing in one piece.
+func TestHelpAllIsStillTheWholeListing(t *testing.T) {
+	m := Model{width: 100}
+	all := strings.Join(m.helpLines("all"), "\n")
+	for _, section := range m.generalHelp() {
+		if !strings.Contains(all, section.title) {
+			t.Errorf("help all is missing %q", section.title)
 		}
 	}
 }
