@@ -2,6 +2,8 @@ package command_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -130,5 +132,109 @@ func TestTheQuantityGrammarIsSpeltOut(t *testing.T) {
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("the quantity grammar omits %q", want)
 		}
+	}
+}
+
+// The house goes out WITH the schema, because the two are useless apart: a
+// contract that says how to write a row and nothing about where the row should
+// point produces "Pantry" for a shelf the house calls "Kitchen > Left Pantry",
+// and every one of those rows comes back needing a person.
+func TestTheSchemaCarriesTheHouse(t *testing.T) {
+	house := command.House{
+		Categories: []string{"Spices", "Spices > Dried Peppers"},
+		Locations:  []string{"Kitchen", "Kitchen > Left Pantry"},
+	}
+	schema := command.NewSchema().WithHouse(house)
+
+	var prompt strings.Builder
+	if err := schema.WritePrompt(&prompt); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range append(append([]string{}, house.Categories...), house.Locations...) {
+		if !strings.Contains(prompt.String(), want) {
+			t.Errorf("the prompt form omits %q", want)
+		}
+	}
+
+	var asJSON strings.Builder
+	if err := schema.WriteJSON(&asJSON); err != nil {
+		t.Fatal(err)
+	}
+	var decoded command.Schema
+	if err := json.Unmarshal([]byte(asJSON.String()), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.House.Categories) != 2 || len(decoded.House.Locations) != 2 {
+		t.Errorf("the house did not survive the round trip: %+v", decoded.House)
+	}
+}
+
+// An empty house says so in words. A heading with nothing under it reads as a
+// list that failed to print, and an agent that decides the export is broken
+// invents its own categories.
+func TestAnEmptyHouseSaysThereAreNone(t *testing.T) {
+	var b strings.Builder
+	if err := command.NewSchema().WritePrompt(&b); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "there are none yet") {
+		t.Errorf("an empty house does not say it is empty:\n%s", b.String())
+	}
+}
+
+// The schema is written to a DIRECTORY, because it is the one output of this
+// program meant to be handed to something else. The directory is made if it is
+// not there: being asked to mkdir first is being asked to get it wrong once.
+func TestExportWritesTheSchemaIntoADirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "handoff")
+	schema := command.NewSchema().WithHouse(command.House{Categories: []string{"Spices"}})
+
+	path, err := schema.Export(dir, "prompt")
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	if got := filepath.Base(path); got != "import-schema.txt" {
+		t.Errorf("wrote %q, want the one name a second export replaces", got)
+	}
+
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want strings.Builder
+	if err := schema.WritePrompt(&want); err != nil {
+		t.Fatal(err)
+	}
+	if string(written) != want.String() {
+		t.Error("the exported file is not what the same schema prints")
+	}
+	// Multi-line plain text, which is what makes it something to paste.
+	if lines := strings.Count(string(written), "\n"); lines < 20 {
+		t.Errorf("the export is %d lines long", lines)
+	}
+
+	// And the machine-readable form, under its own name, so one does not
+	// silently overwrite the other.
+	jsonPath, err := schema.Export(dir, "json")
+	if err != nil {
+		t.Fatalf("export json: %v", err)
+	}
+	if jsonPath == path {
+		t.Error("both formats were written to one file")
+	}
+	body, err := os.ReadFile(jsonPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded command.Schema
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		t.Errorf("the exported JSON is not readable: %v", err)
+	}
+}
+
+// A directory nobody named is a file written somewhere nobody expected.
+func TestExportRefusesAnEmptyDirectory(t *testing.T) {
+	if _, err := command.NewSchema().Export("  ", "prompt"); err == nil {
+		t.Error("exporting to nowhere was allowed")
 	}
 }

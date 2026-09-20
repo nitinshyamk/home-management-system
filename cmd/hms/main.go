@@ -4,6 +4,11 @@
 // and --checkpoint records replay checkpoints; both are also what a scheduled
 // job would call. --render replays a key script and prints the frames, which is
 // what a design review looks at.
+//
+// `hms schema [DIR]` writes the contract an agent is given -- the command
+// vocabulary, and the categories and places this house has -- to the terminal
+// or into a directory. `hms import FILE` reviews what came back: the categories
+// it proposes first, then the items and holdings.
 package main
 
 import (
@@ -19,6 +24,7 @@ import (
 	"home-management-system/internal/db"
 	"home-management-system/internal/importer"
 	"home-management-system/internal/ledger"
+	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui"
 )
 
@@ -37,6 +43,7 @@ func run() error {
 	render := flag.String("render", "", "replay a .keys script and print each frame (for design review)")
 	dryRun := flag.Bool("dry-run", false, "with `import FILE`, print the resolved plan as JSON instead of reviewing it")
 	schemaFormat := flag.String("format", "prompt", "with `schema`, json or prompt")
+	out := flag.String("out", "", "with `schema`, a directory to write the schema into instead of printing it")
 	width := flag.Int("width", 100, "terminal width for --render")
 	height := flag.Int("height", 30, "terminal height for --render")
 	colour := flag.Bool("color", false, "keep colour in --render output (pipe to less -R)")
@@ -103,6 +110,9 @@ func run() error {
 	if format, ok := trailing["format"]; ok && format != "" {
 		*schemaFormat = format
 	}
+	if dir, ok := trailing["out"]; ok && dir != "" {
+		*out = dir
+	}
 	if script, ok := trailing["render"]; ok && script != "" {
 		*render = script
 	}
@@ -125,10 +135,19 @@ func run() error {
 	}
 
 	// `hms schema` emits the vocabulary so an agent targets a fixed spec
-	// rather than a remembered one. It needs no database: the vocabulary is a
-	// property of the code, not of the house.
+	// rather than a remembered one -- together with the categories and places
+	// this household actually has, which is the half of the contract the code
+	// cannot know.
+	//
+	// `hms schema DIR` and `hms schema --out DIR` write it into a directory
+	// instead of printing it, because this is the one output of the program
+	// meant to be handed to something else: it goes next to the photograph of
+	// the receipt, or into the folder an agent is pointed at.
 	if len(args) >= 1 && args[0] == "schema" {
-		return writeSchema(*schemaFormat)
+		if len(args) >= 2 && *out == "" {
+			*out = args[1]
+		}
+		return writeSchema(ctx, ctrl, *schemaFormat, *out)
 	}
 
 	// `hms import FILE --dry-run` reports the plan as JSON, so an agent can
@@ -165,7 +184,7 @@ func splitTrailingFlags(args []string) ([]string, map[string]string) {
 	// The flags that take a value, so `--format json` is one flag and not a
 	// flag plus a stray word. There is no way to know this from the text: a
 	// bare `--dry-run` and a `--format` awaiting its value look identical.
-	takesValue := map[string]bool{"format": true, "width": true, "height": true, "db-path": true, "render": true}
+	takesValue := map[string]bool{"format": true, "width": true, "height": true, "db-path": true, "render": true, "out": true}
 
 	var positional []string
 	flags := map[string]string{}
@@ -199,13 +218,56 @@ func (f trailingFlags) number(name string) (int, bool) {
 	return n, true
 }
 
-// writeSchema emits the command vocabulary.
-func writeSchema(format string) error {
-	schema := command.NewSchema()
+// writeSchema emits the command vocabulary, against this house.
+func writeSchema(ctx context.Context, ctrl app.Controller, format, dir string) error {
+	house, err := readHouse(ctx, ctrl)
+	if err != nil {
+		return err
+	}
+	schema := command.NewSchema().WithHouse(house)
+
+	if dir != "" {
+		path, err := schema.Export(dir, format)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("wrote %s\n", path)
+		return nil
+	}
 	if format == "json" {
 		return schema.WriteJSON(os.Stdout)
 	}
 	return schema.WritePrompt(os.Stdout)
+}
+
+// readHouse is the classification and the places, as the paths a row writes.
+//
+// Off the SAME index the importer resolves names against, so a path the schema
+// offers is a path that resolves. A second walk of the two trees would be a
+// second answer to keep in step, and the one thing worse than telling an agent
+// nothing about the house is telling it something the resolver disagrees with.
+//
+// Archived candidates are left out. They stay in the index so that search can
+// still find them, and nothing may be filed into one -- so offering one would
+// be offering a path that is guaranteed to come back blocked.
+func readHouse(ctx context.Context, ctrl app.Controller) (command.House, error) {
+	index, err := ctrl.SearchIndex(ctx)
+	if err != nil {
+		return command.House{}, err
+	}
+	var house command.House
+	for _, candidate := range index.All() {
+		if candidate.Archived {
+			continue
+		}
+		switch candidate.Kind {
+		case resolve.KindCategory:
+			house.Categories = append(house.Categories, candidate.Path)
+		case resolve.KindLocation:
+			house.Locations = append(house.Locations, candidate.Path)
+		}
+	}
+	return house, nil
 }
 
 // runDryRun binds a file and reports it, without a terminal and without

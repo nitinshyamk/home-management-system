@@ -36,6 +36,13 @@ func TestTrailingFlags(t *testing.T) {
 		// that is not there.
 		{"a dangling value flag", []string{"schema", "--format"},
 			[]string{"schema"}, map[string]string{"format": ""}},
+		// The directory the schema is exported into takes a value too, and it
+		// is written after the positional for the same reason everything else
+		// is: `hms schema --out ./handoff` is how a person writes it.
+		{"a directory to export into", []string{"schema", "--out", "./handoff"},
+			[]string{"schema"}, map[string]string{"out": "./handoff"}},
+		{"a directory as a positional", []string{"schema", "./handoff"},
+			[]string{"schema", "./handoff"}, map[string]string{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			positional, flags := splitTrailingFlags(tc.args)

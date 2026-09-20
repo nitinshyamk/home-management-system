@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -40,6 +42,24 @@ type Schema struct {
 	Commands []SchemaCommand `json:"commands"`
 	Quantity []QuantityRule  `json:"quantity"`
 	Rules    []string        `json:"rules"`
+	// House is what the vocabulary can be written against TODAY: the categories
+	// and the places that already exist. It is the half of the contract that
+	// the code cannot know -- every other part of this is a property of the
+	// program, and this part is a property of the household.
+	House House `json:"house"`
+}
+
+// House is the existing classification and the existing places, by path.
+//
+// Exported WITH the schema, in one document, because the two are useless apart.
+// A schema alone tells an agent how to write a row and nothing about where the
+// row should point, so it invents "Pantry" when the house calls it
+// "Kitchen > Left Pantry" -- and every one of those rows comes back as a name
+// that does not resolve, or worse, as an offer to create a second Pantry. The
+// paths are here so that naming what exists is the easy thing to do.
+type House struct {
+	Categories []string `json:"categories"`
+	Locations  []string `json:"locations"`
 }
 
 // QuantityRule is one spelling of an amount and what it means.
@@ -73,6 +93,17 @@ func NewSchema() Schema {
 		schema.Commands = append(schema.Commands, describeSpec(spec))
 	}
 	return schema
+}
+
+// WithHouse adds what already exists to the vocabulary.
+//
+// Separate from NewSchema, and a value rather than a lookup, because the
+// schema is otherwise a property of the CODE: `hms schema` can answer it
+// without a database, and the tests that walk the vocabulary must not need a
+// household to walk it against.
+func (s Schema) WithHouse(house House) Schema {
+	s.House = house
+	return s
 }
 
 func describeSpec(spec Spec) SchemaCommand {
@@ -131,8 +162,79 @@ func (s Schema) WritePrompt(w io.Writer) error {
 		}
 	}
 
+	s.writeHouse(&b)
+
 	_, err := io.WriteString(w, b.String())
 	return err
+}
+
+// writeHouse lists what exists, as paths, under each heading.
+//
+// Written out in full rather than summarised. A list of forty shelves is a few
+// hundred words and it is the difference between a row that resolves and a row
+// somebody has to fix by hand; there is nothing to be gained by making an agent
+// guess at the half we could simply have told it.
+func (s Schema) writeHouse(b *strings.Builder) {
+	write := func(heading, kind string, paths []string) {
+		fmt.Fprintf(b, "\n%s  (write one of these paths exactly)\n", heading)
+		if len(paths) == 0 {
+			fmt.Fprintf(b, "  -- there are none yet, so every %s a row names will be created and reviewed\n", kind)
+			return
+		}
+		for _, path := range paths {
+			fmt.Fprintf(b, "  %s\n", path)
+		}
+	}
+	write("CATEGORIES THAT EXIST", "classification", s.House.Categories)
+	write("LOCATIONS THAT EXIST", "place", s.House.Locations)
+}
+
+// ExportName is what an exported schema is called inside the directory it is
+// written to. One name, so a second export replaces the first rather than
+// leaving two files that differ by a date and disagree about the house.
+func ExportName(format string) string {
+	if format == "json" {
+		return "import-schema.json"
+	}
+	return "import-schema.txt"
+}
+
+// Export writes the schema into a directory, and reports the file it wrote.
+//
+// A directory rather than a stream, because this is the one output of the
+// program that is meant to be handed to something else: it goes next to the
+// photograph of the receipt, or into the folder an agent is pointed at, and
+// asking somebody to redirect stdout into the right place is asking them to get
+// it wrong once.
+//
+// The directory is created if it is not there. Writing the schema is not a
+// destructive act -- it is generated, and generating it again produces the same
+// bytes unless the house has changed -- so it replaces a file of the same name
+// without asking.
+func (s Schema) Export(dir, format string) (string, error) {
+	if strings.TrimSpace(dir) == "" {
+		return "", fmt.Errorf("schema: no directory to write to")
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("schema: %w", err)
+	}
+
+	var b strings.Builder
+	var err error
+	if format == "json" {
+		err = s.WriteJSON(&b)
+	} else {
+		err = s.WritePrompt(&b)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	path := filepath.Join(dir, ExportName(format))
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
+		return "", fmt.Errorf("schema: %w", err)
+	}
+	return path, nil
 }
 
 // namesA reads as English. "names a item" on a contract an agent is told to
