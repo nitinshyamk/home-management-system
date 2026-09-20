@@ -1,0 +1,2132 @@
+<title>One House, One Screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;450;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    /* Light: a parts-bin palette — zinc neutrals biased warm-neutral, slate-blue
+       accent, and three semantic signals taken straight from the import plan's
+       OK / ? / ! trichotomy. */
+    --paper:      #F4F4F1;
+    --surface:    #FFFFFF;
+    --surface-2:  #EDEDE9;
+    --ink:        #15181B;
+    --ink-2:      #454B51;
+    --dim:        #6E757C;
+    --rule:       #D6D6D0;
+    --rule-2:     #BFBFB8;
+    --accent:     #2E5C8A;
+    --accent-2:   #E4EBF3;
+    --ok:         #3D7548;
+    --ask:        #9C6503;
+    --stop:       #A03826;
+
+    /* The terminal is a terminal: one committed palette, both themes. */
+    --t-bg:       #14181B;
+    --t-bg-2:     #1B2024;
+    --t-rule:     #2E3639;
+    --t-rule-2:   #454F54;
+    --t-ink:      #D7DBD8;
+    --t-dim:      #798287;
+    --t-sel:      #24333F;
+    --t-cursor:   #8FC0E8;
+    --t-ok:       #7FB585;
+    --t-ask:      #D6A342;
+    --t-stop:     #E08573;
+    --t-key:      #C9A6DA;
+
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:     #131619;
+      --surface:   #1A1E22;
+      --surface-2: #22272C;
+      --ink:       #E3E5E3;
+      --ink-2:     #B2B8BC;
+      --dim:       #838C93;
+      --rule:      #2D3338;
+      --rule-2:    #3E464C;
+      --accent:    #86AFD8;
+      --accent-2:  #1E2A36;
+      --ok:        #77B382;
+      --ask:       #D3A24A;
+      --stop:      #DD8672;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:     #131619;
+    --surface:   #1A1E22;
+    --surface-2: #22272C;
+    --ink:       #E3E5E3;
+    --ink-2:     #B2B8BC;
+    --dim:       #838C93;
+    --rule:      #2D3338;
+    --rule-2:    #3E464C;
+    --accent:    #86AFD8;
+    --accent-2:  #1E2A36;
+    --ok:        #77B382;
+    --ask:       #D3A24A;
+    --stop:      #DD8672;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 0 96px;
+  }
+  .col { max-width: 640px; }
+
+  /* ---- type ---- */
+  h1, h2, h3 { font-family: var(--serif); font-weight: 500; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.3rem, 6vw, 3.6rem); line-height: 1.04; letter-spacing: -0.015em; }
+  h2 { font-size: clamp(1.6rem, 3.6vw, 2.1rem); line-height: 1.15; letter-spacing: -0.01em; }
+  h3 { font-size: 1.18rem; line-height: 1.3; }
+  p  { margin: 0 0 1em; }
+  a  { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--dim);
+    font-weight: 500;
+  }
+  .lede { font-size: 1.18rem; color: var(--ink-2); line-height: 1.55; }
+  .small { font-size: 0.9rem; color: var(--ink-2); }
+  code, .m { font-family: var(--mono); font-size: 0.86em; }
+  code {
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.05em 0.34em;
+  }
+  kbd {
+    font-family: var(--mono);
+    font-size: 0.78em;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0.12em 0.42em;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  /* ---- masthead ---- */
+  header.mast {
+    padding-block: 72px 44px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 56px;
+  }
+  .mast .col { max-width: 720px; }
+  .mast h1 { margin-bottom: 20px; }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+    margin-top: 28px; font-family: var(--mono); font-size: 0.74rem;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim);
+  }
+
+  section { padding-block: 24px 56px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .sec-head h2 { margin: 0; }
+  .sec-intro { margin-bottom: 36px; }
+
+  /* ---- diagnosis ---- */
+  .faults { display: grid; gap: 2px; background: var(--rule); border: 1px solid var(--rule); }
+  .fault { background: var(--surface); padding: 22px 24px; display: grid; gap: 14px; }
+  @media (min-width: 900px) { .fault { grid-template-columns: 1fr 1.25fr; gap: 28px; align-items: start; } }
+  .fault-said {
+    font-family: var(--serif); font-size: 1.16rem; font-style: italic;
+    color: var(--ink); line-height: 1.35; margin: 0 0 10px;
+  }
+  .fault-said::before { content: "“"; } .fault-said::after { content: "”"; }
+  .fault-why { font-size: 0.95rem; color: var(--ink-2); margin: 0; }
+  .fault-why strong { color: var(--ink); font-weight: 600; }
+  .fault-src {
+    display: block; margin-top: 10px; font-family: var(--mono);
+    font-size: 0.72rem; color: var(--dim); line-height: 1.5;
+  }
+
+  pre.frame {
+    font-family: var(--mono); font-size: 0.7rem; line-height: 1.5;
+    background: var(--t-bg); color: var(--t-ink);
+    border: 1px solid var(--t-rule); border-radius: 4px;
+    padding: 12px 14px; margin: 0; overflow-x: auto; white-space: pre;
+    -webkit-font-smoothing: auto;
+  }
+  pre.frame .hl { color: var(--t-ask); }
+  .cap { font-family: var(--mono); font-size: 0.7rem; color: var(--dim); margin-top: 7px; letter-spacing: 0.03em; }
+
+  /* ---- the idea: three moves ---- */
+  .moves { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  @media (min-width: 820px) { .moves { grid-template-columns: repeat(3, 1fr); } }
+  .move { background: var(--surface); padding: 24px; }
+  .move .n {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em;
+    color: var(--accent); font-weight: 600; display: block; margin-bottom: 10px;
+  }
+  .move h3 { margin-bottom: 8px; }
+  .move p { font-size: 0.93rem; color: var(--ink-2); margin: 0; }
+
+  /* =================== TERMINAL =================== */
+  .demo { margin-block: 8px 0; }
+  .tour {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center;
+  }
+  .tour-lab {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--dim); margin-right: 4px;
+  }
+  button.tb {
+    font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.01em;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--rule-2); border-radius: 3px;
+    padding: 6px 11px; cursor: pointer; line-height: 1.3;
+  }
+  button.tb:hover { border-color: var(--accent); color: var(--accent); }
+  button.tb[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.tb:focus-visible, .term:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .term {
+    background: var(--t-bg);
+    border: 1px solid var(--t-rule-2);
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.62;
+    color: var(--t-ink);
+    overflow: hidden;
+    -webkit-font-smoothing: auto;
+    position: relative;
+  }
+  .term:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 720px) { .term { font-size: 11px; } }
+
+  .t-head {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 7px 12px; border-bottom: 1px solid var(--t-rule);
+    color: var(--t-dim); font-size: 0.86em; background: var(--t-bg-2);
+  }
+  .t-head .house { color: var(--t-ink); }
+  .t-attn { color: var(--t-ask); }
+
+  .t-body { display: grid; grid-template-columns: 238px 1fr; min-height: 292px; }
+  @media (max-width: 720px) { .t-body { grid-template-columns: 1fr; min-height: 0; } }
+
+  .pane { min-width: 0; }
+  .pane.rail { border-right: 1px solid var(--t-rule); }
+  @media (max-width: 720px) {
+    .pane.rail { border-right: none; border-bottom: 1px solid var(--t-rule); max-height: 172px; overflow-y: auto; }
+  }
+  .pane-title {
+    padding: 5px 12px; color: var(--t-dim); font-size: 0.82em;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    border-bottom: 1px solid var(--t-rule); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .pane.center .pane-title { color: var(--t-ink); text-transform: none; letter-spacing: 0.01em; }
+  .pane-rows { padding: 4px 0; }
+
+  .r {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 0 12px; white-space: nowrap; cursor: pointer;
+    border-left: 2px solid transparent;
+  }
+  .r:hover { background: #1F262B; }
+  .r.cur { background: var(--t-sel); border-left-color: var(--t-cursor); }
+  .r.cur.soft { background: #1C242A; border-left-color: var(--t-rule-2); }
+  .r .nm { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+  .r .qt { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--t-ink); }
+  .r .wh { flex: 0 0 auto; color: var(--t-dim); }
+  .r .ct { flex: 0 0 auto; color: var(--t-dim); font-variant-numeric: tabular-nums; }
+  .r .tw { color: var(--t-dim); }
+  .r .sel { color: var(--t-cursor); }
+  .r.dim, .dim-t { color: var(--t-dim); }
+  .r.mark { background: #1E2B23; }
+  .r.target { background: #2A2318; }
+  .flag-out  { color: var(--t-ask); }
+  .flag-exp  { color: var(--t-ask); }
+  .flag-gone { color: var(--t-stop); }
+  .add { color: var(--t-ok); }
+  .del { color: var(--t-stop); }
+  .empty { padding: 10px 12px; color: var(--t-dim); }
+
+  .drawer { border-top: 1px solid var(--t-rule-2); background: var(--t-bg-2); }
+  .drawer-title {
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 6px 12px; border-bottom: 1px solid var(--t-rule);
+    color: var(--t-ink); font-size: 0.86em;
+  }
+  .drawer-title .lab { color: var(--t-key); letter-spacing: 0.08em; }
+  .drawer-rows { padding: 4px 0; max-height: 210px; overflow-y: auto; }
+  .drawer .r { gap: 10px; }
+  .st { flex: 0 0 auto; width: 1.1em; text-align: center; font-weight: 600; }
+  .st.ok { color: var(--t-ok); } .st.ask { color: var(--t-ask); } .st.stop { color: var(--t-stop); }
+  .rn { flex: 0 0 auto; width: 2em; text-align: right; color: var(--t-dim); font-variant-numeric: tabular-nums; }
+  .eff { flex: 0 0 auto; color: var(--t-dim); font-variant-numeric: tabular-nums; }
+  .eff b { color: var(--t-ink); font-weight: 500; }
+  .why { flex: 0 0 auto; }
+  .chip {
+    border: 1px solid var(--t-rule-2); border-radius: 3px; padding: 0 5px;
+    color: var(--t-key); font-size: 0.88em;
+  }
+
+  .t-insp {
+    padding: 6px 12px; border-top: 1px solid var(--t-rule);
+    color: var(--t-dim); font-size: 0.9em; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; min-height: 30px;
+  }
+  .t-insp b { color: var(--t-ink); font-weight: 500; }
+  .t-insp .note { color: var(--t-ask); }
+
+  .t-keys {
+    display: flex; flex-wrap: wrap; gap: 4px 14px;
+    padding: 7px 12px; border-top: 1px solid var(--t-rule);
+    background: var(--t-bg-2); font-size: 0.88em;
+  }
+  .t-keys span.k { color: var(--t-dim); cursor: pointer; }
+  .t-keys span.k:hover { color: var(--t-ink); }
+  .t-keys span.k i { color: var(--t-key); font-style: normal; font-weight: 500; }
+
+  .walk { padding: 26px 22px 20px; min-height: 292px; display: flex; flex-direction: column; gap: 4px; }
+  .walk .crumb { color: var(--t-dim); font-size: 0.9em; }
+  .walk .big { font-size: 1.9em; line-height: 1.25; margin-top: 14px; }
+  @media (max-width: 720px) { .walk .big { font-size: 1.35em; } }
+  .walk .ledger { color: var(--t-dim); margin-top: 2px; }
+  .walk .opts { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+  .walk .opts span { cursor: pointer; color: var(--t-dim); }
+  .walk .opts span:hover { color: var(--t-ink); }
+  .walk .opts i { color: var(--t-key); font-style: normal; font-weight: 500; }
+  .walk .prog { margin-top: auto; padding-top: 18px; display: flex; justify-content: space-between; gap: 14px; color: var(--t-dim); }
+  .walk .dots b { font-weight: 400; }
+  .walk .dots .y { color: var(--t-ok); } .walk .dots .n { color: var(--t-stop); }
+  .walk .dots .now { color: var(--t-cursor); }
+
+  .toast {
+    padding: 6px 12px; border-top: 1px solid var(--t-rule);
+    color: var(--t-ok); font-size: 0.9em; background: #17211A;
+  }
+  .toast.warn { color: var(--t-ask); background: #201D15; }
+  .toast .u { color: var(--t-dim); }
+
+  .legend {
+    margin-top: 12px; font-size: 0.86rem; color: var(--ink-2);
+    display: flex; flex-wrap: wrap; gap: 6px 20px; font-family: var(--mono);
+  }
+  .legend b { color: var(--ink); font-weight: 500; }
+
+  /* ---- tables ---- */
+  .tw { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--dim); font-weight: 500;
+    background: var(--surface-2); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.was { color: var(--dim); }
+  td.mono, th.mono { font-family: var(--mono); font-size: 0.82rem; white-space: nowrap; }
+
+  /* ---- phases ---- */
+  .phases { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .phase { background: var(--surface); padding: 20px 22px; display: grid; gap: 6px; }
+  @media (min-width: 860px) { .phase { grid-template-columns: 116px 1fr 250px; gap: 24px; align-items: start; } }
+  .phase .ord {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em;
+    color: var(--accent); font-weight: 600; text-transform: uppercase;
+  }
+  .phase h3 { font-size: 1.05rem; margin-bottom: 4px; }
+  .phase p { font-size: 0.92rem; color: var(--ink-2); margin: 0; }
+  .phase .touch { font-family: var(--mono); font-size: 0.74rem; color: var(--dim); line-height: 1.7; }
+  .phase .touch b { color: var(--ink-2); font-weight: 500; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.92em; }
+
+  ul.tight { margin: 0 0 1em; padding-left: 1.15em; }
+  ul.tight li { margin-bottom: 0.45em; }
+
+  .keep { border-left: 3px solid var(--ok); padding: 2px 0 2px 18px; margin-bottom: 22px; }
+  .keep h3 { font-size: 1.02rem; margin-bottom: 3px; }
+  .keep p { font-size: 0.93rem; color: var(--ink-2); margin: 0; }
+
+  .risk { border-left: 3px solid var(--ask); padding: 2px 0 2px 18px; margin-bottom: 22px; }
+  .risk h3 { font-size: 1.02rem; margin-bottom: 3px; }
+  .risk p { font-size: 0.93rem; color: var(--ink-2); margin: 0; }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 24px; margin-top: 24px;
+    font-family: var(--mono); font-size: 0.74rem; color: var(--dim); line-height: 1.8;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="col">
+    <span class="eyebrow">home-management-system · interface proposal</span>
+    <h1>One house,<br>one screen.</h1>
+    <p class="lede">
+      The engine is right. The ledger replays, the grammar is shared across three
+      surfaces, and nothing writes without a plan you can read first. What is wrong is
+      the chassis: five tabs, one per table, and every real task cut across all of them.
+      This proposes throwing the chassis away.
+    </p>
+    <div class="mast-meta">
+      <span>Scope: <span style="color:var(--ink-2)">internal/tui, internal/app</span></span>
+      <span>Domain model: unchanged</span>
+      <span>Command grammar: unchanged</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============================= DIAGNOSIS ============================= -->
+<section id="wrong">
+  <div class="sec-head"><span class="eyebrow">01</span><h2>What is actually wrong</h2></div>
+  <div class="col sec-intro">
+    <p>
+      Every complaint below has the same shape underneath it. The interface is organised
+      around <em>what the database stores</em> — a tab per entity — and there is no task in
+      this system that lives inside one entity. So every task becomes a tour of the tabs,
+      and the thing you are working on is off-screen for most of it.
+    </p>
+  </div>
+
+  <div class="faults">
+
+    <div class="fault">
+      <div>
+        <p class="fault-said">navigating between different categories and locations</p>
+        <p class="fault-why">
+          Categories and Locations are <strong>two exclusive tabs that are the same widget</strong>
+          showing two halves of one fact. A holding is an item-of-a-kind in a place; the interface
+          will show you the kind or the place, never both, and switching drops your cursor.
+          <span class="fault-src">internal/tui/views.go — five viewSpecs, one per table<br>internal/tui/model.go — folds survive a view switch, "unlike the cursor, which does not"</span>
+        </p>
+      </div>
+      <div>
+<pre class="frame"> 1 Categories  <span class="hl">[2 Locations]</span>  3 Items   4 Holdings   5 Integrity
+------------------------------------------------------------------------
+  NAME                                                            HOLDINGS
+&gt; ▾ Garage                                                               3
+    ▾ Metal Shelving Unit                                                2
+      ▾ Bay 3                                                            2
+        ▾ Blue Crate                                                     2
+            Small Parts Tray                                             2
+    Left Pantry                                                          1
+------------------------------------------------------------------------
+6 locations - TAB fold - S-TAB fold all - v contents</pre>
+        <p class="cap">the locations tab knows how many. it will not say what.</p>
+      </div>
+    </div>
+
+    <div class="fault">
+      <div>
+        <p class="fault-said">moving things around</p>
+        <p class="fault-why">
+          Relocation is a <strong>clipboard gesture that spans a tab switch</strong>: <kbd>M-w</kbd> in
+          Holdings, <kbd>2</kbd>, walk the tree, <kbd>C-y</kbd>. The thing you are moving is not on
+          screen while you choose where it goes. And moving a <em>shelf</em> is not that gesture at
+          all — it is a typed command, for the same idea.
+          <span class="fault-src">internal/tui/carry.go — "picking a thing up in one view and putting it down in another"<br>…and: "a place is moved with M-x reparent location"</span>
+        </p>
+      </div>
+      <div>
+<pre class="frame"> 1 Categories  <span class="hl">[2 Locations]</span>  3 Items   4 Holdings   5 Integrity
+------------------------------------------------------------------------
+  NAME                                                            HOLDINGS
+&gt; ▾ Garage                                                               3
+    ▾ Metal Shelving Unit                                                2
+      ▾ Bay 3                                                            2
+        ▾ Blue Crate                                                     2
+            Small Parts Tray                                             2
+    Left Pantry                                                          1
+------------------------------------------------------------------------
+  <span class="hl">carrying "Ancho Chile" -- C-y puts it in a place, esc puts it down</span>
+6 locations - TAB fold - S-TAB fold all - v contents</pre>
+        <p class="cap">one line of status is all that is left of the thing in your hand.</p>
+      </div>
+    </div>
+
+    <div class="fault">
+      <div>
+        <p class="fault-said">deleting and adding categories</p>
+        <p class="fault-why">
+          Four idioms for one job. Create is a panel (<kbd>o</kbd>), rename is an inline field
+          (<kbd>e</kbd>), re-parent is a typed command, delete is <kbd>C-k</kbd> with a confirmation —
+          and <strong>every one of them commits on the spot</strong>. Reorganising is inherently
+          exploratory, and this interface makes each trial move permanent before you can see
+          whether the shape is better.
+          <span class="fault-src">internal/tui/keys.go — Create, EditInPlace, Kill, CommandLine: four paths, four contexts</span>
+        </p>
+      </div>
+      <div>
+<pre class="frame"> 1 Categories  <span class="hl">[2 Locations]</span>  3 Items   4 Holdings   5 Integrity
+------------------------------------------------------------------------
+  NAME                                                            HOLDINGS
+  ▾ Garage                                                               3
+    ▾ Metal Shelving Unit                                                2
+&gt;     ▾ Bay 3                                                            2
+  <span class="hl">rename ───────────────────────────────────────────────────────</span>
+  Bay 3
+  enter save   esc discard
+        ▾ Blue Crate                                                     2
+            Small Parts Tray                                             2</pre>
+        <p class="cap">the field opens inside the tree and pushes it apart.</p>
+      </div>
+    </div>
+
+    <div class="fault">
+      <div>
+        <p class="fault-said">navigating holdings and viewing hierarchically</p>
+        <p class="fault-why">
+          The Holdings tab is <strong>every holding in the house, flat, sorted by item name</strong>,
+          with the place demoted to a text column that elides. Hierarchy lives in the other tabs,
+          and turning it on there (<kbd>v</kbd>) makes the tree a mixed list of two kinds of row —
+          which the code has to defend against, because a row whose kind is guessed is a write to
+          the wrong table.
+          <span class="fault-src">internal/app/controller.go — TreeRow.Kind: "a row whose kind is assumed rather than known is a silent write"</span>
+        </p>
+      </div>
+      <div>
+<pre class="frame"> 1 Categories   2 Locations   3 Items  <span class="hl">[4 Holdings]</span>  5 Integrity
+------------------------------------------------------------------------
+  ITEM ^                                        QTY  LOCATION          FLAGS
+&gt; Ancho Chile                                 100 g  Left Pantry
+  Ancho Chile                                 100 g  Garage
+  Ancho Chile                                 100 g  Small Parts Tray
+  Thunderbolt 4 to Dual DisplayPort 1.4 A…  at rest  Small Parts Tray
+------------------------------------------------------------------------
+4 holdings - sorted by item a-z - enter for history
+            C-s search - M-g jump - M-x command</pre>
+        <p class="cap">three ancho chiles. the tree that would tell them apart is two tabs away.</p>
+      </div>
+    </div>
+
+    <div class="fault">
+      <div>
+        <p class="fault-said">unlinked with the import</p>
+        <p class="fault-why">
+          The import is a <strong>different application</strong>: a CLI subcommand, a folder on disk,
+          and a plan screen that — in the code's own words — swaps the whole screen. So the one
+          thing you need while reviewing a proposed change, <em>the state it is proposed against</em>,
+          is the one thing you cannot see. Worse, it is all-or-nothing: fix four rows of five and
+          you may bank none of them.
+          <span class="fault-src">internal/tui/model.go — "importing swaps the whole screen for the plan review"<br>internal/tui/import.go — "A stage is a transaction"</span>
+        </p>
+      </div>
+      <div>
+<pre class="frame">IMPORT  receipt.csv   5 rows
+      ROW  WHAT IT WOULD DO                     WHY NOT
+&gt; OK    2  add 100 of Spices &gt; Basmati Rice to Shelf 1
+  OK    3  use 10 of Spices &gt; Cumin (dinner)
+  ?     4  acquire Cumn 20 Shelf 1              item: did you mean Cumin?
+  ?     5  acquire Cardamom 50 Shelf 1          would create an item
+  !     6  consume Basmati Rice lots Shelf 1    qty: "lots" has no number
+------------------------------------------------------------------------
+2 ready - 2 need confirming - 1 blocked - <span class="hl">A is unavailable: 1 rows are
+blocked and 2 need confirming</span></pre>
+        <p class="cap">"add 100 to shelf 1" — to what? there were how many? the house is gone.</p>
+      </div>
+    </div>
+
+    <div class="fault">
+      <div>
+        <p class="fault-said">verifying</p>
+        <p class="fault-why">
+          The domain model specifies this flow in detail — walk a location, enter observed
+          quantities, emit <code>Counted</code> and an explicit <code>Adjusted</code> for each
+          discrepancy. <strong>It has no interface at all.</strong> <code>hms verify</code> is a
+          command-line integrity check; the Integrity tab is prose; counting is <kbd>#</kbd>, one
+          row at a time, in a flat table sorted by a column that is not where you are standing.
+          This is the most physical task in the system — you are holding a shelf, not a keyboard —
+          and it is the one with the least interface.
+          <span class="fault-src">docs/domain-model.md §4.5 — "Pick a Location, walk its Holdings, enter observed quantities"</span>
+        </p>
+      </div>
+      <div>
+<pre class="frame"> 1 Categories   2 Locations   3 Items  <span class="hl">[4 Holdings]</span>  5 Integrity
+------------------------------------------------------------------------
+  ITEM ^                                        QTY  LOCATION          FLAGS
+ *Ancho Chile                                 100 g  Left Pantry
+ *Ancho Chile                                 100 g  Garage
+ *Ancho Chile                                 100 g  Small Parts Tray
+&gt; Thunderbolt 4 to Dual DisplayPort 1.4 A…  at rest  Small Parts Tray
+------------------------------------------------------------------------
+4 holdings - 3 selected - sorted by item a-z - enter for history</pre>
+        <p class="cap">selection exists. a walk does not.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================= THE IDEA ============================= -->
+<section id="idea">
+  <div class="sec-head"><span class="eyebrow">02</span><h2>Three moves</h2></div>
+  <div class="col sec-intro">
+    <p>
+      The replacement is not more screens. It is fewer: one screen, and everything transient
+      arrives as a drawer beneath it rather than instead of it.
+    </p>
+  </div>
+
+  <div class="moves">
+    <div class="move">
+      <span class="n">Move one</span>
+      <h3>One tree, two lenses</h3>
+      <p>
+        Categories and Locations stop being tabs and become <em>lenses on the same rail</em> —
+        one widget, one set of keys, one fold model. <kbd>\</kbd> flips between
+        <span class="m">BY PLACE</span> and <span class="m">BY KIND</span> and <em>keeps what you
+        are looking at</em>: standing on an ancho chile in the garage, flip, and you are standing
+        on Spices › Dried Peppers. The pane beside the rail always shows what is actually in
+        there, rolled up over the subtree. The flat Holdings table stops existing; it was the
+        contents pane with the root selected.
+      </p>
+    </div>
+    <div class="move">
+      <span class="n">Move two</span>
+      <h3>One review drawer</h3>
+      <p>
+        An import, a batch of structural edits, a reconciliation from a count — these are all
+        <em>a set of proposed commands shown against the present state</em>. The code already
+        has one mechanism for that (<code>PlanAll</code> → <code>Describe</code> →
+        <code>ApplyPlan</code>) and three interfaces to it. Collapse them into a drawer that
+        opens <em>below the house</em>, so walking the proposed rows walks the rail and the
+        contents pane behind them. Each row shows its own before → after. Ready rows apply
+        while blocked ones wait.
+      </p>
+    </div>
+    <div class="move">
+      <span class="n">Move three</span>
+      <h3>Verbs you can see</h3>
+      <p>
+        Thirty-five commands behind six keymap contexts is a vocabulary, not an interface.
+        <kbd>space</kbd> opens the actions <em>legal for the thing under the cursor</em>, each
+        annotated with the state it would change — and illegal ones are simply absent instead
+        of being refused after you commit to them. The bar along the bottom stops being a fixed
+        three-item reminder and becomes the four or five verbs that mean something right now.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= PROTOTYPE ============================= -->
+<section id="proto">
+  <div class="sec-head"><span class="eyebrow">03</span><h2>Walk it</h2></div>
+  <div class="col sec-intro">
+    <p>
+      A working model of the proposal, loaded with the seed house from <code>cmd/seed</code>.
+      Click a scenario to set it up, then drive it from the keyboard — or click the rows and
+      the key hints. Everything below is live: the tree folds, the lens flip keeps your place,
+      the move actually moves, the import actually applies, and <kbd>z</kbd> undoes.
+    </p>
+  </div>
+
+  <div class="demo">
+    <div class="tour" id="tour">
+      <span class="tour-lab">Try</span>
+      <button class="tb" data-s="find">Find the ancho chile</button>
+      <button class="tb" data-s="move">Move it somewhere</button>
+      <button class="tb" data-s="organize">Reorganise the spices</button>
+      <button class="tb" data-s="import">Import a receipt</button>
+      <button class="tb" data-s="verify">Verify the crate</button>
+      <button class="tb" data-s="reset">Reset</button>
+    </div>
+
+    <div class="term" id="term" tabindex="0" role="application" aria-label="Prototype of the proposed terminal interface"></div>
+
+    <div class="legend">
+      <span><b>↑ ↓</b> move</span>
+      <span><b>→ ←</b> pane</span>
+      <span><b>tab</b> fold</span>
+      <span><b>\</b> lens</span>
+      <span><b>space</b> act</span>
+      <span><b>z</b> undo</span>
+      <span><b>esc</b> back</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= FLOWS ============================= -->
+<section id="flows">
+  <div class="sec-head"><span class="eyebrow">04</span><h2>The four tasks, resolved</h2></div>
+
+  <div class="col">
+    <h3 style="margin-bottom:6px">Moving a thing</h3>
+    <p class="small">
+      <kbd>m</kbd> opens the destination picker as a drawer, with what you are carrying pinned at
+      the top of it and the rail still on screen behind. Type to filter by full path; the tree
+      keys work unchanged, because it is the same tree. It takes a multi-selection, and it takes
+      <em>places</em> too — moving a crate into a different bay is the identical gesture as moving
+      the chile into the crate, because it is the identical idea. The typed
+      <code>reparent location</code> command stops being the only way to do the common thing.
+    </p>
+
+    <h3 style="margin-bottom:6px">Adding and deleting categories</h3>
+    <p class="small">
+      <kbd>O</kbd> puts the rail in <em>organise mode</em>, where structural edits are
+      <strong>staged, not committed</strong>. Create a child with <kbd>n</kbd> and keep typing;
+      <kbd>d</kbd> marks a node for deletion and says, in the row, where its contents will land;
+      <kbd>m</kbd> re-parents. The drawer accumulates the diff and one <kbd>a</kbd> applies the
+      lot as a single transaction. The domain model already says this reorganisation is free and
+      migrates nothing — the interface should let you try a shape before you own it.
+    </p>
+
+    <h3 style="margin-bottom:6px">Importing, resolved against the present</h3>
+    <p class="small">
+      Import starts inside the app (<kbd>i</kbd>) and the folder-and-handoff mechanism underneath
+      is untouched — it is the privacy-correct design and it should not change. What changes is
+      that the plan never takes the screen. Each row carries its own effect
+      (<span class="m">2 bags → 2.1 kg</span>), the cursor on a row points the rail and the
+      contents pane at what it would touch, and ambiguity is settled in place with one key:
+      <span class="m">did you mean Cumin? [y] [n] new</span>. Stages still apply in passes; they
+      now <em>display</em> as one list, because a file's consequences are one thing to understand.
+      And <kbd>a</kbd> applies the ready rows and leaves the rest, rather than refusing the whole
+      file because one row said "lots".
+    </p>
+
+    <h3 style="margin-bottom:6px">Verifying, and checking out</h3>
+    <p class="small">
+      <kbd>V</kbd> on any node starts a <em>walk</em> of its subtree — the one deliberate
+      full-screen mode in the design, because when you are counting a shelf you are not browsing
+      a house. One holding at a time, set large, with the ledger's claim under it and three keys:
+      it's right, it's this much instead, it's not here. Missing <span class="m">Unique</span>
+      holdings become <span class="m">Out</span> with no location rather than being deleted, as
+      §4.5 requires. The reconciliation lands in the same review drawer as everything else,
+      showing <code>Counted</code> and <code>Adjusted</code> as the separate rows they are.
+      Checkout stays what it already is: <kbd>t</kbd>, one keystroke, no questions.
+    </p>
+  </div>
+</section>
+
+<!-- ============================= KEYMAP ============================= -->
+<section id="keys">
+  <div class="sec-head"><span class="eyebrow">05</span><h2>What the keyboard becomes</h2></div>
+  <div class="col sec-intro">
+    <p>
+      The emacs motion and line-editing layer stays exactly as it is —
+      <kbd>C-n</kbd> <kbd>C-p</kbd> <kbd>C-f</kbd> <kbd>C-b</kbd>, readline in every field,
+      <kbd>esc</kbd> and <kbd>C-g</kbd> both leaving one mode. That is learned muscle and there is
+      nothing wrong with it. What changes is the <em>verb</em> layer, which is where the
+      memorisation lives.
+    </p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>To do this</th><th class="mono">now</th><th class="mono">proposed</th><th>why it changes</th></tr></thead>
+      <tbody>
+        <tr><td>See a place and its contents</td><td class="mono was">2, then v</td><td class="mono">—</td><td>It is the default screen.</td></tr>
+        <tr><td>Switch category ↔ location</td><td class="mono was">1 / 2</td><td class="mono">\</td><td>One rail, one lens toggle, selection preserved.</td></tr>
+        <tr><td>Move a holding</td><td class="mono was">M-w · 2 · nav · C-y</td><td class="mono">m</td><td>Destination picker opens over what you are moving.</td></tr>
+        <tr><td>Move a place or category</td><td class="mono was">M-x reparent location</td><td class="mono">m</td><td>Same idea, so the same key.</td></tr>
+        <tr><td>Act on what is under the cursor</td><td class="mono was">recall 1 of 35</td><td class="mono">space</td><td>Only the legal verbs, annotated with current state.</td></tr>
+        <tr><td>Select rows</td><td class="mono was">space / C-@</td><td class="mono">x</td><td>space is worth more as the verb key.</td></tr>
+        <tr><td>Open / drill in</td><td class="mono was">enter (history)</td><td class="mono">enter</td><td>History moves under the inspector, where it is context.</td></tr>
+        <tr><td>Reorganise a tree</td><td class="mono was">o · e · C-k · M-x</td><td class="mono">O</td><td>One staged mode, one transaction, one undo.</td></tr>
+        <tr><td>Import</td><td class="mono was">quit · hms import</td><td class="mono">i</td><td>Never leave the house to change it.</td></tr>
+        <tr><td>Count / verify a place</td><td class="mono was">— (none)</td><td class="mono">V</td><td>The flow the domain model specified and nothing built.</td></tr>
+        <tr><td>Undo the last change</td><td class="mono was">— (none)</td><td class="mono">z</td><td>Compensating events. See the risk below.</td></tr>
+        <tr><td>Use, count, custody, rename</td><td class="mono was">c · # · t · e</td><td class="mono">u · # · t · r</td><td>Kept; also reachable from <span class="m">space</span>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================= KEEP ============================= -->
+<section id="keep">
+  <div class="sec-head"><span class="eyebrow">06</span><h2>What is not touched</h2></div>
+  <div class="col sec-intro">
+    <p>This is a chassis swap. The parts that make the product trustworthy are the reason it is worth doing.</p>
+  </div>
+  <div class="col">
+    <div class="keep">
+      <h3>The command grammar</h3>
+      <p><code>internal/command</code> is the asset. One vocabulary serving the command line, a CSV header and a JSON Lines key set is what makes an agent-written import possible at all. Not one field changes.</p>
+    </div>
+    <div class="keep">
+      <h3>Plan, describe, apply</h3>
+      <p>Nothing writes without a readable preview. The new drawer is a <em>better renderer</em> for exactly this cycle, not a replacement for it — and the confirmations keep their honesty (<span class="m">permanent · changing these later replaces every holding</span>).</p>
+    </div>
+    <div class="keep">
+      <h3>Refusals that name the fix</h3>
+      <p><span class="m">only 100 g of "Ancho Chile" here, and 5000 g was asked for — it does not come in packages to open</span> is a model error message. It keeps its wording and gains a better home: attached to the row it is about.</p>
+    </div>
+    <div class="keep">
+      <h3>The widgets</h3>
+      <p><code>tree</code>, <code>table</code>, <code>line</code>, <code>complete</code>, <code>editor</code> are fine. They are assembled wrongly, not built wrongly.</p>
+    </div>
+    <div class="keep">
+      <h3>The import folder and the handoff</h3>
+      <p>Three directories with three authors, no default planner, and a workflow that degrades to "you write the plan file" is the right design and the right privacy posture. Only the entry and exit move into the app.</p>
+    </div>
+    <div class="keep">
+      <h3>The nudge discipline</h3>
+      <p>§1.4 is right and the current nudges obey it. The attention line at the top is one line, specific, and dismissible — it expands on a key and never nags in place.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= PLAN ============================= -->
+<section id="plan">
+  <div class="sec-head"><span class="eyebrow">07</span><h2>How it lands</h2></div>
+  <div class="col sec-intro">
+    <p>
+      Seven phases, each shippable. The existing test harness carries the whole thing: the
+      headless renderer and golden frames in <code>internal/tui/testing</code> mean every phase
+      lands as a set of frames you can read in a diff, which is exactly how the current UI was
+      built and is the reason replacing it is tractable at all.
+    </p>
+  </div>
+
+  <div class="phases">
+    <div class="phase">
+      <span class="ord">Phase 1</span>
+      <div>
+        <h3>The shell</h3>
+        <p>Rail + contents + inspector + verb bar, replacing tabs 1–4. Lens flip with selection carried across. Contents rolled up over the subtree with a here-only toggle. No new domain work: this is <code>CategoryTree</code>, <code>LocationTree</code>, <code>Holdings</code> and <code>Items</code> recomposed.</p>
+      </div>
+      <div class="touch"><b>Touches</b>
+        new tui/shell, rail, contents, inspector<br>
+        delete tui/views.go, panel.go, browse.go<br>
+        app: + Contents(kind, id, deep)
+      </div>
+    </div>
+
+    <div class="phase">
+      <span class="ord">Phase 2</span>
+      <div>
+        <h3>The drawer</h3>
+        <p>Generalise <code>planview</code> into a bottom drawer that never takes the screen, with per-row effect columns and cursor-follows-into-the-house. Port the import onto it and move its entry point inside the app. Add apply-the-ready-rows.</p>
+      </div>
+      <div class="touch"><b>Touches</b>
+        tui/planview → tui/drawer<br>
+        tui/import.go, cmd/hms/import.go<br>
+        app: Plan gains per-command before/after
+      </div>
+    </div>
+
+    <div class="phase">
+      <span class="ord">Phase 3</span>
+      <div>
+        <h3>The act palette</h3>
+        <p><kbd>space</kbd> on anything lists the verbs legal for it, annotated. This needs one new query — what can be done to this subject, and what would it read as — which is a pure function of the subject plus the existing specs.</p>
+      </div>
+      <div class="touch"><b>Touches</b>
+        new tui/palette<br>
+        app: + Actions(subject) []Offer<br>
+        command/spec.go read, not changed
+      </div>
+    </div>
+
+    <div class="phase">
+      <span class="ord">Phase 4</span>
+      <div>
+        <h3>Move as one gesture</h3>
+        <p><kbd>m</kbd> everywhere: holdings to places, items to categories, subtrees to new parents. Multi-selection in one transaction. Retires the carry/put clipboard and the typed reparent path.</p>
+      </div>
+      <div class="touch"><b>Touches</b>
+        delete tui/carry.go<br>
+        reuse tui/complete for path filtering<br>
+        commands unchanged
+      </div>
+    </div>
+
+    <div class="phase">
+      <span class="ord">Phase 5</span>
+      <div>
+        <h3>Organise mode</h3>
+        <p>Staged structural edits over the rail, accumulating into the drawer, applied as one batch. <code>PlanAll</code> already exists; what is new is holding a proposed tree shape in the UI and rendering it as a diff over the real one.</p>
+      </div>
+      <div class="touch"><b>Touches</b>
+        new tui/organise<br>
+        app: PlanAll for tree ops<br>
+        archlint: staging is UI-side only
+      </div>
+    </div>
+
+    <div class="phase">
+      <span class="ord">Phase 6</span>
+      <div>
+        <h3>The walk</h3>
+        <p>Verify and count, one holding at a time, over a chosen subtree. Emits <code>Counted</code> plus an explicit <code>Adjusted</code> per discrepancy, and turns not-found <code>Unique</code> holdings into <code>Out</code> with no location. Lands in the drawer.</p>
+      </div>
+      <div class="touch"><b>Touches</b>
+        new tui/walk<br>
+        app: + Walk(locID) []HoldingRow<br>
+        domain-model §4.5, at last
+      </div>
+    </div>
+
+    <div class="phase">
+      <span class="ord">Phase 7</span>
+      <div>
+        <h3>Attention, and undo</h3>
+        <p>The one-line attention banner (out too long, expiring, ledger disagrees, shallow filing with a plausible sibling), expanding to a queue. Then undo, as compensating commands — the only part of this proposal that is not purely presentational.</p>
+      </div>
+      <div class="touch"><b>Touches</b>
+        app: Nudges → Attention<br>
+        new: Plan.Inverse()<br>
+        ledger: no schema change
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= RISKS ============================= -->
+<section id="risks">
+  <div class="sec-head"><span class="eyebrow">08</span><h2>Where this could be wrong</h2></div>
+  <div class="col">
+    <div class="risk">
+      <h3>Undo does not mean undo</h3>
+      <p>
+        The ledger is append-only and that is load-bearing. <kbd>z</kbd> can only ever mean
+        "apply the inverse command", which works cleanly for <code>Move</code>,
+        <code>Consume</code>, <code>Receive</code>, <code>Rehome</code> and the custody pair, and
+        does <em>not</em> work for <code>Retire</code>, <code>Gone</code>, <code>Demote</code> or
+        anything the model calls terminal. So undo must be offered <em>per action</em> and absent
+        on the ones it cannot honour — an undo that silently no-ops on the scariest operation is
+        worse than none. The toast should say <span class="m">z undo</span> only when it is true.
+      </p>
+    </div>
+    <div class="risk">
+      <h3>Two panes need width</h3>
+      <p>
+        The current design degrades to 60 columns by dropping tab labels. A rail plus a contents
+        pane cannot. Below roughly 76 columns the rail should collapse to a breadcrumb line with
+        the contents pane taking the full width, and <kbd>←</kbd> should re-open it as an overlay.
+        That is a real fallback to design, not a resize rule.
+      </p>
+    </div>
+    <div class="risk">
+      <h3>space is currently select</h3>
+      <p>
+        Re-binding <kbd>space</kbd> from ToggleSelect to the act palette is the single change most
+        likely to annoy on day one. <kbd>C-@</kbd> still selects, and <kbd>x</kbd> joins it. If
+        that trade is wrong, the palette can take <kbd>.</kbd> instead and nothing else in the
+        design moves.
+      </p>
+    </div>
+    <div class="risk">
+      <h3>Staged structural edits create a second source of truth</h3>
+      <p>
+        Organise mode holds a proposed tree that the database has not seen. That is fine as long
+        as it lives strictly in the UI and is rendered as a diff over freshly loaded rows — but it
+        is the one place in this proposal where the architecture's "one owner per fact" rule could
+        be quietly broken. Worth an archlint rule of its own: nothing outside
+        <code>tui/organise</code> may hold an unapplied tree.
+      </p>
+    </div>
+    <div class="risk">
+      <h3>The walk assumes you brought the terminal to the shelf</h3>
+      <p>
+        It is designed for a laptop on the garage floor. If the real ergonomics are "phone in hand,
+        laptop upstairs", the walk is the wrong shape and the right answer is that the walk
+        produces a printable checklist and reads back a filled one — which is, notably, an import.
+        Worth settling before phase 6 rather than during it.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>home-management-system · proposal for internal/tui · unchanged: domain model, conceptual schema, command grammar, ledger</div>
+  <div>prototype above runs the seed house from cmd/seed — nine items, fourteen places, thirteen holdings</div>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------------ *
+   * The house. Seeded from cmd/seed/main.go.
+   * ------------------------------------------------------------------ */
+
+  const LOCS = [
+    { id: 1,  name: "Kitchen",             p: null },
+    { id: 2,  name: "Spice Cabinet",       p: 1 },
+    { id: 3,  name: "Shelf 2",             p: 2 },
+    { id: 4,  name: "Left Pantry",         p: 1 },
+    { id: 5,  name: "Office",              p: null },
+    { id: 6,  name: "Desk",                p: 5 },
+    { id: 7,  name: "Drawer 2",            p: 6 },
+    { id: 8,  name: "Attic",               p: null },
+    { id: 9,  name: "Garage",              p: null },
+    { id: 10, name: "Metal Shelving Unit", p: 9 },
+    { id: 11, name: "Bay 3",               p: 10 },
+    { id: 12, name: "Blue Crate",          p: 11 },
+    { id: 13, name: "Small Parts Tray",    p: 12 },
+    { id: 14, name: "Bay 4",               p: 10 }
+  ];
+
+  const BASE_CATS = [
+    { id: "c1", name: "Spices",      p: null },
+    { id: "c2", name: "Dried Peppers", p: "c1" },
+    { id: "c3", name: "Pantry",      p: null },
+    { id: "c4", name: "Electronics", p: null },
+    { id: "c5", name: "Cables",      p: "c4" },
+    { id: "c6", name: "Storage",     p: null },
+    { id: "c7", name: "Stationery",  p: null },
+    { id: "c8", name: "Medicines",   p: null }
+  ];
+
+  const ITEMS = [
+    { id: "i1",  name: "Basmati Rice",         cat: "c3", kind: "Bulk",   unit: "g",     pkg: 2000 },
+    { id: "i2",  name: "Ancho Chile",          cat: "c2", kind: "Bulk",   unit: "g" },
+    { id: "i3",  name: "Cumin",                cat: "c1", kind: "Bulk",   unit: "g" },
+    { id: "i4",  name: "Brass Thumbtack",      cat: "c7", kind: "Bulk",   unit: "count" },
+    { id: "i5",  name: "Forever Stamp",        cat: "c7", kind: "Bulk",   unit: "count" },
+    { id: "i6",  name: "Empty Computer Box",   cat: "c6", kind: "Unique" },
+    { id: "i7",  name: "Winter Coat",          cat: "c6", kind: "Unique" },
+    { id: "i8",  name: "USB-C to HDMI Cable",  cat: "c5", kind: "Unique" },
+    { id: "i9",  name: "Thunderbolt 4 Adapter", cat: "c5", kind: "Unique" },
+    { id: "i10", name: "Ibuprofen 200mg",      cat: "c8", kind: "Bulk",   unit: "count" }
+  ];
+
+  function baseHoldings() {
+    return [
+      { id: "h1",  item: "i1",  loc: 4,  qty: 3,   unit: "bags" },
+      { id: "h2",  item: "i1",  loc: 4,  qty: 800, unit: "g", opened: true },
+      { id: "h3",  item: "i2",  loc: 3,  qty: 120, unit: "g" },
+      { id: "h4",  item: "i2",  loc: 9,  qty: 100, unit: "g" },
+      { id: "h5",  item: "i2",  loc: 13, qty: 80,  unit: "g" },
+      { id: "h6",  item: "i3",  loc: 3,  qty: 80,  unit: "g" },
+      { id: "h7",  item: "i4",  loc: 13, qty: 214, unit: "" },
+      { id: "h8",  item: "i5",  loc: 7,  qty: 38,  unit: "" },
+      { id: "h9",  item: "i6",  loc: 8,  qty: 1,   unit: "", custody: "AtRest" },
+      { id: "h10", item: "i7",  loc: 8,  qty: 1,   unit: "", custody: "AtRest" },
+      { id: "h11", item: "i8",  loc: 7,  qty: 1,   unit: "", custody: "Out", since: 23 },
+      { id: "h12", item: "i9",  loc: 13, qty: 1,   unit: "", custody: "AtRest" },
+      { id: "h13", item: "i10", loc: 1,  qty: 48,  unit: "", expires: "2026-11" }
+    ];
+  }
+
+  const item = id => ITEMS.find(i => i.id === id);
+  const loc  = id => LOCS.find(l => l.id === id);
+
+  /* ------------------------------------------------------------------ *
+   * State
+   * ------------------------------------------------------------------ */
+
+  let S;
+
+  function reset() {
+    S = {
+      mode: "browse",          // browse | act | move | organise | review | walk
+      lens: "place",           // place | kind
+      cats: BASE_CATS.map(c => ({ ...c })),
+      holdings: baseHoldings(),
+      railId: 9,
+      focus: "rail",           // rail | center | drawer
+      cIdx: 0,
+      folds: new Set([1, 5, 10, 12, "c1"]),
+      marked: new Set(),
+      deep: true,
+      toast: null,
+      undo: null,
+      actIdx: 0,
+      moveIdx: 0,
+      moveFilter: "",
+      carrying: null,
+      staged: [],
+      stagedIdx: 0,
+      plan: null,
+      planIdx: 0,
+      walk: null,
+      typing: null
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Tree helpers — one implementation, both lenses.
+   * ------------------------------------------------------------------ */
+
+  const tree = () => (S.lens === "place" ? LOCS : S.cats);
+  const node = id => tree().find(n => n.id === id);
+  const kids = id => tree().filter(n => n.p === id);
+
+  function subtreeIds(id, t) {
+    t = t || tree();
+    const out = [id];
+    const walkDown = pid => t.filter(n => n.p === pid).forEach(c => { out.push(c.id); walkDown(c.id); });
+    walkDown(id);
+    return out;
+  }
+
+  function pathOf(id, t) {
+    t = t || tree();
+    const parts = [];
+    let n = t.find(x => x.id === id);
+    while (n) { parts.unshift(n.name); n = t.find(x => x.id === n.p); }
+    return parts;
+  }
+
+  function flatten() {
+    const t = tree();
+    const rows = [];
+    const push = (n, d) => {
+      rows.push({ id: n.id, name: n.name, depth: d, kids: t.filter(x => x.p === n.id).length });
+      if (!S.folds.has(n.id)) t.filter(x => x.p === n.id).forEach(c => push(c, d + 1));
+    };
+    t.filter(n => n.p === null).forEach(n => push(n, 0));
+    return rows;
+  }
+
+  /* ---- contents ---- */
+
+  function holdingsIn(locId, deep) {
+    const ids = deep ? subtreeIds(locId, LOCS) : [locId];
+    return S.holdings.filter(h => ids.includes(h.loc));
+  }
+
+  function itemsIn(catId, deep) {
+    const ids = deep ? subtreeIds(catId, S.cats) : [catId];
+    return ITEMS.filter(i => ids.includes(i.cat));
+  }
+
+  function rollup(id) {
+    if (S.lens === "place") return holdingsIn(id, true).length;
+    const ids = subtreeIds(id, S.cats);
+    return S.holdings.filter(h => ids.includes(item(h.item).cat)).length;
+  }
+
+  function onHand(itemId) {
+    const hs = S.holdings.filter(h => h.item === itemId);
+    if (!hs.length) return "none";
+    const it = item(itemId);
+    if (it.kind === "Unique") return hs.length + (hs.length === 1 ? " held" : " held");
+    const grams = hs.reduce((a, h) => a + (h.unit === "bags" ? h.qty * (it.pkg || 0) : h.qty), 0);
+    return fmtQty(grams, it.unit === "count" ? "" : it.unit);
+  }
+
+  function fmtQty(q, u) {
+    if (u === "g" && q >= 1000) return (q / 1000).toFixed(q % 1000 === 0 ? 0 : 1) + " kg";
+    return q + (u ? " " + u : "");
+  }
+
+  function hQty(h) {
+    if (item(h.item).kind === "Unique") return h.custody === "Out" ? "out" : "1";
+    return fmtQty(h.qty, h.unit);
+  }
+
+  function centerRows() {
+    if (S.lens === "place") {
+      const hs = holdingsIn(S.railId, S.deep);
+      return hs.map(h => ({
+        kind: "holding", id: h.id, name: item(h.item).name, qty: hQty(h),
+        where: h.loc === S.railId ? "" : pathOf(h.loc, LOCS).slice(-1)[0],
+        flag: flagOf(h), h
+      }));
+    }
+    return itemsIn(S.railId, S.deep).map(i => {
+      const hs = S.holdings.filter(h => h.item === i.id);
+      return {
+        kind: "item", id: i.id, name: i.name, qty: onHand(i.id),
+        where: hs.length === 0 ? "nowhere" : hs.length === 1
+          ? pathOf(hs[0].loc, LOCS).slice(-1)[0]
+          : hs.length + " places",
+        flag: "", i
+      };
+    });
+  }
+
+  function flagOf(h) {
+    if (h.custody === "Out") return { t: "out · " + h.since + " days", c: "flag-out" };
+    if (h.expires) return { t: "expires " + h.expires, c: "flag-exp" };
+    if (h.opened) return { t: "opened", c: "" };
+    return "";
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Actions legal for the thing under the cursor
+   * ------------------------------------------------------------------ */
+
+  function subject() {
+    if (S.focus === "rail") {
+      const n = node(S.railId);
+      return { kind: S.lens === "place" ? "location" : "category", id: S.railId, name: n ? n.name : "" };
+    }
+    const rows = centerRows();
+    const r = rows[Math.min(S.cIdx, rows.length - 1)];
+    if (!r) return { kind: "none", name: "" };
+    return { kind: r.kind, id: r.id, name: r.name, row: r };
+  }
+
+  function offers() {
+    const s = subject();
+    if (s.kind === "holding") {
+      const h = s.row.h, it = item(h.item);
+      if (it.kind === "Unique") {
+        const out = h.custody === "Out";
+        return [
+          out ? { k: "t", l: "put it back", n: "home is " + pathOf(h.loc, LOCS).join(" › ") }
+              : { k: "t", l: "take it out", n: "one keystroke, no questions" },
+          { k: "m", l: "move it", n: "to another place" },
+          out ? { k: "h", l: "rehome it here", n: "this lives here now" }
+              : { k: "#", l: "verify it is here", n: "records an observation" },
+          { k: "r", l: "rename the item", n: it.name },
+          { k: "L", l: "mark it lost", n: "stays searchable, reversible" },
+          { k: "K", l: "retire this holding", n: "permanent · history stays", danger: true }
+        ];
+      }
+      return [
+        { k: "u", l: "use some", n: hQty(h) + " here" },
+        { k: "#", l: "count what is there", n: "ledger says " + hQty(h) },
+        { k: "m", l: "move it", n: "to another place" },
+        { k: "e", l: "set an expiry", n: h.expires ? h.expires : "none set" },
+        { k: "d", l: "discard some", n: "spoiled, expired, broken" },
+        { k: "r", l: "rename the item", n: it.name },
+        { k: "K", l: "retire this holding", n: "permanent · history stays", danger: true }
+      ];
+    }
+    if (s.kind === "item") {
+      const it = item(s.id);
+      return [
+        { k: "a", l: "acquire some", n: "adds a holding somewhere" },
+        { k: "m", l: "file it elsewhere", n: "now in " + pathOf(it.cat, S.cats).join(" › ") },
+        { k: "r", l: "rename it", n: it.name },
+        it.kind === "Bulk"
+          ? { k: "p", l: "promote to one-of-a-kind", n: "discards unit and package size", danger: true }
+          : { k: "p", l: "demote to a counted pile", n: "lossy going forward", danger: true }
+      ];
+    }
+    const n = node(s.id), count = rollup(s.id);
+    const word = S.lens === "place" ? "place" : "category";
+    return [
+      { k: "n", l: "new " + word + " inside", n: "child of " + (n ? n.name : "") },
+      { k: "r", l: "rename it", n: n ? n.name : "" },
+      { k: "m", l: "move it elsewhere", n: "contents follow" },
+      S.lens === "place"
+        ? { k: "V", l: "verify everything here", n: count + " holdings to walk" }
+        : { k: "O", l: "reorganise this branch", n: "staged, one transaction" },
+      { k: "d", l: "delete it", n: "contents resolve to the parent", danger: true }
+    ];
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Move destinations
+   * ------------------------------------------------------------------ */
+
+  function destinations() {
+    const c = S.carrying || {};
+    // A holding goes to a place, an item is filed under a category, and a node
+    // goes wherever its own tree allows. Same gesture, three trees.
+    const t = c.kind === "holding" ? LOCS
+      : c.kind === "item" ? S.cats
+      : tree();
+    const excl = c.node ? subtreeIds(c.id, t) : [];
+    let list = t.filter(n => !excl.includes(n.id))
+      .map(n => ({ id: n.id, path: pathOf(n.id, t).join(" › "), name: n.name }));
+    const f = S.moveFilter.toLowerCase();
+    if (f) list = list.filter(d => d.path.toLowerCase().includes(f));
+    return list;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * The import plan
+   * ------------------------------------------------------------------ */
+
+  function makePlan() {
+    return {
+      name: "march-receipt.csv",
+      rows: [
+        { n: 2, st: "ok", text: "receive 100 g Basmati Rice → Kitchen › Left Pantry",
+          loc: 4, eff: ["3 bags + 800 g", "3 bags + 900 g"] },
+        { n: 3, st: "ok", text: "consume 10 g Cumin (dinner)",
+          loc: 3, eff: ["80 g", "70 g"] },
+        { n: 4, st: "ask", text: 'receive 20 g "Cumn" → Kitchen › Shelf 2',
+          loc: 3, why: "did you mean Cumin?", fix: [["y", "yes"], ["n", "new item"]],
+          yes: { text: "receive 20 g Cumin → Kitchen › Shelf 2", eff: ["80 g", "100 g"] },
+          no:  { text: 'receive 20 g "Cumn" (a new item) → Kitchen › Shelf 2',
+                 eff: ["nothing", "20 g"] } },
+        { n: 5, st: "ask", text: "receive 50 g Cardamom → Kitchen › Shelf 2",
+          loc: 3, why: "would create an item", fix: [["y", "create it"], ["d", "drop"]],
+          yes: { text: "create Cardamom in Spices, receive 50 g → Shelf 2",
+                 eff: ["nothing", "50 g"] } },
+        { n: 6, st: "stop", text: 'consume Basmati Rice "lots" → Left Pantry',
+          loc: 4, why: '"lots" has no number in it', fix: [["e", "edit"], ["d", "drop"]] }
+      ]
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Rendering
+   * ------------------------------------------------------------------ */
+
+  const term = document.getElementById("term");
+  const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+  function render() {
+    if (S.mode === "walk") { term.innerHTML = walkFrame(); bind(); return; }
+
+    const out = [];
+    out.push(head());
+    out.push('<div class="t-body">' + rail() + center() + "</div>");
+    if (S.mode === "act")      out.push(actDrawer());
+    if (S.mode === "move")     out.push(moveDrawer());
+    if (S.mode === "organise") out.push(organiseDrawer());
+    if (S.mode === "review")   out.push(reviewDrawer());
+    if (S.toast) out.push(toast());
+    out.push(inspector());
+    out.push(keybar());
+    term.innerHTML = out.join("");
+    bind();
+  }
+
+  function head() {
+    const total = S.holdings.length;
+    const out = S.holdings.filter(h => h.custody === "Out").length;
+    const exp = S.holdings.filter(h => h.expires).length;
+    const attn = [];
+    if (out) attn.push(out + " out too long");
+    if (exp) attn.push(exp + " expiring");
+    return '<div class="t-head"><span class="house">house · ' + total + " holdings · "
+      + ITEMS.length + ' items</span><span class="t-attn">'
+      + (attn.length ? esc(attn.join(" · ")) + "  <span class=\"dim-t\">! see</span>" : "")
+      + "</span></div>";
+  }
+
+  function rail() {
+    const rows = flatten();
+    const title = S.mode === "organise"
+      ? 'ORGANISE — ' + (S.lens === "place" ? "by place" : "by kind")
+      : (S.lens === "place" ? "BY PLACE" : "BY KIND");
+    const body = rows.map(r => {
+      const cur = r.id === S.railId;
+      const cls = "r" + (cur ? " cur" + (S.focus === "rail" ? "" : " soft") : "");
+      const tw = r.kids ? (S.folds.has(r.id) ? "▸" : "▾") : " ";
+      const pad = "&nbsp;".repeat(r.depth * 2);
+      const st = S.staged.find(x => x.target === r.id);
+      let nm = esc(r.name);
+      if (st && st.op === "rename") nm = '<span class="add">' + esc(st.to) + "</span>";
+      if (st && st.op === "delete") nm = '<span class="del">' + esc(r.name) + "</span>";
+      const mark = st ? (st.op === "delete" ? " del" : " add") : "";
+      return '<div class="' + cls + '" data-rail="' + r.id + '">'
+        + '<span class="nm">' + pad + '<span class="tw">' + tw + "</span> "
+        + '<span class="' + mark.trim() + '">' + nm + "</span></span>"
+        + '<span class="ct">' + rollup(r.id) + "</span></div>";
+    }).join("");
+    return '<div class="pane rail"><div class="pane-title">' + esc(title)
+      + '</div><div class="pane-rows">' + body + "</div></div>";
+  }
+
+  function center() {
+    const rows = centerRows();
+    const crumb = pathOf(S.railId).join(" › ") + (S.deep ? "" : "  (here only)");
+    if (!rows.length) {
+      return '<div class="pane center"><div class="pane-title">' + esc(crumb)
+        + '</div><div class="empty">nothing here yet — <span style="color:var(--t-key)">n</span> puts something in it</div></div>';
+    }
+    const body = rows.map((r, i) => {
+      const cur = i === S.cIdx;
+      const cls = "r" + (cur ? " cur" + (S.focus === "center" ? "" : " soft") : "")
+        + (S.marked.has(r.id) ? " mark" : "")
+        + (S.mode === "review" && S.plan && targetLoc() === S.railId && hitRow(r) ? " target" : "");
+      const flag = r.flag ? '<span class="wh ' + r.flag.c + '">' + esc(r.flag.t) + "</span>" : "";
+      const sel = S.marked.has(r.id) ? '<span class="sel">×</span> ' : "";
+      return '<div class="' + cls + '" data-row="' + i + '">'
+        + '<span class="nm">' + sel + esc(r.name) + "</span>"
+        + '<span class="qt">' + esc(r.qty) + "</span>"
+        + (r.where ? '<span class="wh">' + esc(r.where) + "</span>" : "")
+        + flag + "</div>";
+    }).join("");
+    return '<div class="pane center"><div class="pane-title">' + esc(crumb)
+      + '</div><div class="pane-rows">' + body + "</div></div>";
+  }
+
+  function targetLoc() {
+    if (S.mode !== "review" || !S.plan) return null;
+    const r = S.plan.rows[S.planIdx];
+    return r ? r.loc : null;
+  }
+  function hitRow(r) {
+    const pr = S.plan.rows[S.planIdx];
+    if (!pr || r.kind !== "holding") return false;
+    return pr.text.includes(item(r.h.item).name);
+  }
+
+  /* ---- drawers ---- */
+
+  function drawerShell(lab, title, right, rows) {
+    return '<div class="drawer"><div class="drawer-title"><span><span class="lab">'
+      + esc(lab) + "</span>  " + title + '</span><span class="dim-t">' + right
+      + '</span></div><div class="drawer-rows">' + rows + "</div></div>";
+  }
+
+  function actDrawer() {
+    const s = subject();
+    const list = offers();
+    const rows = list.map((o, i) => {
+      const cur = i === S.actIdx;
+      return '<div class="r' + (cur ? " cur" : "") + '" data-act="' + i + '">'
+        + '<span class="st" style="color:var(--t-key)">' + esc(o.k) + "</span>"
+        + '<span class="nm"' + (o.danger ? ' style="color:var(--t-stop)"' : "") + ">" + esc(o.l) + "</span>"
+        + '<span class="eff">' + esc(o.n) + "</span></div>";
+    }).join("");
+    return drawerShell("ACT ON", esc(s.name) + '<span class="dim-t"> · ' + esc(s.kind) + "</span>",
+      "type to filter · esc back", rows);
+  }
+
+  function moveDrawer() {
+    const list = destinations();
+    const c = S.carrying;
+    const rows = list.length ? list.map((d, i) => {
+      const cur = i === S.moveIdx;
+      const cnt = c.kind === "item" ? itemsIn(d.id, true).length
+        : c.node ? rollup(d.id) : holdingsIn(d.id, true).length;
+      return '<div class="r' + (cur ? " cur" : "") + '" data-dest="' + i + '">'
+        + '<span class="nm">' + esc(d.path) + "</span>"
+        + '<span class="ct">' + cnt + "</span></div>";
+    }).join("") : '<div class="empty">nothing matches “' + esc(S.moveFilter) + "”</div>";
+    const what = c.count > 1 ? c.count + " things" : "“" + c.name + "”";
+    return drawerShell("MOVE", "carrying " + esc(what) + '<span class="dim-t"> · from '
+      + esc(c.from) + "</span>",
+      (S.moveFilter ? "filter: " + esc(S.moveFilter) + " · " : "") + "enter put it there · esc put it down",
+      rows);
+  }
+
+  function organiseDrawer() {
+    if (S.typing) {
+      return drawerShell("ORGANISE", "new " + (S.lens === "place" ? "place" : "category") + " inside "
+        + esc(node(S.typing.parent).name), "enter create · esc cancel",
+        '<div class="r cur"><span class="nm">' + esc(S.typing.text)
+        + '<span style="color:var(--t-cursor)">█</span></span></div>');
+    }
+    const rows = S.staged.length ? S.staged.map((e, i) => {
+      const cur = i === S.stagedIdx;
+      const cls = e.op === "delete" ? "del" : "add";
+      return '<div class="r' + (cur ? " cur" : "") + '" data-staged="' + i + '">'
+        + '<span class="st ' + (e.op === "delete" ? "stop" : "ok") + '">'
+        + (e.op === "delete" ? "−" : "+") + "</span>"
+        + '<span class="nm ' + cls + '">' + esc(e.label) + "</span>"
+        + '<span class="eff">' + esc(e.note || "") + "</span></div>";
+    }).join("") : '<div class="empty">nothing staged yet — <span style="color:var(--t-key)">n</span> new · <span style="color:var(--t-key)">r</span> rename · <span style="color:var(--t-key)">d</span> delete · <span style="color:var(--t-key)">m</span> move</div>';
+    return drawerShell("ORGANISE",
+      S.staged.length ? S.staged.length + " staged change" + (S.staged.length === 1 ? "" : "s")
+        + '<span class="dim-t"> · nothing written yet</span>' : "staging",
+      S.staged.length ? "a apply as one transaction · esc discard" : "esc leave", rows);
+  }
+
+  function reviewDrawer() {
+    const p = S.plan;
+    const rows = p.rows.map((r, i) => {
+      const cur = i === S.planIdx;
+      const stc = r.st === "ok" ? "ok" : r.st === "ask" ? "ask" : "stop";
+      const gl = r.st === "ok" ? "✓" : r.st === "ask" ? "?" : "!";
+      let tail;
+      if (r.st === "ok" && r.eff) {
+        tail = '<span class="eff">' + esc(r.eff[0]) + " → <b>" + esc(r.eff[1]) + "</b></span>";
+      } else if (r.dropped) {
+        tail = '<span class="eff">dropped</span>';
+      } else {
+        tail = '<span class="why ' + (r.st === "ask" ? "flag-exp" : "flag-gone") + '">' + esc(r.why) + "</span>"
+          + (cur && r.fix ? " " + r.fix.map(f => '<span class="chip" data-fix="' + f[0] + '">'
+            + esc(f[0]) + " " + esc(f[1]) + "</span>").join(" ") : "");
+      }
+      return '<div class="r' + (cur ? " cur" : "") + (r.dropped ? " dim" : "") + '" data-plan="' + i + '">'
+        + '<span class="st ' + stc + '">' + gl + "</span>"
+        + '<span class="rn">' + r.n + "</span>"
+        + '<span class="nm">' + esc(r.text) + "</span>" + tail + "</div>";
+    }).join("");
+    const ready = p.rows.filter(r => r.st === "ok" && !r.dropped).length;
+    const ask = p.rows.filter(r => r.st === "ask" && !r.dropped).length;
+    const stop = p.rows.filter(r => r.st === "stop" && !r.dropped).length;
+    return drawerShell("REVIEW", esc(p.name) + '<span class="dim-t"> · '
+      + p.rows.length + " rows</span>",
+      ready + " ready · " + ask + " to decide · " + stop + " blocked  ·  "
+      + (ready ? "a apply the " + ready + " ready" : "a —") + " · q cancel", rows);
+  }
+
+  function toast() {
+    const t = S.toast;
+    return '<div class="toast' + (t.warn ? " warn" : "") + '">' + esc(t.text)
+      + (t.undo ? '  <span class="u">z undo</span>' : "") + "</div>";
+  }
+
+  /* ---- inspector + keybar ---- */
+
+  function inspector() {
+    if (S.mode === "review") {
+      const r = S.plan.rows[S.planIdx];
+      return '<div class="t-insp">row ' + r.n + " points at <b>"
+        + esc(pathOf(r.loc, LOCS).join(" › ")) + "</b> — shown above, as it is now</div>";
+    }
+    const s = subject();
+    if (s.kind === "holding") {
+      const h = s.row.h, it = item(h.item);
+      const bits = ["<b>" + esc(it.name) + "</b>", esc(pathOf(it.cat, S.cats).join(" › "))];
+      if (it.kind === "Bulk") {
+        bits.push(esc(hQty(h)) + " here, " + esc(onHand(it.id)) + " in the house");
+        if (it.pkg) bits.push("1 bag = " + it.pkg + " " + it.unit);
+      } else {
+        bits.push(h.custody === "Out"
+          ? '<span class="note">out ' + h.since + " days · home is " + esc(pathOf(h.loc, LOCS).join(" › ")) + "</span>"
+          : "at rest · " + esc(pathOf(h.loc, LOCS).join(" › ")));
+      }
+      if (h.expires) bits.push('<span class="note">expires ' + esc(h.expires) + "</span>");
+      return '<div class="t-insp">' + bits.join(" · ") + "</div>";
+    }
+    if (s.kind === "item") {
+      const it = item(s.id);
+      const n = S.holdings.filter(h => h.item === it.id).length;
+      return '<div class="t-insp"><b>' + esc(it.name) + "</b> · "
+        + (it.kind === "Bulk" ? "measured in " + esc(it.unit === "count" ? "whole units" : it.unit) : "one of a kind")
+        + " · " + esc(onHand(it.id)) + " across " + n + " holding" + (n === 1 ? "" : "s") + "</div>";
+    }
+    const n = node(s.id);
+    if (!n) return '<div class="t-insp"></div>';
+    return '<div class="t-insp"><b>' + esc(pathOf(s.id).join(" › ")) + "</b> · "
+      + rollup(s.id) + (S.lens === "place" ? " holdings below here" : " holdings of this kind")
+      + " · " + kids(s.id).length + " " + (S.lens === "place" ? "places" : "categories") + " inside</div>";
+  }
+
+  function keybar() {
+    let ks;
+    if (S.mode === "act")      ks = [["esc", "back"], ["↑↓", "choose"], ["enter", "do it"]];
+    else if (S.mode === "move") ks = [["esc", "put it down"], ["type", "filter"], ["enter", "put it there"]];
+    else if (S.mode === "organise") ks = [["n", "new"], ["r", "rename"], ["d", "delete"], ["m", "move"],
+      ["a", "apply " + S.staged.length], ["esc", "discard"]];
+    else if (S.mode === "review") ks = [["↑↓", "rows"], ["y/n/e", "settle"], ["d", "drop"],
+      ["a", "apply ready"], ["q", "cancel"]];
+    else {
+      const s = subject();
+      ks = [["space", "act"]];
+      if (s.kind === "holding") {
+        const it = item(s.row.h.item);
+        ks.push(it.kind === "Unique" ? ["t", s.row.h.custody === "Out" ? "put back" : "take out"] : ["u", "use"]);
+        ks.push(["m", "move"], ["#", "count"]);
+      } else if (s.kind === "item") {
+        ks.push(["a", "acquire"], ["m", "file"]);
+      } else {
+        ks.push(["n", "new"], ["m", "move"], ["V", "verify"], ["O", "organise"]);
+      }
+      ks.push(["\\", S.lens === "place" ? "by kind" : "by place"], ["i", "import"]);
+      if (S.undo) ks.push(["z", "undo"]);
+    }
+    return '<div class="t-keys">' + ks.map(k =>
+      '<span class="k" data-key="' + esc(k[0]) + '"><i>' + esc(k[0]) + "</i> " + esc(k[1]) + "</span>").join("") + "</div>";
+  }
+
+  /* ---- the walk ---- */
+
+  function walkFrame() {
+    const w = S.walk;
+    if (w.i >= w.list.length) {
+      const changed = w.results.filter(r => r.kind !== "ok");
+      return '<div class="t-head"><span class="house">verify · '
+        + esc(pathOf(w.root, LOCS).join(" › ")) + '</span><span class="dim-t">done</span></div>'
+        + '<div class="walk"><div class="crumb">' + w.list.length + " walked · "
+        + changed.length + " disagreed with the ledger</div>"
+        + '<div class="big">' + (changed.length ? "Reconcile " + changed.length + " difference"
+          + (changed.length === 1 ? "" : "s") : "Everything matched.") + "</div>"
+        + '<div class="ledger">' + (changed.length
+          ? "each becomes a Counted and an explicit Adjusted — the discrepancy is recorded, never overwritten"
+          : "a Verified event for each, and nothing else to do") + "</div>"
+        + '<div class="opts"><span data-key="enter"><i>enter</i> '
+        + (changed.length ? "review them below" : "back to the house")
+        + "</span></div><div class=\"prog\"><span>" + dots() + "</span></div></div>";
+    }
+    const h = w.list[w.i], it = item(h.item);
+    return '<div class="t-head"><span class="house">verify · '
+      + esc(pathOf(w.root, LOCS).join(" › ")) + '</span><span class="dim-t">'
+      + (w.i + 1) + " of " + w.list.length + "</span></div>"
+      + '<div class="walk"><div class="crumb">' + esc(pathOf(h.loc, LOCS).join(" › ")) + "</div>"
+      + '<div class="big">' + esc(it.name) + "</div>"
+      + '<div class="ledger">the ledger says <span style="color:var(--t-ink)">'
+      + esc(hQty(h)) + "</span>"
+      + (it.kind === "Unique" ? " · one of a kind" : "") + "</div>"
+      + '<div class="opts">'
+      + '<span data-key="enter"><i>enter</i> that is right</span>'
+      + (it.kind === "Bulk" ? '<span data-key="#"><i>#</i> a different amount</span>' : "")
+      + '<span data-key="x"><i>x</i> not here</span>'
+      + '<span data-key="s"><i>s</i> skip</span>'
+      + '<span data-key="esc"><i>esc</i> stop the walk</span></div>'
+      + '<div class="prog"><span class="dots">' + dots() + "</span><span>"
+      + w.results.filter(r => r.kind === "ok").length + " matched · "
+      + w.results.filter(r => r.kind === "adj").length + " adjusted · "
+      + w.results.filter(r => r.kind === "gone").length + " missing</span></div></div>";
+  }
+
+  function dots() {
+    const w = S.walk;
+    return w.list.map((_, i) => {
+      const r = w.results[i];
+      if (!r) return i === w.i ? '<b class="now">●</b>' : "<b>○</b>";
+      if (r.kind === "ok") return '<b class="y">✓</b>';
+      if (r.kind === "gone") return '<b class="n">✗</b>';
+      return '<b class="y">±</b>';
+    }).join("");
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Behaviour
+   * ------------------------------------------------------------------ */
+
+  function say(text, opts) {
+    S.toast = Object.assign({ text: text }, opts || {});
+  }
+
+  function clampCenter() {
+    const n = centerRows().length;
+    if (S.cIdx >= n) S.cIdx = Math.max(0, n - 1);
+  }
+
+  function flipLens() {
+    const s = subject();
+    if (S.lens === "place") {
+      let cat = null;
+      if (s.kind === "holding") cat = item(s.row.h.item).cat;
+      S.lens = "kind";
+      S.railId = cat || "c1";
+      say("by kind · " + (cat ? s.name + " is in " + pathOf(S.railId).join(" › ") : "showing the whole taxonomy"));
+    } else {
+      let l = null;
+      if (s.kind === "item") {
+        const hs = S.holdings.filter(h => h.item === s.id);
+        if (hs.length) l = hs[0].loc;
+      }
+      S.lens = "place";
+      S.railId = l || 9;
+      say("by place · " + (l ? s.name + " is in " + pathOf(S.railId).join(" › ") : "showing the house"));
+    }
+    // reveal the path to the selection
+    let p = node(S.railId);
+    while (p && p.p !== null) { S.folds.delete(p.p); p = node(p.p); }
+    S.cIdx = 0;
+  }
+
+  function startMove() {
+    const s = subject();
+    if (S.focus === "center" && S.marked.size > 1) {
+      S.carrying = { kind: "holding", ids: [...S.marked], count: S.marked.size,
+        name: S.marked.size + " holdings", from: pathOf(S.railId).join(" › ") };
+    } else if (s.kind === "holding") {
+      S.carrying = { kind: "holding", ids: [s.id], count: 1, name: s.name,
+        from: pathOf(s.row.h.loc, LOCS).join(" › ") };
+    } else if (s.kind === "item") {
+      S.carrying = { kind: "item", ids: [s.id], count: 1, name: s.name,
+        from: pathOf(item(s.id).cat, S.cats).join(" › ") };
+    } else {
+      S.carrying = { kind: "node", node: true, id: s.id, ids: [s.id], count: 1, name: s.name,
+        from: pathOf(s.id).slice(0, -1).join(" › ") || "the top" };
+    }
+    S.mode = "move"; S.moveIdx = 0; S.moveFilter = ""; S.toast = null;
+  }
+
+  function commitMove() {
+    const list = destinations();
+    const d = list[S.moveIdx];
+    if (!d) return;
+    const c = S.carrying;
+    const before = [];
+    if (c.kind === "holding") {
+      c.ids.forEach(id => {
+        const h = S.holdings.find(x => x.id === id);
+        before.push({ id: id, loc: h.loc }); h.loc = d.id;
+      });
+      S.railId = d.id;
+    } else if (c.kind === "item") {
+      c.ids.forEach(id => { const it = item(id); before.push({ id: id, cat: it.cat }); it.cat = d.id; });
+      S.railId = d.id;
+    } else {
+      const t = S.lens === "place" ? LOCS : S.cats;
+      const n = t.find(x => x.id === c.id);
+      before.push({ id: c.id, p: n.p }); n.p = d.id;
+      S.folds.delete(d.id);
+    }
+    S.undo = { label: "move", apply: () => {
+      before.forEach(b => {
+        if (b.loc !== undefined) S.holdings.find(x => x.id === b.id).loc = b.loc;
+        else if (b.cat !== undefined) item(b.id).cat = b.cat;
+        else { const t = S.lens === "place" ? LOCS : S.cats; t.find(x => x.id === b.id).p = b.p; }
+      });
+    } };
+    S.marked.clear();
+    S.mode = "browse"; S.focus = "center"; S.cIdx = 0;
+    say("moved " + (c.count > 1 ? c.count + " things" : "“" + c.name + "”") + " → " + d.path,
+      { undo: true });
+    S.carrying = null;
+  }
+
+  function doOffer(o) {
+    const s = subject();
+    S.mode = "browse";
+    if (o.k === "m") { startMove(); return; }
+    if (o.k === "V") { startWalk(); return; }
+    if (o.k === "O") { S.mode = "organise"; S.staged = []; return; }
+    if (o.k === "n") { S.mode = "organise"; S.typing = { parent: S.railId, text: "" }; return; }
+    if (o.k === "t" && s.kind === "holding") { toggleCustody(s.row.h); return; }
+    if (o.k === "u" && s.kind === "holding") { useSome(s.row.h); return; }
+    if (o.k === "#" && s.kind === "holding") {
+      say("count recorded — ledger already said " + hQty(s.row.h) + ", so no Adjusted was needed");
+      return;
+    }
+    say(o.l + " — the real build hands this to command." + o.k + ", plans it, and shows the plan here",
+      { warn: true });
+  }
+
+  function toggleCustody(h) {
+    const was = h.custody;
+    h.custody = was === "Out" ? "AtRest" : "Out";
+    if (h.custody === "Out") h.since = 0;
+    S.undo = { label: "custody", apply: () => { h.custody = was; h.since = 23; } };
+    say(h.custody === "Out" ? "took out “" + item(h.item).name + "” · home is "
+      + pathOf(h.loc, LOCS).join(" › ") : "“" + item(h.item).name + "” is back at rest",
+      { undo: true });
+  }
+
+  function useSome(h) {
+    const it = item(h.item);
+    if (it.kind === "Unique") { toggleCustody(h); return; }
+    if (h.unit === "bags") {
+      // §4.1: opening is implicit, never a user decision.
+      const open = S.holdings.find(x => x.item === h.item && x.loc === h.loc && x.unit === it.unit);
+      const before = { q: h.qty, o: open ? open.qty : null };
+      h.qty -= 1;
+      if (open) open.qty += it.pkg - 100; else {
+        S.holdings.push({ id: "hx" + Date.now(), item: h.item, loc: h.loc, qty: it.pkg - 100, unit: it.unit, opened: true });
+      }
+      S.undo = { label: "use", apply: () => { h.qty = before.q; if (open) open.qty = before.o; } };
+      say("opened a bag. " + fmtQty(open ? open.qty : it.pkg - 100, it.unit) + " open · "
+        + h.qty + " sealed", { undo: true });
+      return;
+    }
+    const step = it.unit === "count" ? 1 : 10;
+    const before = h.qty;
+    h.qty = Math.max(0, h.qty - step);
+    S.undo = { label: "use", apply: () => { h.qty = before; } };
+    say("used " + fmtQty(step, it.unit === "count" ? "" : it.unit) + " of “" + it.name
+      + "” · " + hQty(h) + " left" + (h.qty === 0 ? " — depleted, restock?" : ""), { undo: true });
+  }
+
+  function startWalk() {
+    const list = holdingsIn(S.railId, true);
+    if (!list.length) { say("nothing to verify in there", { warn: true }); return; }
+    S.walk = { root: S.railId, list: list, i: 0, results: [] };
+    S.mode = "walk";
+  }
+
+  function walkKey(k) {
+    const w = S.walk;
+    if (w.i >= w.list.length) {
+      if (k === "Enter" || k === "Escape") {
+        const changed = w.results.filter(r => r.kind !== "ok");
+        S.mode = changed.length ? "review" : "browse";
+        if (changed.length) {
+          S.plan = {
+            name: "count of " + pathOf(w.root, LOCS).join(" › "),
+            rows: changed.map((r, i) => r.kind === "gone"
+              ? { n: i + 1, st: "ask", text: "mark “" + r.name + "” Out with no location",
+                  loc: r.loc, why: "not found on the walk — that is Missing, not deleted",
+                  fix: [["y", "yes"], ["d", "drop"]],
+                  yes: { text: "mark “" + r.name + "” Out, no current location",
+                         eff: ["at rest", "missing"] } }
+              : { n: i + 1, st: "ok", text: "Counted “" + r.name + "” · Adjusted " + r.delta,
+                  loc: r.loc, eff: [r.was, r.now] })
+          };
+          S.planIdx = 0;
+          followPlan();
+        } else say("walk finished · everything matched the ledger");
+        S.walk = null;
+      }
+      return;
+    }
+    const h = w.list[w.i], it = item(h.item);
+    if (k === "Escape") { S.mode = "browse"; S.walk = null; say("walk stopped · nothing recorded", { warn: true }); return; }
+    if (k === "Enter") { w.results.push({ kind: "ok" }); w.i++; return; }
+    if (k === "s") { w.results.push({ kind: "skip" }); w.i++; return; }
+    if (k === "x") {
+      w.results.push({ kind: "gone", name: it.name, loc: h.loc });
+      w.i++; return;
+    }
+    if (k === "#" && it.kind === "Bulk") {
+      const was = hQty(h);
+      const now = it.unit === "count" ? Math.max(0, h.qty - 6) : Math.max(0, h.qty - 15);
+      w.results.push({ kind: "adj", name: it.name, loc: h.loc, was: was,
+        now: fmtQty(now, h.unit), delta: (now - h.qty) + (h.unit ? " " + h.unit : "") });
+      w.i++; return;
+    }
+  }
+
+  function applyPlan() {
+    const ready = S.plan.rows.filter(r => r.st === "ok" && !r.dropped);
+    if (!ready.length) { say("nothing is ready yet", { warn: true }); return; }
+    // Only the receipt's first row moves real stock in the model; the point
+    // here is the shape of the interaction, not a second implementation of
+    // the ledger.
+    ready.forEach(r => {
+      if (r.text.startsWith("receive 100 g Basmati Rice")) {
+        const h = S.holdings.find(x => x.item === "i1" && x.unit === "g");
+        if (h) h.qty += 100;
+      }
+      if (r.text.startsWith("consume 10 g Cumin")) {
+        const h = S.holdings.find(x => x.item === "i3");
+        if (h) h.qty -= 10;
+      }
+    });
+    const left = S.plan.rows.filter(r => !r.dropped && r.st !== "ok");
+    S.plan.rows = left;
+    say("applied " + ready.length + " row" + (ready.length === 1 ? "" : "s")
+      + " as one transaction" + (left.length ? " · " + left.length + " still waiting on you" : ""),
+      { undo: false });
+    if (!left.length) { S.mode = "browse"; S.plan = null; }
+    else S.planIdx = 0;
+  }
+
+  // Every cursor move in the plan re-points the house above it. This is the
+  // whole idea of the drawer: a proposed row is unreadable without the state
+  // it is proposed against.
+  function followPlan() {
+    const r = S.plan.rows[S.planIdx];
+    if (!r) return;
+    S.railId = r.loc;
+    let p = LOCS.find(x => x.id === r.loc);
+    while (p && p.p !== null) { S.folds.delete(p.p); p = LOCS.find(x => x.id === p.p); }
+  }
+
+  function settle(r, choice) {
+    const c = r[choice];
+    if (!c) return false;
+    r.st = "ok"; r.text = c.text; r.eff = c.eff; r.why = null; r.fix = null;
+    return true;
+  }
+
+  function planKey(k) {
+    if (k === "ArrowDown") { S.planIdx = Math.min(S.plan.rows.length - 1, S.planIdx + 1); followPlan(); return; }
+    if (k === "ArrowUp")   { S.planIdx = Math.max(0, S.planIdx - 1); followPlan(); return; }
+    if (k === "q" || k === "Escape") {
+      S.mode = "browse"; S.plan = null;
+      say("import left where it is · nothing applied, the folder keeps the plan", { warn: true });
+      return;
+    }
+    if (k === "a") { applyPlan(); return; }
+    const r = S.plan.rows[S.planIdx];
+    if (!r) return;
+    if (k === "d") { r.dropped = true; say("row " + r.n + " dropped"); return; }
+    if (k === "y" && r.st === "ask" && settle(r, "yes")) { say("settled row " + r.n); return; }
+    if (k === "n" && r.st === "ask" && settle(r, "no")) { say("row " + r.n + " will create a new item"); return; }
+    if (k === "e" && r.st === "stop") {
+      r.st = "ok"; r.text = "consume 200 g Basmati Rice → Left Pantry";
+      r.eff = ["800 g open", "600 g open"]; r.why = null; r.fix = null;
+      say("edited row " + r.n + " — it binds now");
+      return;
+    }
+  }
+
+  function organiseKey(k, e) {
+    if (S.typing) {
+      if (k === "Escape") { S.typing = null; return; }
+      if (k === "Enter") {
+        const name = S.typing.text.trim();
+        if (name) {
+          S.staged.push({ op: "create", target: null, parent: S.typing.parent,
+            label: "new " + (S.lens === "place" ? "place" : "category") + " “" + name + "” inside "
+              + pathOf(S.typing.parent).join(" › "), note: "migrates nothing", name: name });
+        }
+        S.typing = null; return;
+      }
+      if (k === "Backspace") { S.typing.text = S.typing.text.slice(0, -1); return; }
+      if (k.length === 1 && !e.ctrlKey && !e.metaKey) S.typing.text += k;
+      return;
+    }
+    if (k === "Escape") {
+      S.mode = "browse";
+      if (S.staged.length) say(S.staged.length + " staged change" + (S.staged.length === 1 ? "" : "s")
+        + " discarded · nothing was written", { warn: true });
+      S.staged = []; return;
+    }
+    if (k === "n") { S.typing = { parent: S.railId, text: "" }; return; }
+    if (k === "d") {
+      const n = node(S.railId);
+      const held = rollup(S.railId);
+      S.staged.push({ op: "delete", target: S.railId,
+        label: "delete “" + n.name + "”",
+        note: held ? held + " holdings resolve to " + (n.p ? pathOf(n.p).join(" › ") : "the top") : "empty" });
+      return;
+    }
+    if (k === "r") {
+      const n = node(S.railId);
+      S.staged.push({ op: "rename", target: S.railId, to: n.name + " (renamed)",
+        label: "rename “" + n.name + "” → “" + n.name + " (renamed)”", note: "a label, not an event" });
+      return;
+    }
+    if (k === "m") { S.mode = "move"; startMoveNode(); return; }
+    if (k === "a") {
+      const count = S.staged.length;
+      if (!count) { say("nothing staged", { warn: true }); return; }
+      const before = { cats: S.cats.map(c => ({ ...c })), locs: LOCS.map(l => ({ ...l })) };
+      S.staged.forEach(e2 => {
+        if (e2.op === "create") {
+          const t = S.lens === "place" ? LOCS : S.cats;
+          const id = S.lens === "place" ? Math.max(...LOCS.map(l => l.id)) + 1 : "cx" + t.length;
+          t.push({ id: id, name: e2.name, p: e2.parent });
+          S.folds.delete(e2.parent);
+        } else if (e2.op === "rename") {
+          const n = (S.lens === "place" ? LOCS : S.cats).find(x => x.id === e2.target);
+          if (n) n.name = e2.to;
+        } else if (e2.op === "delete") {
+          if (S.lens === "place") {
+            const n = LOCS.find(x => x.id === e2.target);
+            if (n) {
+              S.holdings.filter(h => h.loc === n.id).forEach(h => { h.loc = n.p; });
+              LOCS.filter(x => x.p === n.id).forEach(x => { x.p = n.p; });
+              LOCS.splice(LOCS.indexOf(n), 1);
+              if (S.railId === n.id) S.railId = n.p || 9;
+            }
+          } else {
+            const n = S.cats.find(x => x.id === e2.target);
+            if (n) {
+              ITEMS.filter(i => i.cat === n.id).forEach(i => { i.cat = n.p; });
+              S.cats.filter(x => x.p === n.id).forEach(x => { x.p = n.p; });
+              S.cats.splice(S.cats.indexOf(n), 1);
+              if (S.railId === n.id) S.railId = n.p || "c1";
+            }
+          }
+        }
+      });
+      S.staged = []; S.mode = "browse";
+      S.undo = { label: "organise", apply: () => {
+        S.cats = before.cats;
+        LOCS.length = 0; before.locs.forEach(l => LOCS.push(l));
+      } };
+      say("applied " + count + " structural change" + (count === 1 ? "" : "s") + " as one transaction",
+        { undo: true });
+    }
+  }
+
+  function startMoveNode() {
+    const n = node(S.railId);
+    S.carrying = { kind: "node", node: true, id: S.railId, ids: [S.railId], count: 1,
+      name: n.name, from: pathOf(S.railId).slice(0, -1).join(" › ") || "the top" };
+    S.moveIdx = 0; S.moveFilter = "";
+  }
+
+  /* ---- top-level key handling ---- */
+
+  function onKey(e) {
+    const k = e.key;
+
+    if (S.mode === "walk") { e.preventDefault(); walkKey(k); render(); return; }
+
+    if (S.mode === "review") { e.preventDefault(); planKey(k); render(); return; }
+
+    if (S.mode === "organise") { e.preventDefault(); organiseKey(k, e); render(); return; }
+
+    if (S.mode === "move") {
+      e.preventDefault();
+      const list = destinations();
+      if (k === "Escape") { S.mode = "browse"; S.carrying = null; say("put it down · nothing moved"); }
+      else if (k === "ArrowDown" || (e.ctrlKey && k === "n")) S.moveIdx = Math.min(list.length - 1, S.moveIdx + 1);
+      else if (k === "ArrowUp" || (e.ctrlKey && k === "p")) S.moveIdx = Math.max(0, S.moveIdx - 1);
+      else if (k === "Enter") commitMove();
+      else if (k === "Backspace") { S.moveFilter = S.moveFilter.slice(0, -1); S.moveIdx = 0; }
+      else if (k.length === 1 && !e.ctrlKey && !e.metaKey) { S.moveFilter += k; S.moveIdx = 0; }
+      render(); return;
+    }
+
+    if (S.mode === "act") {
+      e.preventDefault();
+      const list = offers();
+      if (k === "Escape" || k === " ") S.mode = "browse";
+      else if (k === "ArrowDown" || (e.ctrlKey && k === "n")) S.actIdx = Math.min(list.length - 1, S.actIdx + 1);
+      else if (k === "ArrowUp" || (e.ctrlKey && k === "p")) S.actIdx = Math.max(0, S.actIdx - 1);
+      else if (k === "Enter") doOffer(list[S.actIdx]);
+      else {
+        const hit = list.find(o => o.k === k);
+        if (hit) doOffer(hit);
+      }
+      render(); return;
+    }
+
+    /* browse */
+    const rows = flatten();
+    const idx = rows.findIndex(r => r.id === S.railId);
+    const s = subject();
+
+    switch (k) {
+      case "ArrowDown":
+        e.preventDefault();
+        if (S.focus === "rail") { if (idx < rows.length - 1) { S.railId = rows[idx + 1].id; S.cIdx = 0; } }
+        else S.cIdx = Math.min(centerRows().length - 1, S.cIdx + 1);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        if (S.focus === "rail") { if (idx > 0) { S.railId = rows[idx - 1].id; S.cIdx = 0; } }
+        else S.cIdx = Math.max(0, S.cIdx - 1);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        if (S.focus === "rail") {
+          if (kids(S.railId).length && S.folds.has(S.railId)) S.folds.delete(S.railId);
+          else if (centerRows().length) { S.focus = "center"; S.cIdx = 0; }
+        }
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        if (S.focus === "center") S.focus = "rail";
+        else if (!S.folds.has(S.railId) && kids(S.railId).length) S.folds.add(S.railId);
+        else { const p = node(S.railId); if (p && p.p !== null) S.railId = p.p; }
+        break;
+      case "Tab":
+        e.preventDefault();
+        if (kids(S.railId).length) { S.folds.has(S.railId) ? S.folds.delete(S.railId) : S.folds.add(S.railId); }
+        break;
+      case " ":
+        e.preventDefault(); S.mode = "act"; S.actIdx = 0; S.toast = null; break;
+      case "\\":
+        e.preventDefault(); flipLens(); break;
+      case "x":
+        e.preventDefault();
+        if (S.focus === "center" && s.id) {
+          S.marked.has(s.id) ? S.marked.delete(s.id) : S.marked.add(s.id);
+          S.cIdx = Math.min(centerRows().length - 1, S.cIdx + 1);
+        }
+        break;
+      case "m": e.preventDefault(); startMove(); break;
+      case "i":
+        e.preventDefault();
+        S.mode = "review"; S.plan = makePlan(); S.planIdx = 0; S.focus = "center";
+        S.toast = null; followPlan();
+        break;
+      case "V": e.preventDefault(); startWalk(); break;
+      case "O": e.preventDefault(); S.mode = "organise"; S.staged = []; S.toast = null; break;
+      case "n":
+        e.preventDefault(); S.mode = "organise"; S.staged = []; S.typing = { parent: S.railId, text: "" };
+        break;
+      case "v": e.preventDefault(); S.deep = !S.deep; clampCenter();
+        say(S.deep ? "showing everything below here" : "showing only what is directly here"); break;
+      case "u": e.preventDefault(); if (s.kind === "holding") useSome(s.row.h); break;
+      case "t": e.preventDefault(); if (s.kind === "holding" && item(s.row.h.item).kind === "Unique") toggleCustody(s.row.h); break;
+      case "#":
+        e.preventDefault();
+        if (s.kind === "holding") say("count recorded — ledger already said " + hQty(s.row.h)
+          + ", so no Adjusted was needed");
+        break;
+      case "z":
+        e.preventDefault();
+        if (S.undo) { S.undo.apply(); S.undo = null; say("undone · the ledger holds the compensating event"); }
+        else say("nothing to undo", { warn: true });
+        break;
+      case "Escape":
+        e.preventDefault(); S.toast = null; S.marked.clear(); S.focus = "rail"; break;
+      default: return;
+    }
+    clampCenter();
+    render();
+  }
+
+  /* ---- clicks ---- */
+
+  function bind() {
+    term.querySelectorAll("[data-rail]").forEach(el => el.addEventListener("click", () => {
+      const raw = el.getAttribute("data-rail");
+      S.railId = S.lens === "place" ? Number(raw) : raw;
+      S.focus = "rail"; S.cIdx = 0; clampCenter(); render();
+    }));
+    term.querySelectorAll("[data-row]").forEach(el => el.addEventListener("click", () => {
+      S.cIdx = Number(el.getAttribute("data-row")); S.focus = "center"; render();
+    }));
+    term.querySelectorAll("[data-act]").forEach(el => el.addEventListener("click", () => {
+      doOffer(offers()[Number(el.getAttribute("data-act"))]); render();
+    }));
+    term.querySelectorAll("[data-dest]").forEach(el => el.addEventListener("click", () => {
+      S.moveIdx = Number(el.getAttribute("data-dest")); commitMove(); render();
+    }));
+    term.querySelectorAll("[data-plan]").forEach(el => el.addEventListener("click", () => {
+      S.planIdx = Number(el.getAttribute("data-plan")); render();
+    }));
+    term.querySelectorAll("[data-staged]").forEach(el => el.addEventListener("click", () => {
+      S.stagedIdx = Number(el.getAttribute("data-staged")); render();
+    }));
+    term.querySelectorAll("[data-fix]").forEach(el => el.addEventListener("click", ev => {
+      ev.stopPropagation(); planKey(el.getAttribute("data-fix")); render();
+    }));
+    term.querySelectorAll("[data-key]").forEach(el => el.addEventListener("click", () => {
+      const k = el.getAttribute("data-key");
+      const map = { "↑↓": null, "type": null, "enter": "Enter", "esc": "Escape", "space": " ", "y/n/e": "y" };
+      const key = k in map ? map[k] : k;
+      if (!key) return;
+      term.focus();
+      onKey({ key: key, preventDefault() {}, ctrlKey: false, metaKey: false });
+    }));
+  }
+
+  /* ---- scenarios ---- */
+
+  const scenes = {
+    find() {
+      reset();
+      S.lens = "place"; S.railId = 13; S.focus = "center"; S.cIdx = 0;
+      [9, 10, 12].forEach(i => S.folds.delete(i));
+      S.folds.add(1); S.folds.add(5);
+      say("three ancho chiles in the house · \\ shows you the kind they share");
+    },
+    move() {
+      reset();
+      S.lens = "place"; S.railId = 9; S.focus = "center"; S.cIdx = 0;
+      [9, 10, 12].forEach(i => S.folds.delete(i));
+      S.folds.add(1); S.folds.add(5);
+      startMove();
+    },
+    organize() {
+      reset();
+      S.lens = "kind"; S.railId = "c1"; S.folds.delete("c1"); S.focus = "rail";
+      S.mode = "organise";
+      S.staged = [
+        { op: "create", parent: "c1", name: "Whole Spices", target: null,
+          label: "new category “Whole Spices” inside Spices", note: "migrates nothing" },
+        { op: "rename", target: "c2", to: "Chiles",
+          label: "rename “Dried Peppers” → “Chiles”", note: "a label, not an event" }
+      ];
+    },
+    import() {
+      reset();
+      S.mode = "review"; S.plan = makePlan(); S.planIdx = 0; S.focus = "center";
+      S.folds.add(5); S.folds.add(9);
+      followPlan();
+    },
+    verify() {
+      reset();
+      S.railId = 12; [9, 10].forEach(i => S.folds.delete(i)); S.folds.delete(12);
+      startWalk();
+    },
+    reset() { reset(); }
+  };
+
+  document.getElementById("tour").addEventListener("click", ev => {
+    const b = ev.target.closest("button[data-s]");
+    if (!b) return;
+    document.querySelectorAll("#tour .tb").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+    scenes[b.getAttribute("data-s")]();
+    render();
+    term.focus();
+  });
+
+  term.addEventListener("keydown", onKey);
+
+  reset();
+  scenes.find();
+  render();
+})();
+</script>
