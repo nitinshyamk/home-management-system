@@ -18,19 +18,19 @@ import (
 	"home-management-system/internal/tui/planview"
 )
 
-// The import flow: a file in, one or two plan screens, a transaction each.
+// The import flow: a file in, a plan screen per stage, a transaction each.
 //
 // It reuses the plan screen's table, the creation panel, and the confirmation
 // -- all unchanged. If any of them had needed reworking for this, the
 // interactive and bulk flows would have started to diverge into different
 // products, and the fix would be the shared piece rather than a fork.
 //
-// A file that proposes a classification AND the things filed under it is
-// reviewed in two stages, for the reason importer.Split gives: the second
-// stage's rows cannot resolve against categories that do not exist yet, so the
-// categories are applied -- or skipped -- first, and the rest is bound again
-// afterwards. Two stages is two transactions, which is the one thing about this
-// the screen has to be honest about, and it says so in both of them.
+// A file that proposes a SHAPE -- categories, places, or both -- AND the things
+// filed into it is reviewed in stages, for the reason importer.Stages gives:
+// the later rows cannot resolve against categories and places that do not exist
+// yet, so each tree is applied -- or skipped -- first, and the rest is bound
+// again afterwards. A stage is a transaction, which is the one thing about this
+// the screen has to be honest about, and it says so on every one of them.
 
 // Import opens a file for review.
 func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error) {
@@ -47,29 +47,35 @@ func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error
 		return Model{}, err
 	}
 
-	categories, review := importer.Bind(ctx, vocabulary, path, rows).Split()
+	// Only the stages the file actually has, so the counts the screen shows are
+	// about the file rather than about the vocabulary. Most files propose no
+	// shape at all and are one stage, which is why a screen that announced
+	// "stage 1 of 1" would be describing itself rather than the file.
+	stages := importer.Bind(ctx, vocabulary, path, rows).Stages()
 	describe := summariser{names: names}
 
 	m := New(ctx, ctrl)
-	switch {
-	case len(categories.Entries) == 0:
-		// The file says nothing about the classification, which is most files.
-		// It is one stage, and a screen that announced "stage 1 of 1" would be
-		// describing itself rather than the file.
-		m.flow = m.flow.staged(planview.New(review, describe), nil)
-	case len(review.Entries) == 0:
-		// Categories and nothing else: one stage again, and skipping it would
-		// be a longer way of pressing q. It still applies in passes -- a tree
-		// is built from the top down whether or not anything follows it.
-		m.flow = m.flow.staged(planview.New(categories, describe).
-			WithStage(planview.Stage{Name: importer.StageCategories.String(), InPasses: true}), nil)
-	default:
-		m.flow = m.flow.staged(planview.New(categories, describe).WithStage(planview.Stage{
-			Name: importer.StageCategories.String(), Number: 1, Of: 2,
-			Skippable: true, InPasses: true,
-		}), &review)
-	}
+	first := stages[0]
+	m.flow = m.flow.staged(
+		planview.New(first.Plan, describe).WithStage(stageScreen(first.Stage, 1, len(stages))),
+		stages[1:])
 	return m, nil
+}
+
+// stageScreen describes a stage to the screen that shows it.
+//
+// Both of the things a stage can do beyond applying follow from what it IS, so
+// neither is decided at a call site: a structural stage builds a tree, which is
+// what makes it apply in passes, and it can be skipped -- but only where there
+// is something to go on TO. Skipping the last stage of an import would be a
+// longer way of pressing q, and a key offered under a screen that ignores it is
+// worse than a key offered nowhere.
+func stageScreen(stage importer.Stage, number, of int) planview.Stage {
+	return planview.Stage{
+		Name: stage.String(), Number: number, Of: of,
+		Skippable: stage.Structural() && number < of,
+		InPasses:  stage.Structural(),
+	}
 }
 
 // ReadRows picks the transport from the file's name.
@@ -180,35 +186,39 @@ func (m Model) applyImport() (Model, tea.Cmd) {
 
 // skipStage sets the whole stage aside, applying none of it.
 //
-// It is what makes the bulk category upload optional rather than a toll gate. A
-// proposed classification is the part of a file an agent is most likely to get
-// wrong, and the review screen can already file a row into a category that
-// exists -- so the fastest path through a bad one is not to fix it row by row.
-// Nothing is written, which is why this does not ask.
+// It is what makes a bulk upload of categories or places optional rather than a
+// toll gate. A proposed shape is the part of a file an agent is most likely to
+// get wrong, and the review screen can already file a row into a category or a
+// place that exists -- so the fastest path through a bad one is not to fix it
+// row by row. Nothing is written, which is why this does not ask.
+//
+// One stage, never the rest of them: a file whose categories are nonsense and
+// whose places are right costs one keystroke, and the places are still there to
+// review afterwards. That is the whole reason the two trees are two stages.
 func (m Model) skipStage() (Model, tea.Cmd) {
 	stage := m.flow.plan.Stage()
 	if !stage.Skippable {
 		return m, nil
 	}
-	return m, m.nextStage(fmt.Sprintf("stage %d (%s) skipped -- %s not applied, and the house is as it was",
-		stage.Number, stage.Name, rowsPhrase(len(m.flow.plan.Plan().Entries))), 0)
+	return m, m.nextStage(stage.Lead()+fmt.Sprintf("skipped -- %s not applied, and the house is as it was",
+		rowsPhrase(len(m.flow.plan.Plan().Entries))), 0)
 }
 
 // stageApplied moves on from a stage that has just been committed -- to the
 // next stage, or to another pass over this one.
 //
 // Another pass, because a tree is built from the top down: a row filed under a
-// category this pass has just created could not bind until now, and it is
-// sitting on this screen waiting for exactly that. Handing it to the review
-// stage instead would be handing over a category row, and going on without it
-// would be dropping a row nobody dropped.
+// category or a place this pass has just created could not bind until now, and
+// it is sitting on this screen waiting for exactly that. Handing it to the next
+// stage instead would be handing over a row that stage is not about, and going
+// on without it would be dropping a row nobody dropped.
 func (m Model) stageApplied(rows int) tea.Cmd {
 	stage := m.flow.plan.Stage()
 	// What the STAGE has applied, not what this pass did. A pass is an
 	// implementation detail of building a tree; what was written to the house
 	// is not.
-	note := fmt.Sprintf("stage %d (%s) applied %s in %s",
-		stage.Number, stage.Name, rowsPhrase(m.flow.inStage+rows), transactions(m.flow.passes+1))
+	note := stage.Lead() + fmt.Sprintf("applied %s in %s",
+		rowsPhrase(m.flow.inStage+rows), transactions(m.flow.passes+1))
 
 	if left := m.flow.plan.Plan().Unapplied(); stage.InPasses && len(left.Entries) > 0 {
 		return m.samePass(left, note+fmt.Sprintf(" -- %s left, bound again against it",
@@ -227,18 +237,22 @@ func (m Model) samePass(left importer.Plan, note string, applied int) tea.Cmd {
 // nextStage binds the waiting stage against a vocabulary read now.
 //
 // Now, and not when the file was read: the stage just finished with may have
-// created the very categories these rows name, and binding them against the
-// older vocabulary would leave a row blocked by something that is sitting in
-// the database.
+// created the very categories or places these rows name, and binding them
+// against the older vocabulary would leave a row blocked by something that is
+// sitting in the database.
 func (m Model) nextStage(note string, applied int) tea.Cmd {
 	waiting, ok := m.flow.waiting()
 	if !ok {
 		return nil
 	}
 	was := m.flow.plan.Stage()
-	return m.staging(waiting, planview.Stage{
-		Name: importer.StageReview.String(), Number: was.Number + 1, Of: was.Of,
-	}, note, applied, false)
+	// One further along a sequence whose length was settled when the file was
+	// read. A stage that is skipped is still a stage that happened, so the
+	// numbering counts it: "stage 3 of 3" after skipping stage 1 is the truth
+	// about the file, and renumbering would make the screen disagree with the
+	// line above it saying what was skipped.
+	return m.staging(waiting.Plan,
+		stageScreen(waiting.Stage, was.Number+1, was.Of), note, applied, false)
 }
 
 // staging reads the house as it now is and hands back the plan to show next.

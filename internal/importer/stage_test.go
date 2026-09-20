@@ -8,68 +8,119 @@ import (
 	"home-management-system/internal/importer"
 )
 
-// The split into two stages.
+// The split into stages.
 //
-// A file that proposes a classification and the things filed under it cannot be
-// reviewed as one list: the second half's rows have nothing to resolve against
-// until the first half has been applied. The split is what makes that a
-// sequence rather than a screen full of rows blocked for a reason that is not
-// their fault.
+// A file that proposes a shape -- a classification, a set of places, or both --
+// and the things filed into it cannot be reviewed as one list: the later rows
+// have nothing to resolve against until the earlier ones have been applied. The
+// split is what makes that a sequence rather than a screen full of rows blocked
+// for a reason that is not their fault.
 
-// The categories go first, and everything else keeps file order behind them.
-func TestSplitPutsTheCategoriesFirst(t *testing.T) {
-	categories, review := bind(t, `op,name,under,item,qty,at
-new category,Baking,,,,
-acquire,,,Turmeric,10,Left Pantry
-new category,Flours,Baking,,,
-consume,,,Basmati Rice,10,Left Pantry
-`).Split()
+// The structure goes first -- categories, then places -- and everything else
+// keeps file order behind them.
+func TestStagesPutTheStructureFirst(t *testing.T) {
+	stages := bind(t, `op,name,under,location,item,qty,at
+new category,Baking,,,,,
+acquire,,,,Turmeric,10,Left Pantry
+new location,Top Shelf,,,,,
+new category,Flours,Baking,,,,
+consume,,,,Basmati Rice,10,Left Pantry
+reparent location,,Kitchen,Left Pantry,,,
+`).Stages()
 
-	if got := lines(categories); !equal(got, []int{2, 4}) {
-		t.Errorf("the category stage holds rows %v, want rows 2 and 4", got)
+	want := []struct {
+		stage importer.Stage
+		rows  []int
+	}{
+		{importer.StageCategories, []int{2, 5}},
+		{importer.StageLocations, []int{4, 7}},
+		{importer.StageReview, []int{3, 6}},
 	}
-	if got := lines(review); !equal(got, []int{3, 5}) {
-		t.Errorf("the review stage holds rows %v, want rows 3 and 5", got)
+	if len(stages) != len(want) {
+		t.Fatalf("%d stages, want %d", len(stages), len(want))
 	}
-	// Both halves know which file they are about, because both are a screen
-	// that has to say so.
-	if categories.Source != "receipt.csv" || review.Source != "receipt.csv" {
-		t.Errorf("a stage lost the file name: %q and %q", categories.Source, review.Source)
+	for i, w := range want {
+		if stages[i].Stage != w.stage {
+			t.Errorf("stage %d is the %s, want the %s", i+1, stages[i].Stage, w.stage)
+		}
+		if got := lines(stages[i].Plan); !equal(got, w.rows) {
+			t.Errorf("the %s stage holds rows %v, want %v", w.stage, got, w.rows)
+		}
+		// Every stage knows which file it is about, because every one of them
+		// is a screen that has to say so.
+		if stages[i].Plan.Source != "receipt.csv" {
+			t.Errorf("the %s stage says it came from %q", w.stage, stages[i].Plan.Source)
+		}
 	}
 }
 
-// A file that says nothing about the classification is one stage, and the split
-// leaves it whole.
-func TestAFileWithoutCategoriesHasNoCategoryStage(t *testing.T) {
-	categories, review := bind(t, `op,item,qty,at
+// A file that proposes no shape at all is one stage, and the split leaves it
+// whole. Most files are this one.
+func TestAFileWithoutStructureIsOneStage(t *testing.T) {
+	stages := bind(t, `op,item,qty,at
 acquire,Turmeric,10,Left Pantry
-`).Split()
+`).Stages()
 
-	if len(categories.Entries) != 0 {
-		t.Errorf("%d category rows in a file that has none", len(categories.Entries))
+	if len(stages) != 1 || stages[0].Stage != importer.StageReview {
+		t.Fatalf("%d stages, starting with the %s", len(stages), stages[0].Stage)
 	}
-	if len(review.Entries) != 1 {
-		t.Errorf("%d review rows, want the one the file has", len(review.Entries))
+	if len(stages[0].Plan.Entries) != 1 {
+		t.Errorf("%d review rows, want the one the file has", len(stages[0].Plan.Entries))
+	}
+}
+
+// A file of places and the things kept in them is TWO stages, and the places
+// are the first of them. An empty categories stage is not conjured up to hold
+// the number 1.
+func TestAFileOfPlacesIsTwoStages(t *testing.T) {
+	stages := bind(t, `op,name,item,qty,at
+new location,Top Shelf,,,
+acquire,,Turmeric,10,Left Pantry
+`).Stages()
+
+	if len(stages) != 2 {
+		t.Fatalf("%d stages, want 2", len(stages))
+	}
+	if stages[0].Stage != importer.StageLocations || stages[1].Stage != importer.StageReview {
+		t.Errorf("the stages are %s then %s", stages[0].Stage, stages[1].Stage)
+	}
+}
+
+// A file with no rows in it is still an import, and still a review screen
+// saying so. Nothing at all would make "the first stage" a thing every caller
+// had to check for.
+func TestAnEmptyFileIsStillOneStage(t *testing.T) {
+	stages := bind(t, "op,item,qty,at\n").Stages()
+	if len(stages) != 1 || stages[0].Stage != importer.StageReview {
+		t.Fatalf("an empty file has %d stages", len(stages))
+	}
+	if len(stages[0].Plan.Entries) != 0 {
+		t.Errorf("%d rows in an empty file", len(stages[0].Plan.Entries))
 	}
 }
 
 // Which stage a row belongs to is read off the spec, so it cannot drift from
 // what the commands ARE.
 //
-// The list here is the assertion -- these four ops and no others are about the
-// classification alone -- and it is checked by walking the whole vocabulary,
-// so a command added tomorrow lands in one of the two stages deliberately
-// rather than wherever a forgotten list happened to put it.
-func TestOnlyTheCategoryCommandsAreInTheCategoryStage(t *testing.T) {
-	want := map[string]bool{
-		"new category": true, "reparent category": true,
-		"archive category": true, "restore category": true,
+// The table here is the assertion -- these ops and no others are about the
+// shape of the house alone -- and it is checked by walking the whole
+// vocabulary, so a command added tomorrow lands in a stage deliberately rather
+// than wherever a forgotten list happened to put it.
+func TestOnlyTheStructuralCommandsAreInAStructuralStage(t *testing.T) {
+	want := map[string]importer.Stage{
+		"new category": importer.StageCategories, "reparent category": importer.StageCategories,
+		"archive category": importer.StageCategories, "restore category": importer.StageCategories,
+		"new location": importer.StageLocations, "reparent location": importer.StageLocations,
+		"archive location": importer.StageLocations, "restore location": importer.StageLocations,
 	}
 	for _, spec := range command.Specs() {
 		row := importer.Row{Raw: command.RawCommand{Op: string(spec.Op)}}
-		got := importer.StageOf(row) == importer.StageCategories
-		if got != want[string(spec.Op)] {
-			t.Errorf("%q is in the %s stage", spec.Op, importer.StageOf(row))
+		expected, structural := want[string(spec.Op)]
+		if !structural {
+			expected = importer.StageReview
+		}
+		if got := importer.StageOf(row); got != expected {
+			t.Errorf("%q is in the %s stage, want the %s stage", spec.Op, got, expected)
 		}
 	}
 }
@@ -81,6 +132,44 @@ func TestNewItemIsNotACategoryRow(t *testing.T) {
 	row := importer.Row{Raw: command.RawCommand{Op: "new item"}}
 	if got := importer.StageOf(row); got != importer.StageReview {
 		t.Errorf("`new item` is in the %s stage", got)
+	}
+}
+
+// A row that moves a thing names a place and is about the THING. It is the case
+// a rule reading "any command that names a location" gets wrong, and the reason
+// the rule is "every name it takes is of one kind" instead.
+func TestMovingAThingIsNotAPlaceRow(t *testing.T) {
+	for _, op := range []string{"rehome", "check out", "move", "open", "found"} {
+		row := importer.Row{Raw: command.RawCommand{Op: op}}
+		if got := importer.StageOf(row); got != importer.StageReview {
+			t.Errorf("`%s` is in the %s stage", op, got)
+		}
+	}
+}
+
+// `rename` and `describe` take a name that could mean either tree, and a field
+// that could mean several kinds says nothing about which tree the row shapes.
+func TestACommandThatCouldMeanEitherTreeIsReviewed(t *testing.T) {
+	for _, op := range []string{"rename", "describe"} {
+		row := importer.Row{Raw: command.RawCommand{Op: op}}
+		if got := importer.StageOf(row); got != importer.StageReview {
+			t.Errorf("`%s` is in the %s stage", op, got)
+		}
+	}
+}
+
+// The structural stages are the ones that build a tree. Both of the things a
+// stage does beyond applying -- skipping, and applying in passes -- are read
+// off that one property rather than decided per stage.
+func TestOnlyTheStructuralStagesSayTheyAre(t *testing.T) {
+	for stage, want := range map[importer.Stage]bool{
+		importer.StageCategories: true,
+		importer.StageLocations:  true,
+		importer.StageReview:     false,
+	} {
+		if got := stage.Structural(); got != want {
+			t.Errorf("the %s stage reports Structural() = %v", stage, got)
+		}
 	}
 }
 
