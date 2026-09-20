@@ -98,6 +98,19 @@ type Row struct {
 	// dimming, because these rows are not less important than the structure
 	// holding them -- they are the things the structure exists to hold.
 	Accent bool
+
+	// Inert marks a row that is not a candidate for whatever is going on: it
+	// is drawn ruled out, the cursor steps over it, and it cannot be picked.
+	//
+	// The cursor half is the point. Dimming alone leaves a person walking the
+	// list one keystroke at a time through rows they were just told are not
+	// answers, and then pressing the key anyway to find out -- which is the
+	// clunkiness this exists to remove. Saying it and enforcing it are one
+	// fact, so they are one field.
+	//
+	// It is the caller's word, per row and per moment. The table has no idea
+	// what a carry is; it knows that some rows are currently not on offer.
+	Inert bool
 }
 
 // Model is the widget's state.
@@ -179,7 +192,13 @@ var (
 //
 // One style rather than nested spans, so a selected row under the cursor reads
 // as both rather than as whichever was applied last.
-func rowStyle(striped, selected, cursor, accented bool) lipgloss.Style {
+// An inert row is FAINT -- style.Dim's appearance, applied here rather than
+// through style.Dim.Render because the row already carries a background and
+// rendering it through another style would throw the banding away. Faint over
+// the accent, not beside it: the accent says "an item, inside this shelf", and
+// being ruled out is the more urgent of the two things to know about a row
+// nothing can be done to.
+func rowStyle(striped, selected, cursor, accented, inert bool) lipgloss.Style {
 	s := lipgloss.NewStyle()
 	switch {
 	case selected:
@@ -187,7 +206,10 @@ func rowStyle(striped, selected, cursor, accented bool) lipgloss.Style {
 	case striped:
 		s = s.Background(stripe)
 	}
-	if accented {
+	switch {
+	case inert:
+		s = s.Faint(true)
+	case accented:
 		s = s.Foreground(accent)
 	}
 	if cursor {
@@ -233,6 +255,11 @@ func (m Model) SetRows(rows []Row) Model {
 	if m.cursor >= len(m.visible) {
 		m.cursor = max(0, len(m.visible)-1)
 	}
+	// Rows can become inert under a standing cursor -- a carry begins, and the
+	// row it began on is the first thing ruled out. Backwards first, because
+	// what a contained row is inside is the nearest thing that is still a
+	// candidate, and it is where the eye already is.
+	m.cursor = m.land(m.cursor, -1)
 	present := map[int64]bool{}
 	for _, r := range rows {
 		present[r.Key] = true
@@ -290,7 +317,7 @@ func (m Model) SetCursor(i int) Model {
 	if len(m.visible) == 0 {
 		return m
 	}
-	m.cursor = clamp(i, 0, len(m.visible)-1)
+	m.cursor = m.land(clamp(i, 0, len(m.visible)-1), -1)
 	m.clampScroll()
 	return m
 }
@@ -358,10 +385,10 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	case keys.MoveUp:
 		m.move(-1)
 	case keys.Top:
-		m.cursor = 0
+		m.cursor = m.land(0, 1)
 		m.clampScroll()
 	case keys.Bottom:
-		m.cursor = max(0, len(m.visible)-1)
+		m.cursor = m.land(max(0, len(m.visible)-1), -1)
 		m.clampScroll()
 	case keys.Recenter:
 		m.centre()
@@ -393,7 +420,10 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 		}
 
 	case keys.ToggleSelect:
-		if r, ok := m.Current(); ok {
+		// Not an inert row. A selection is a promise that the verb coming next
+		// will act on these, and a row the verb has already ruled out cannot
+		// be part of it.
+		if r, ok := m.Current(); ok && !r.Inert {
 			if m.selected[r.Key] {
 				delete(m.selected, r.Key)
 			} else {
@@ -405,6 +435,9 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	// hiding would mean acting on a set nobody has looked at.
 	case keys.SelectVisible:
 		for _, r := range m.visible {
+			if r.Inert {
+				continue
+			}
 			m.selected[r.Key] = true
 		}
 	case keys.Cancel:
@@ -477,12 +510,23 @@ func path(r Row, i int) string {
 	return cell(r, i)
 }
 
-// step moves with wrap-around.
+// step moves with wrap-around, over the inert rows.
 func (m *Model) step(n int) {
 	if len(m.visible) == 0 {
 		return
 	}
-	m.cursor = (m.cursor + n + len(m.visible)) % len(m.visible)
+	dir := 1
+	if n < 0 {
+		dir = -1
+	}
+	at := (m.cursor + n + len(m.visible)) % len(m.visible)
+	for range m.visible {
+		if !m.visible[at].Inert {
+			break
+		}
+		at = (at + dir + len(m.visible)) % len(m.visible)
+	}
+	m.cursor = at
 	m.clampScroll()
 }
 
@@ -490,8 +534,48 @@ func (m *Model) move(n int) {
 	if len(m.visible) == 0 {
 		return
 	}
-	m.cursor = clamp(m.cursor+n, 0, len(m.visible)-1)
+	// The way you were already going, before the other way. C-n over a shelf
+	// holding nine jars lands on the next shelf rather than bouncing back to
+	// the one you just left, and C-n at the end of the list stays put instead
+	// of reversing under you.
+	m.cursor = m.land(clamp(m.cursor+n, 0, len(m.visible)-1), sign(n))
 	m.clampScroll()
+}
+
+// land is the nearest row the cursor may rest on: from i, searching dir first
+// and then back the other way.
+//
+// Both directions, because one is not enough at either end. A run of inert
+// rows at the bottom of the list would strand a downward motion with nowhere
+// to go, and the useful answer there is the last row that IS a candidate --
+// not the row that happens to be ruled out.
+//
+// With every row inert it gives back what it was handed. There is nowhere to
+// land, and inventing a row to sit on would be a lie about what the cursor is
+// pointing at; the caller that wants to act on it asks Current and gets the
+// truth.
+func (m Model) land(i, dir int) int {
+	if len(m.visible) == 0 {
+		return 0
+	}
+	if dir == 0 {
+		dir = 1
+	}
+	for _, d := range [2]int{dir, -dir} {
+		for at := i; at >= 0 && at < len(m.visible); at += d {
+			if !m.visible[at].Inert {
+				return at
+			}
+		}
+	}
+	return clamp(i, 0, len(m.visible)-1)
+}
+
+func sign(n int) int {
+	if n < 0 {
+		return -1
+	}
+	return 1
 }
 
 // page is how many rows are visible, which is what C-d and C-u move by.

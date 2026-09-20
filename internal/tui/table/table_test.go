@@ -772,3 +772,129 @@ func TestAPathColumnDoesNotHoardWidthItCannotUse(t *testing.T) {
 			narrow, wide)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Inert rows
+// ---------------------------------------------------------------------------
+
+// ruledOut is a table where rows 2, 3 and 4, and the last one, are not on
+// offer -- the shape a tree has while a carry is looking for a container: runs
+// of contained rows between the containers, and one run at the very bottom.
+func ruledOut() table.Model {
+	out := rows(8)
+	for _, i := range []int{2, 3, 4, 7} {
+		out[i].Inert = true
+	}
+	return table.New(columns()).SetRows(out).SetSize(80, 12)
+}
+
+// The cursor steps OVER a ruled-out row rather than stopping on it.
+//
+// This is the half that makes the dimming worth anything. Marking a row as no
+// answer and then letting the cursor rest there says no and invites you to try
+// anyway -- and trying is a keystroke that does nothing, which is the clunky
+// part of pointing at somewhere to put a thing.
+func TestTheCursorSteppedOverAnInertRow(t *testing.T) {
+	m := press(ruledOut(), "ctrl+n") // 0 -> 1, which is on offer
+	if got := m.Cursor(); got != 1 {
+		t.Fatalf("one C-n went to %d, want 1", got)
+	}
+	// 2, 3 and 4 are ruled out, so the next stop is 5.
+	if got := press(m, "ctrl+n").Cursor(); got != 5 {
+		t.Errorf("C-n over a run of three inert rows landed on %d, want 5", got)
+	}
+	if got := press(m, "ctrl+n", "ctrl+n", "ctrl+p").Cursor(); got != 5 {
+		t.Errorf("C-p back over the same run landed on %d, want 5", got)
+	}
+}
+
+// At the end of the list it stays put rather than reversing.
+//
+// The search goes the way you were already going first, and only falls back the
+// other way when there is nothing ahead. Falling back FIRST would make C-n at
+// the bottom of the list move the cursor UP, which is not what the key means in
+// any other list.
+func TestMotionIntoATrailingRunOfInertRowsStaysPut(t *testing.T) {
+	m := press(ruledOut(), "alt+>") // the last row is inert, so this lands on 6
+	if got := m.Cursor(); got != 6 {
+		t.Fatalf("M-> landed on %d, want 6 -- the last row that is on offer", got)
+	}
+	if got := press(m, "ctrl+n").Cursor(); got != 6 {
+		t.Errorf("C-n at the end went to %d; it should have stayed on 6 rather than bouncing back", got)
+	}
+}
+
+// And the ends of the list are the ends of what is on OFFER.
+func TestTopAndBottomLandOnRowsThatAreOnOffer(t *testing.T) {
+	out := rows(6)
+	out[0].Inert, out[1].Inert, out[5].Inert = true, true, true
+	m := table.New(columns()).SetRows(out).SetSize(80, 12)
+
+	if got := press(m, "alt+<").Cursor(); got != 2 {
+		t.Errorf("M-< landed on %d, want 2 -- the first row that is on offer", got)
+	}
+	if got := press(m, "alt+>").Cursor(); got != 4 {
+		t.Errorf("M-> landed on %d, want 4 -- the last row that is on offer", got)
+	}
+}
+
+// A row that becomes inert under the cursor takes the cursor with it.
+//
+// This is the moment a carry begins: the row you picked the thing up ON is the
+// first thing ruled out, and leaving the cursor there would mean the gesture
+// started by pointing at the one place the thing cannot go.
+//
+// Backwards, because on a tree what a contained row is inside is the row above
+// it -- the nearest thing that IS a container, and where the eye already is.
+func TestACursorOnARowThatBecomesInertMovesOff(t *testing.T) {
+	m := press(newTable(6), "ctrl+n", "ctrl+n", "ctrl+n")
+	if got := m.Cursor(); got != 3 {
+		t.Fatalf("the cursor is on %d, want 3", got)
+	}
+	out := rows(6)
+	out[3].Inert = true
+	if got := m.SetRows(out).Cursor(); got != 2 {
+		t.Errorf("the cursor stayed at %d when its row was ruled out, want 2", got)
+	}
+}
+
+// An inert row cannot be picked either. A selection is a promise about what the
+// next verb acts on, and a row that verb has already ruled out cannot be part
+// of it.
+func TestAnInertRowCannotBeSelected(t *testing.T) {
+	out := rows(4)
+	out[1].Inert = true
+	m := table.New(columns()).SetRows(out).SetSize(80, 12)
+
+	if got := press(m, "ctrl+space").SelectionCount(); got != 1 {
+		t.Fatalf("space on an ordinary row picked %d rows, want 1", got)
+	}
+	// Three of the four are on offer, and select-all takes those.
+	if got := press(m, "alt+h").SelectionCount(); got != 3 {
+		t.Errorf("select-all picked %d rows, want the 3 that are on offer", got)
+	}
+}
+
+// It is drawn ruled out as well as behaving that way, and faintly rather than
+// in the accent it would otherwise wear: being unavailable is the more urgent
+// of the two things to know about a row nothing can be done to.
+func TestAnInertRowIsDrawnFaint(t *testing.T) {
+	defer withColour()()
+	out := rows(4)
+	out[2].Accent = true
+	inert := append([]table.Row(nil), out...)
+	inert[2].Inert = true
+
+	plain := renderedRows(table.New(columns()).SetRows(out).SetSize(80, 12))
+	dimmed := renderedRows(table.New(columns()).SetRows(inert).SetSize(80, 12))
+
+	if styleOf(dimmed[2]) == styleOf(plain[2]) {
+		t.Errorf("a ruled-out row looks exactly like an ordinary one: %q", dimmed[2])
+	}
+	if !strings.Contains(styleOf(dimmed[2]), "2") {
+		t.Errorf("a ruled-out row carries no faint attribute: %q", styleOf(dimmed[2]))
+	}
+	if styleOf(dimmed[1]) != styleOf(plain[1]) {
+		t.Errorf("ruling one row out restyled its neighbour: %q", dimmed[1])
+	}
+}

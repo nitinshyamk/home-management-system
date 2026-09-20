@@ -92,6 +92,17 @@ type folding interface {
 	Folds() map[int64]bool
 }
 
+// targeting is the other part, and it is a tree's alone for the same reason.
+//
+// A tree shows containers AND the things inside them, so it is the only
+// surface where half the rows are somewhere to put a thing down and half are
+// not. The Holdings table has no such split -- every row is in a place, and
+// putting a thing on any of them means that place -- so a table asked to rule
+// rows out would have to invent which.
+type targeting interface {
+	SetTargeting(on bool) surface
+}
+
 // ---------------------------------------------------------------------------
 // The table surface: Holdings and Items.
 // ---------------------------------------------------------------------------
@@ -192,6 +203,8 @@ func (s treeSurface) Counts() (int, int)            { return s.model.Counts() }
 func (s treeSurface) SortDescription() string       { return "" }
 func (s treeSurface) Folds() map[int64]bool         { return s.model.Folds() }
 func (s treeSurface) Focus(key int64) surface       { return s.with(s.model.Focus(key)) }
+
+func (s treeSurface) SetTargeting(on bool) surface { return s.with(s.model.Targeting(on)) }
 
 // A tree filters on text alone: its facets would name columns it does not have.
 func (s treeSurface) SetFilter(q omnibox.Query) surface {

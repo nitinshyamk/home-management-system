@@ -340,3 +340,123 @@ func TestExpandAllKeepsYouWhereYouWere(t *testing.T) {
 			current.Name)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Targeting: the tree while something is being carried
+// ---------------------------------------------------------------------------
+
+// The same house with its contents spliced in, which is what the tree shows
+// once the contents toggle is on.
+//
+// A holding sits immediately under the place that holds it and BEFORE that
+// place's own sub-places, which is how the query path returns them -- so the
+// first child of Garage is a jar rather than the shelving unit. That ordering
+// is the whole reason descend needs an opinion here.
+//
+//	Attic
+//	Garage
+//	  Ancho Chile                           (holding)
+//	  Metal Shelving Unit
+//	    Bay 3
+//	Kitchen
+//	  Basmati Rice                          (holding)
+//	  Cumin                                 (holding)
+func stockedHouse() []tree.Node {
+	return []tree.Node{
+		{ID: 1, Name: "Attic", Depth: 0, Count: 0},
+		{ID: 2, Name: "Garage", Depth: 0, Count: 1},
+		{ID: 10, Name: "Ancho Chile", Depth: 1, Kind: "Holding", Measure: "100 g"},
+		{ID: 3, Name: "Metal Shelving Unit", Depth: 1, Count: 0},
+		{ID: 4, Name: "Bay 3", Depth: 2, Count: 0},
+		{ID: 7, Name: "Kitchen", Depth: 0, Count: 2},
+		{ID: 11, Name: "Basmati Rice", Depth: 1, Kind: "Holding", Measure: "500 g"},
+		{ID: 12, Name: "Cumin", Depth: 1, Kind: "Holding", Measure: "90 g"},
+	}
+}
+
+func stocked() tree.Model {
+	return tree.New("holdings").SetNodes(stockedHouse()).SetSize(70, 14)
+}
+
+// Nothing in hand, nothing ruled out: the contents are rows like any other,
+// and this is the contrast the rest of the section is measured against.
+func TestWithNothingInHandTheCursorReachesTheContents(t *testing.T) {
+	m := press(stocked(), "ctrl+n", "ctrl+n")
+	if current, _ := m.Current(); current.Name != "Ancho Chile" {
+		t.Errorf("two C-n landed on %q, want the Ancho Chile inside the Garage", current.Name)
+	}
+}
+
+// With something in hand the cursor goes to the next PLACE instead.
+//
+// The things inside a place are not places, so walking the cursor through them
+// on the way to a destination is walking it through rows the put is going to
+// refuse. Pointing at where a thing goes should cost one keystroke per
+// candidate, not one per row.
+func TestWhileCarryingTheCursorSkipsToTheNextPlace(t *testing.T) {
+	m := press(stocked().Targeting(true), "ctrl+n", "ctrl+n")
+	if current, _ := m.Current(); current.Name != "Metal Shelving Unit" {
+		t.Errorf("two C-n landed on %q, want Metal Shelving Unit -- the jar in between is not a place",
+			current.Name)
+	}
+	// And a whole run of them at the end of the tree is skipped the same way.
+	m = press(m, "alt+>")
+	if current, _ := m.Current(); current.Name != "Kitchen" {
+		t.Errorf("M-> landed on %q, want Kitchen -- the last row that is a place", current.Name)
+	}
+}
+
+// Descending steps past them too.
+//
+// C-f aims at a node's first child, and a place's first child is one of the
+// things inside it -- so without an opinion here the key aimed at a row the
+// cursor is not allowed to rest on, and did nothing at all.
+func TestWhileCarryingDescendingFindsTheFirstChildPlace(t *testing.T) {
+	m := press(stocked().Targeting(true), "ctrl+n") // Garage
+	m = press(m, "ctrl+f")
+	if current, _ := m.Current(); current.Name != "Metal Shelving Unit" {
+		t.Errorf("C-f into the Garage landed on %q, want Metal Shelving Unit", current.Name)
+	}
+}
+
+// Picking a thing up moves the cursor off it, because the row it was picked up
+// on is the first row ruled out -- and a gesture that begins by pointing at the
+// one place the thing cannot go has begun by contradicting itself.
+//
+// Onto the container it is IN: that is the nearest row still on offer, it is
+// where the eye already is, and for the common case -- this jar is on the wrong
+// shelf -- it is one row from every sibling shelf.
+func TestPickingSomethingUpMovesTheCursorToWhatHoldsIt(t *testing.T) {
+	m := press(stocked(), "ctrl+n", "ctrl+n")
+	if current, _ := m.Current(); current.Name != "Ancho Chile" {
+		t.Fatalf("expected to be on the Ancho Chile, on %q", current.Name)
+	}
+	m = m.Targeting(true)
+	if current, _ := m.Current(); current.Name != "Garage" {
+		t.Errorf("the cursor stayed on %q when it was ruled out, want Garage", current.Name)
+	}
+}
+
+// And putting the thing down gives the tree back.
+func TestPuttingItDownLetsTheCursorReachTheContentsAgain(t *testing.T) {
+	m := stocked().Targeting(true).Targeting(false)
+	m = press(m, "ctrl+n", "ctrl+n")
+	if current, _ := m.Current(); current.Name != "Ancho Chile" {
+		t.Errorf("two C-n landed on %q after the carry ended, want Ancho Chile", current.Name)
+	}
+}
+
+// A filtered tree rules them out too. The filter and the carry narrow different
+// things -- which rows are shown, and which shown rows are candidates -- and a
+// tree that forgot the second while doing the first would offer a jar as a
+// destination to somebody who had just searched for it.
+func TestAFilteredTreeStillRulesOutTheContents(t *testing.T) {
+	m := stocked().Targeting(true).SetFilter("chile")
+	if current, _ := m.Current(); current.Name != "Garage" {
+		t.Errorf("the cursor is on %q in the filtered tree, want Garage -- the only row left that is a place",
+			current.Name)
+	}
+	if !contains(m, "Ancho Chile") {
+		t.Error("the filter hid the row it matched; it should be shown and merely not offered")
+	}
+}
