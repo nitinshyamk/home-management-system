@@ -52,14 +52,15 @@ type Model struct {
 	// box, not a filter.
 	applied string
 	width   int
-	// reachable says whether a keystroke would arrive here at all.
+	// offers is what the mode that owns the keyboard takes, which the line
+	// shows while it is resting.
 	//
-	// The line is drawn under every screen, including the modal ones -- a
-	// confirmation, an open field, the import plan -- and under those the keys
-	// it names would do nothing at all. A permanently visible affordance that
-	// is sometimes false is worse than none: the whole reason to put it on
-	// screen is that it can be trusted.
-	reachable bool
+	// Told rather than read from the keymap here, because only the application
+	// knows which mode is on top -- the line is drawn under every screen,
+	// including the modal ones, and an affordance naming C-s under a
+	// confirmation that ignores it would be worse than a blank line. Empty
+	// means the mode draws its own hints elsewhere, and this goes quiet.
+	offers string
 }
 
 var (
@@ -116,15 +117,26 @@ var gutterWidth = func() int {
 // textColumn is where the typed text begins, in every state without exception.
 var textColumn = len(indent) + gutterWidth + len(separator)
 
-func New() Model { return Model{width: 80, reachable: true} }
+func New() Model { return Model{width: 80, offers: browseKeys()} }
+
+// browseKeys is what the line offers when nothing has told it otherwise, so a
+// Model built by hand in a test is not silently blank.
+func browseKeys() string {
+	return keys.Hint(keys.Browse,
+		[]keys.Action{keys.Search},
+		[]keys.Action{keys.Jump},
+		[]keys.Action{keys.CommandLine})
+}
 
 func (m Model) SetWidth(w int) Model { m.width = w; return m }
 
-// Reachable tells the line whether a keystroke would arrive here, which only
-// the application knows: it owns the stack of modes, and the line is one of
-// them. Told rather than guessed, because a widget guessing at what is open
-// over it would be a second answer to a question layers.go already answers.
-func (m Model) Reachable(ok bool) Model { m.reachable = ok; return m }
+// Offers tells the line what the mode on top of the stack takes, which only the
+// application knows: it owns the stack, and the line is one of the modes in it.
+// Told rather than guessed, because a widget guessing at what is open over it
+// would be a second answer to a question layers.go already answers.
+//
+// An empty string means the line is out of reach and goes quiet.
+func (m Model) Offers(hints string) Model { m.offers = hints; return m }
 
 // Mode reports what the line is doing.
 func (m Model) Mode() Mode { return m.mode }
@@ -217,11 +229,11 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 // badges inside a fixed gutter answer both questions at once.
 func (m Model) View() string {
 	badge, body, tail := m.parts()
-	if !m.reachable {
-		// Something modal is over the list, so the keys this line names would
-		// do nothing. It goes quiet rather than away: the hints stop being
-		// offered, but an applied filter is still SAID, because that is a fact
-		// about the rows on screen rather than an invitation to press anything.
+	if m.offers == "" {
+		// Something modal is over the list and draws its own hints, so this
+		// goes quiet rather than away: an applied filter is still SAID, because
+		// that is a fact about the rows on screen rather than an invitation to
+		// press anything.
 		tail = ""
 		if m.mode == Closed && m.applied == "" {
 			body = ""
@@ -271,16 +283,13 @@ func (m Model) parts() (badge, body, tail string) {
 	return "", style.Dim.Render(m.affordance()), ""
 }
 
-// affordance is the three keys that open the line, for the resting state.
+// affordance is what the mode on top takes, cut to the room the line has.
 //
-// Read from the keymap rather than written out, so a rebinding cannot leave the
-// one permanently visible line on the screen naming a key that is gone.
+// Every hint in it is read from the keymap by whoever supplied it, so a
+// rebinding cannot leave the one permanently visible line on the screen naming
+// a key that is gone.
 func (m Model) affordance() string {
-	return text.JoinWhatFits(m.width-textColumn, []string{
-		keys.Hint(keys.Browse, []keys.Action{keys.Search}),
-		keys.Hint(keys.Browse, []keys.Action{keys.Jump}),
-		keys.Hint(keys.Browse, []keys.Action{keys.CommandLine}),
-	})
+	return text.JoinWhatFits(m.width-textColumn, strings.Split(m.offers, " - "))
 }
 
 // withTail puts the hints flush right, so they occupy a fixed column too.

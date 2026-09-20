@@ -52,17 +52,24 @@ func (m Model) View() string {
 		// The creation panel does not: it is about a thing that does not exist
 		// yet rather than about the row's text, and it is tall enough that
 		// splicing it would push the plan off the screen it is confirming.
-		height := m.height - 2 - m.say.Height(m.width) - m.creator.Height()
+		//
+		// The height is the same arithmetic every other screen uses, less the
+		// tab bar this screen does not have. It used to be its own formula,
+		// kept in step with bodyHeight's by hand.
+		height := m.bodyHeight() + 2 - m.creator.Height()
 		plan := m.flow.plan.SetSize(m.width, height).SetOverlay(m.editor.SetWidth(m.width).Lines())
 		parts := []string{plan.View()}
 		if m.creator.IsOpen() {
 			parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
 		}
-		parts = append(parts, m.say.Lines(m.width)...)
-		return strings.Join(parts, "\n")
+		// And it ends the way every screen ends: the rule, the status block,
+		// the facts, the line. The plan's own counts ARE its facts, which is
+		// why they moved out of planview and are handed in here.
+		return strings.Join(append(parts,
+			m.chrome(text.JoinWhatFits(m.width, m.flow.plan.Facts()))...), "\n")
 	}
 
-	return strings.Join(append([]string{m.header(), body}, m.chrome()...), "\n")
+	return strings.Join(append([]string{m.header(), body}, m.chrome(m.facts())...), "\n")
 }
 
 // chrome is everything below the body: the rule, then the one status block,
@@ -78,10 +85,10 @@ func (m Model) View() string {
 // in hand, what is in flight -- sits above what does not, and the two rows that
 // are always exactly one line each sit at the bottom, where they can be relied
 // on to be.
-func (m Model) chrome() []string {
+func (m Model) chrome(facts string) []string {
 	parts := []string{m.rule()}
 	parts = append(parts, m.say.Lines(m.width)...)
-	parts = append(parts, m.facts())
+	parts = append(parts, facts)
 	// The line LAST, and always. The bottom row of the screen is the one place
 	// a permanently visible thing can be relied upon to be, which is what makes
 	// it findable -- the same reason a minibuffer lives there.
@@ -89,7 +96,7 @@ func (m Model) chrome() []string {
 	// Sized here, because SetWidth had never been called anywhere: the line
 	// rendered against its default 80 whatever the terminal was, which a
 	// flush-right tail turns from a latent bug into a visible one.
-	return append(parts, m.box.SetWidth(m.width).Reachable(m.lineReachable()).View())
+	return append(parts, m.box.SetWidth(m.width).Offers(m.offered()).View())
 }
 
 // rule is the line between what you are reading and what the screen is saying

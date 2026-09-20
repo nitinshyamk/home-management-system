@@ -1,0 +1,10 @@
+IMPORT  receipt.csv   5 rows
+      ROW  WHAT IT WOULD DO                             WHY NOT                                     
+> OK    2  add 100 of Spices > Basmati Rice to Shelf 1                                              
+  OK    3  use 10 of Spices > Cumin (dinner)                                                        
+  ?     4  acquire Cumn 20 Shelf 1                      item: did you mean Spices > Cumin? (letters…
+  ?     5  acquire Cardamom 50 Shelf 1                  would create an item                        
+  !     6  consume Basmati Rice lots Shelf 1 dinner     qty: "lots" has no number in it             
+----------------------------------------------------------------------------------------------------
+2 ready - 2 need confirming - 1 blocked - A is unavailable: 1 rows are blocked and 2 need confirming
+            enter settle - d drop - u undrop - A apply - q cancel
