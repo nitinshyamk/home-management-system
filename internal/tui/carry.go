@@ -56,6 +56,29 @@ func (m Model) copy() Model {
 func (m Model) carry(what carried) Model {
 	m.copied = &what
 	m.problem, m.status = nil, ""
+	return m.aiming()
+}
+
+// aiming keeps the surface's idea of the carry in step with the model's.
+//
+// Called wherever m.copied changes and wherever the surface is rebuilt, which
+// is the second half and the easy one to forget: every load makes a fresh
+// surface, and a tree that arrived not knowing something was in hand would
+// quietly start offering its items again -- mid-gesture, which is the only
+// time it matters.
+//
+// NOT while the prompt is open, although the thing is just as much in hand
+// there. `m` picks the row up AND opens the field over it, and the field is
+// drawn after the cursor's row -- so ruling that row out would move the cursor
+// to the parent and take the open field with it, away from the thing it is
+// asking about. The prompt is the other half of the gesture anyway: you are
+// naming the destination rather than going to look for it, and nothing is
+// being pointed at. Closing the prompt with the thing still in hand is where
+// pointing begins, and that is where this is called again.
+func (m Model) aiming() Model {
+	if s, ok := m.current.(targeting); ok {
+		m.current = s.SetTargeting(m.copied != nil && !m.editor.IsOpen())
+	}
 	return m
 }
 
@@ -97,12 +120,12 @@ func (m Model) put() (Model, tea.Cmd) {
 	switch {
 	case copied.Kind == "Holding" && kind == "Location":
 		m.copied = nil
-		return m, m.runCommands([]command.Command{
+		return m.aiming(), m.runCommands([]command.Command{
 			command.Move{Holding: domain.HoldingID(copied.ID), To: domain.LocationID(id)},
 		})
 	case copied.Kind == "Item" && kind == "Category":
 		m.copied = nil
-		return m, m.runCommands([]command.Command{
+		return m.aiming(), m.runCommands([]command.Command{
 			command.Reclassify{Item: domain.ItemID(copied.ID), Category: domain.CategoryID(id)},
 		})
 	case copied.Kind == "Holding":
@@ -128,6 +151,12 @@ func (m Model) destination() (kind string, id int64, ok bool) {
 		// put would land in whatever location happens to share that number --
 		// a silent write to the wrong shelf, which is the worst kind of wrong
 		// this interface can be.
+		//
+		// The tree now steps the cursor over these rows while a carry is in
+		// hand, so this should be unreachable -- and it stays, because "should
+		// be" is doing the work of a check that costs one comparison. A filter
+		// that leaves nothing but contained rows on screen reaches it, and so
+		// would any future surface that learns to show them.
 		if sel.Contained {
 			return "", 0, false
 		}

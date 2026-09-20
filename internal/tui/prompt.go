@@ -69,7 +69,10 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.copied == nil {
 			m.status = "unchanged"
 		}
-		return m, nil
+		// And if it is still in hand, the tree becomes a list of destinations
+		// now rather than a list of everything: esc here is choosing to point
+		// at the place instead of naming it.
+		return m.aiming(), nil
 	case keys.Confirm:
 		// A field opened for an ACTION answers to that action; only a rename
 		// goes back through the command line, because only a rename is text.
@@ -182,6 +185,7 @@ func (m Model) actOnPrompt() (Model, tea.Cmd) {
 	// down with it. Without this, naming the destination would relocate the
 	// thing and leave the banner insisting it was still in hand.
 	m.copied = nil
+	m = m.aiming()
 
 	if answer == "" {
 		m.status = "nothing entered"

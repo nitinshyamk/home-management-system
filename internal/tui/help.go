@@ -134,6 +134,10 @@ func (m Model) generalHelp() []helpSection {
 			"What is in hand is named at the top of the screen until it is put " +
 				"down, and it stays in hand across the views -- so you can pick " +
 				"a thing up in one and go looking for where it belongs in another.",
+			"While something is in hand, a tree showing its contents goes faint " +
+				"over the things inside and the cursor steps over them: what you " +
+				"are looking for is a place to put the thing, and the things " +
+				"already in those places are not places.",
 		}},
 		{title: "ACTING ON A ROW", rows: [][2]string{
 			pair(keys.Browse, "use some of it", keys.Consume),

@@ -94,6 +94,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.folds[was] = folds.Folds()
 		}
 		m.current = m.surfaceFor(msg)
+		// A fresh surface knows nothing about what is in hand, and a carry
+		// outlives every load it takes to go and find the destination.
+		m = m.aiming()
 
 		// And the filter, which lives on the omnibox rather than on the
 		// surface -- so a fresh surface arrives unfiltered while the line still

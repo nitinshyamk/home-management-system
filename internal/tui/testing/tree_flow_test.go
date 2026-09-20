@@ -4,9 +4,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
+
 	"home-management-system/internal/domain"
 	"home-management-system/internal/ops"
 	sim "home-management-system/internal/tui/testing"
+	"home-management-system/internal/tui/text"
 )
 
 // 10b through the Simulator: the trees against a real house, with the five-deep
@@ -180,6 +184,11 @@ func TestEachTreeRemembersItsOwnMode(t *testing.T) {
 // a LocationID, so a holding row taken for a place would move stock to whatever
 // shelf happens to share that number -- a silent write to the wrong place,
 // which is the worst kind of wrong this interface can be.
+//
+// The refusal that guards it is still in destination(), and is now a backstop:
+// while something is in hand the cursor does not go anywhere that could ask for
+// it, which is what this asserts. A person cannot aim at the wrong answer, so
+// they never have to read why it was wrong.
 func TestAContainedRowIsNotSomewhereToPut(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stockedTree(t, s)
@@ -190,23 +199,105 @@ func TestAContainedRowIsNotSomewhereToPut(t *testing.T) {
 	s.Send(sim.AltW)
 	s.ShowsText("carrying")
 
-	// Onto a holding row in the Locations tree, and put.
+	// Down the Locations tree as far as it will go, which is one row short of
+	// the holding: Kitchen, Left Pantry, and then the rice, which is not a
+	// place.
 	//
 	// No esc on the way: switching views clears the filter by itself, and esc
-	// now PUTS DOWN what is being carried -- which would make the refusal below
-	// "nothing in hand" and the test would be passing for the wrong reason.
+	// now PUTS DOWN what is being carried -- which would leave nothing in hand
+	// and the test passing for the wrong reason.
 	s.Send(sim.Press("2"), sim.Press("v"))
 	before := s.CountHoldings()
 	for i := 0; i < 4; i++ {
 		s.Send(sim.CtrlN)
+		if line := cursorLine(s); strings.Contains(line, "Basmati Rice") {
+			t.Fatalf("the cursor came to rest on a holding row while something was in hand: %q", line)
+		}
 	}
-	s.Send(sim.CtrlY)
-
-	s.ShowsText("place")
+	// Nothing moved on the way there, and nothing was created.
 	if after := s.CountHoldings(); after != before {
-		t.Errorf("the put changed the holdings from %d to %d", before, after)
+		t.Errorf("walking the tree changed the holdings from %d to %d", before, after)
 	}
 	s.OnHand(rice, 500*domain.Scale)
+
+	// And the row is reachable again the moment nothing is in hand, so this is
+	// the carry ruling it out rather than the tree hiding it for good.
+	s.Send(sim.Esc)
+	s.HidesText("carrying")
+	moveTo(t, s, "Basmati Rice")
+}
+
+// The cursor skips to the next PLACE, rather than stopping at every jar on the
+// way.
+//
+// This is the clunkiness the whole thing is about. A tree showing its contents
+// is mostly contents -- one shelf, nine jars -- and pointing at a destination
+// meant walking through all nine, each of them a row the put was going to
+// refuse. The keystrokes now count candidates instead of rows.
+func TestWhileCarryingTheCursorSkipsToTheNextPlace(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+
+	s.Send(sim.Press("4"), sim.AltW)
+	s.ShowsText("carrying")
+	s.Send(sim.Press("2"), sim.Press("v"))
+	s.ShowsText("Ancho Chile") // the Garage's own jar, shown and not offered
+
+	// The Garage holds a jar, and its first sub-place is below that jar. One
+	// C-n from the Garage reaches the shelving unit.
+	moveTo(t, s, "Garage")
+	s.Send(sim.CtrlN)
+	if got := cursorLine(s); !strings.Contains(got, "Metal Shelving Unit") {
+		t.Errorf("C-n out of the Garage landed on %q, want the Metal Shelving Unit -- "+
+			"the jar in between is not a place", got)
+	}
+	// And C-f, which aims at the first child, does the same rather than aiming
+	// at the jar and going nowhere.
+	s.Send(sim.AltLess) // back to the Garage, which is the first row
+	s.Send(sim.CtrlF)
+	if got := cursorLine(s); !strings.Contains(got, "Metal Shelving Unit") {
+		t.Errorf("C-f into the Garage landed on %q, want the Metal Shelving Unit", got)
+	}
+}
+
+// And they are drawn as ruled out, so the skipping is explained before it
+// happens rather than felt as a cursor that will not go where it is pushed.
+func TestTheThingsInsideGoFaintWhileCarrying(t *testing.T) {
+	previous := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	defer lipgloss.SetColorProfile(previous)
+
+	s := sim.New(t)
+	stockedTree(t, s)
+	s.Send(sim.Press("2"), sim.Press("v"))
+	calm := styledLine(s, "500 g")
+
+	s.Send(sim.Press("4"), sim.AltW)
+	s.Send(sim.Press("2"))
+	s.ShowsText("carrying")
+	carrying := styledLine(s, "500 g")
+
+	if carrying == calm {
+		t.Errorf("the holding row looks the same carrying as not: %q", carrying)
+	}
+	if !strings.Contains(carrying, "\x1b[2m") && !strings.Contains(carrying, ";2m") {
+		t.Errorf("the holding row is not faint while something is in hand: %q", carrying)
+	}
+}
+
+// styledLine is the rendered line for a row, escape sequences and all, which is
+// what a claim about how something LOOKS has to read.
+//
+// Found by the row's MEASURE rather than by its name: the carry banner says the
+// name too, and it is above the body -- so a search for the name reads back the
+// banner's styling and the assertion is about the wrong line entirely.
+func styledLine(s *sim.Simulator, needle string) string {
+	for _, line := range strings.Split(s.View(), "\n") {
+		if strings.Contains(text.StripANSI(line), needle) {
+			return line
+		}
+	}
+	return ""
 }
 
 // And renaming one says so, in terms of the thing.

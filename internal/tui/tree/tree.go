@@ -95,7 +95,15 @@ type Model struct {
 	// was survivable for a dozen locations and is not once every holding in the
 	// house is a node.
 	kids map[int64]bool
-	tbl  table.Model
+	// targeting says something is being carried and this tree is being read
+	// for somewhere to put it down.
+	//
+	// It lives on the tree rather than being passed to rows(), because it
+	// changes what the CURSOR may do as well as how a row is drawn, and the
+	// two have to agree: a row drawn as ruled out that the cursor still lands
+	// on is worse than either alone -- it says no and then invites you to try.
+	targeting bool
+	tbl       table.Model
 }
 
 // New builds a tree whose counts are labelled with unit.
@@ -187,6 +195,33 @@ func (m Model) SetFilter(text string) Model {
 
 // Filtered reports whether a filter is in force.
 func (m Model) Filtered() bool { return m.filter != "" }
+
+// Targeting rules the contained rows out, or lets them back in.
+//
+// A carry is looking for a CONTAINER: a Holding goes to a Location, an Item is
+// filed under a Category. The items and holdings a tree shows are the things
+// those containers hold, so while something is in hand they are not places --
+// and until this existed the tree said nothing about that. You walked the
+// cursor onto one, pressed the put key, and were told no by a refusal, which
+// is a conversation the screen could have had by itself.
+//
+// So the tree says it in advance: the rows go faint and the cursor steps over
+// them to the next place something can actually go.
+//
+// Contained-ness is the test rather than the kind of thing in hand, and it is
+// the same test the put itself makes -- see destination() in the application.
+// A Holding offered a Category is a mismatch worth a sentence; a Holding
+// offered another Holding is not a near-miss at all.
+func (m Model) Targeting(on bool) Model {
+	if m.targeting == on {
+		return m
+	}
+	m.targeting = on
+	// Through refresh, so the cursor is moved off a row that has just stopped
+	// being a candidate by the same code that keeps it off one -- the table's
+	// own settling, rather than a second answer here.
+	return m.refresh()
+}
 
 // Counts returns how many nodes are shown and how many exist.
 // Counts is how many nodes are shown and how many exist.
@@ -387,6 +422,7 @@ func (m Model) rows() []table.Row {
 			Key:    n.Key(),
 			Cells:  []string{m.label(n), measure(n)},
 			Accent: n.Contained(),
+			Inert:  m.targeting && n.Contained(),
 		})
 		if m.collapsed[n.Key()] {
 			skipBelow = n.Depth
@@ -424,6 +460,7 @@ func (m Model) filteredRows() []table.Row {
 			// not what is open, and a marker would claim otherwise.
 			Cells:  []string{strings.Repeat(indent, n.Depth) + "  " + n.Name, measure(n)},
 			Accent: n.Contained(),
+			Inert:  m.targeting && n.Contained(),
 		})
 	}
 	return out
@@ -477,13 +514,27 @@ func (m Model) parentOf(n Node) (Node, bool) {
 	return Node{}, false
 }
 
+// firstChildOf is the first child the cursor may step down onto.
+//
+// A scan rather than a look at the next node, because a container's own
+// contents are spliced in AHEAD of its child containers -- so a category with
+// items in it has an item as its first child, and while a carry is in hand
+// that is a row C-f must step past rather than land on. Without this, descend
+// aimed at a row the table then refused to put the cursor on, and the key did
+// nothing at all.
 func (m Model) firstChildOf(n Node) (Node, bool) {
 	at := m.indexOf(n.Key())
-	if at < 0 || at+1 >= len(m.nodes) {
+	if at < 0 {
 		return Node{}, false
 	}
-	if m.nodes[at+1].Depth > n.Depth {
-		return m.nodes[at+1], true
+	for i := at + 1; i < len(m.nodes) && m.nodes[i].Depth > n.Depth; i++ {
+		if m.nodes[i].Depth != n.Depth+1 {
+			continue // a grandchild, reached only through its own parent
+		}
+		if m.targeting && m.nodes[i].Contained() {
+			continue
+		}
+		return m.nodes[i], true
 	}
 	return Node{}, false
 }

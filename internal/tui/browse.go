@@ -102,7 +102,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.copied != nil {
 			m.status = fmt.Sprintf("put %q down", m.copied.Name)
 			m.copied = nil
-			return m, nil
+			return m.aiming(), nil
 		}
 
 	case keys.ViewCategories:
