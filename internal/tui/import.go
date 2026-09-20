@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -78,22 +77,10 @@ func stageScreen(stage importer.Stage, number, of int) planview.Stage {
 	}
 }
 
-// ReadRows picks the transport from the file's name.
-//
-// The two are interchangeable, so the only thing the extension decides is which
-// parser reads the bytes -- not what the rows mean.
-func ReadRows(path string) ([]importer.Row, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	if strings.HasSuffix(strings.ToLower(path), ".csv") {
-		return importer.ReadCSV(f)
-	}
-	return importer.ReadJSONL(f)
-}
+// ReadRows reads a plan off disk. It defers to importer.ReadFile, which is
+// where the choice between the two transports lives now that three callers
+// were making it.
+func ReadRows(path string) ([]importer.Row, error) { return importer.ReadFile(path) }
 
 // summariser renders a bound row in the terms of the receipt.
 //

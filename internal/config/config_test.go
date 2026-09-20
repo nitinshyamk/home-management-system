@@ -129,7 +129,11 @@ func TestUnknownKeysSurvive(t *testing.T) {
 func TestACompleteFileIsNotRewritten(t *testing.T) {
 	dir := home(t)
 	path := filepath.Join(dir, config.FileName)
-	original := `{"db_file":"house.db"}`
+	// Every key this version knows. The rewrite is triggered by a MISSING key,
+	// so a fixture that lists only some of them would be testing the rewrite
+	// rather than the leaving-alone -- which is how this test read the day a
+	// second setting was added.
+	original := `{"db_file":"house.db","import_planner":""}`
 	writeConfig(t, dir, original)
 
 	if _, err := config.Load(); err != nil {
@@ -142,6 +146,42 @@ func TestACompleteFileIsNotRewritten(t *testing.T) {
 	}
 	if string(raw) != original {
 		t.Errorf("the file was rewritten:\n got %q\nwant %q", raw, original)
+	}
+}
+
+// Imports live under the hms home, so $HMS_HOME moves them with everything
+// else and a backup of one directory still contains the folder a plan came out
+// of.
+func TestImportsDirFollowsTheHome(t *testing.T) {
+	dir := home(t)
+
+	got, err := config.ImportsDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(dir, config.ImportsDirName); got != want {
+		t.Errorf("ImportsDir = %q, want %q", got, want)
+	}
+}
+
+// A planner is a command somebody chose to run on their own files. hms must
+// never invent one, so the default is empty and a configured one is read back
+// exactly as written.
+func TestImportPlannerIsEmptyUntilConfigured(t *testing.T) {
+	dir := home(t)
+	if cfg, err := config.Load(); err != nil {
+		t.Fatal(err)
+	} else if cfg.ImportPlanner != "" {
+		t.Errorf("ImportPlanner = %q on a fresh configuration, want empty", cfg.ImportPlanner)
+	}
+
+	writeConfig(t, dir, `{"db_file":"hms.db","import_planner":"my-agent $HMS_HANDOFF_FILE"}`)
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ImportPlanner != "my-agent $HMS_HANDOFF_FILE" {
+		t.Errorf("ImportPlanner = %q", cfg.ImportPlanner)
 	}
 }
 

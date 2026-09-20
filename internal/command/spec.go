@@ -15,7 +15,7 @@ import (
 // interfaces genuinely one thing rather than three that resemble each other,
 // and it is only true because all three read this table.
 //
-// It is also what `hms schema` emits, so an agent targets a fixed spec rather
+// It is also what the exported contract carries, so an agent targets a fixed spec rather
 // than a remembered one, and it cannot drift from what Bind accepts because it
 // is the same declaration.
 
