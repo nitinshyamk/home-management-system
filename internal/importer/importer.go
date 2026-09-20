@@ -52,7 +52,7 @@ func ReadCSV(r io.Reader) ([]Row, error) {
 
 	records, err := reader.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrMalformed, err)
+		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
 	}
 	if len(records) == 0 {
 		return nil, fmt.Errorf("%w: the file is empty", ErrMalformed)
@@ -98,7 +98,7 @@ func ReadJSONL(r io.Reader) ([]Row, error) {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("%w: line %d: %v", ErrMalformed, line, err)
+			return nil, fmt.Errorf("%w: line %d: %w", ErrMalformed, line, err)
 		}
 
 		fields := map[string]string{}

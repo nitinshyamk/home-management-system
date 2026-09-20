@@ -77,16 +77,6 @@ func shape(t *testing.T, b ops.Batch) []string {
 	return types(events)
 }
 
-// asBatch runs a pure plan function and wraps the result, so the tests can use
-// one shape helper for planned and gathered batches alike.
-func asBatch(t *testing.T, p ops.Batch, err error) ops.Batch {
-	t.Helper()
-	if err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	return p
-}
-
 // ---------------------------------------------------------------------------
 // Consume: schema Walkthrough 02
 // ---------------------------------------------------------------------------

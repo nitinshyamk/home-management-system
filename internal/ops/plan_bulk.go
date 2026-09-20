@@ -270,7 +270,7 @@ func PlanConsume(s Snapshot, req ConsumeRequest) (Plan, error) {
 		}
 		opened, err := openOnePackage(s, &p, item, req.Location, req.ExpiresOn)
 		if err != nil {
-			return Plan{}, fmt.Errorf("%w: only %s %s of %q here, and %s %s was asked for (%v)",
+			return Plan{}, fmt.Errorf("%w: only %s %s of %q here, and %s %s was asked for (%w)",
 				ErrInsufficient, domain.FromMilli(available), item.ContentUnit, item.Name,
 				req.Amount, item.ContentUnit, err)
 		}
@@ -472,7 +472,7 @@ func (p *Planner) Consume(ctx context.Context, req ConsumeRequest) (Batch, error
 
 func (p *Planner) Open(ctx context.Context, req OpenRequest) (Batch, error) {
 	return planItem(ctx, p, req.Item, req,
-		func(s Snapshot, r OpenRequest) (Plan, error) { return PlanOpen(s, r) },
+		PlanOpen,
 		fmt.Sprintf("opened a package of item %d", req.Item))
 }
 
