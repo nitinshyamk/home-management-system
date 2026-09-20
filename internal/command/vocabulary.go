@@ -40,18 +40,6 @@ type HoldingFacts struct {
 	Retired bool
 }
 
-// describe names a Holding the way a person would distinguish it from its
-// sibling in the same place.
-func (h HoldingFacts) describe() string {
-	switch h.Basis {
-	case domain.BasisPackage:
-		return "the sealed packages"
-	case domain.BasisContent:
-		return "the opened one"
-	}
-	return fmt.Sprintf("holding %d", h.ID)
-}
-
 // LoadVocabulary reads the whole vocabulary through the query path.
 func LoadVocabulary(ctx context.Context, r *query.Reader) (*Vocabulary, error) {
 	names, err := resolve.Build(ctx, r)

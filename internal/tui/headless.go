@@ -64,7 +64,7 @@ func renderModel(m Model, steps []step, out io.Writer, width, height int) error 
 			}
 			if batch, ok := msg.(tea.BatchMsg); ok {
 				for _, c := range batch {
-					var inner tea.Cmd = c
+					inner := c
 					for inner != nil {
 						im := inner()
 						if im == nil {

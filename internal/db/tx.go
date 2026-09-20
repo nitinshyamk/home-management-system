@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -26,8 +27,8 @@ func InTx(ctx context.Context, conn *sql.DB, fn func(*sql.Tx) error) error {
 	}()
 
 	if err := fn(tx); err != nil {
-		if rbErr := tx.Rollback(); rbErr != nil && rbErr != sql.ErrTxDone {
-			return fmt.Errorf("%w (rollback also failed: %v)", err, rbErr)
+		if rbErr := tx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
+			return fmt.Errorf("%w (rollback also failed: %w)", err, rbErr)
 		}
 		return err
 	}

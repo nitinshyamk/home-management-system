@@ -194,7 +194,7 @@ func (p *Processor) checkpointFor(ctx context.Context, q *sqlc.Queries, id domai
 	if err != nil {
 		// Advisory only (K2). A checkpoint that cannot be read is discarded, not
 		// fatal -- replaying from zero produces the same answer.
-		return domain.ZeroProjection(kind), 0, nil
+		return domain.ZeroProjection(kind), 0, nil //nolint:nilerr // discarding the error is the documented behaviour
 	}
 	return state, row.ThroughSequence, nil
 }

@@ -116,9 +116,6 @@ func (v viewSpec) rowKind() resolve.Kind {
 // switches gave by falling through.
 func spec(v view) viewSpec { return specs[v] }
 
-// tabular reports whether a view is a table.
-func tabular(v view) bool { return specs[v].kind == surfaceTable }
-
 // forest reports whether a view is a tree.
 func forest(v view) bool { return specs[v].kind == surfaceTree }
 

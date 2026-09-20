@@ -92,7 +92,7 @@ func ParseAmount(text string) (Amount, error) {
 
 	value, err := domain.ParseQuantity(number)
 	if err != nil {
-		return Amount{}, fmt.Errorf("%w: %q: %v", ErrValue, text, err)
+		return Amount{}, fmt.Errorf("%w: %q: %w", ErrValue, text, err)
 	}
 
 	switch {

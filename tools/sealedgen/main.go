@@ -66,7 +66,11 @@ func main() {
 // named marker, sorted for stable output.
 func sealedImplementors(dir, marker string) (types []string, pkgName string, err error) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, func(fi os.FileInfo) bool {
+	// ParseDir is deprecated for not honouring build tags. Nothing under the
+	// directories this scans is behind one, and the alternative is go/packages
+	// -- a dependency on golang.org/x/tools for a code generator that reads
+	// four files.
+	pkgs, err := parser.ParseDir(fset, dir, func(fi os.FileInfo) bool { //nolint:staticcheck // build tags are not used in the scanned packages
 		// Skip tests and generated output, so the registry never lists itself.
 		return !strings.HasSuffix(fi.Name(), "_test.go") &&
 			!strings.HasSuffix(fi.Name(), "_gen.go")
