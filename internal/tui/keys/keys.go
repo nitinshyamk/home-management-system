@@ -99,6 +99,9 @@ const (
 	Drop
 	Undrop
 	ApplyAll
+	// SkipStage sets a whole stage aside without applying any of it. Only the
+	// category upload offers it, and only when something follows.
+	SkipStage
 
 	// Editing a line.
 	LineStart
@@ -239,6 +242,9 @@ var contexts = map[Context][]binding{
 		{Drop, []string{"d"}, "drop"},
 		{Undrop, []string{"u"}, "undrop"},
 		{ApplyAll, []string{"A"}, "apply"},
+		// Shifted, like apply, because both act on the WHOLE screen rather than
+		// on the row under the cursor -- and because `s` is the table's sort.
+		{SkipStage, []string{"S"}, "skip the stage"},
 		{EditInPlace, []string{"e"}, "edit"},
 		{Quit, []string{"q", "ctrl+c"}, "cancel"},
 	},

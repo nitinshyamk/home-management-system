@@ -146,12 +146,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.say = m.say.Refuse(humaniseAll(msg.issues)...)
 		return m, nil
 
+	case stageAppliedMsg:
+		// A stage committed, and another one follows. The import is not over,
+		// so the screen is not given back -- the next stage takes its place.
+		// Whatever the last stage refused is answered by its having committed,
+		// and what it wrote is said again as the next stage's note.
+		m.say = m.say.Clear()
+		return m, m.stageApplied(msg.rows)
+
+	case stagedMsg:
+		return m.staged(msg), nil
+
 	case importedMsg:
 		m.flow = m.flow.done()
 		// Said before the load, and it survives it: a load replaces the view's
 		// hint and nothing else. This used to need reloadKeepingStatus, which
 		// re-ran the load and then put the old string back over the fresh one.
-		m.say = m.say.Report(fmt.Sprintf("applied %d rows in one transaction", msg.rows))
+		outcome := fmt.Sprintf("applied %d rows in one transaction", msg.rows)
+		if msg.earlier > 0 {
+			// A stage before this one, or a pass before it, wrote something
+			// too -- and each of those was its own transaction. A report that
+			// claimed one when there were two would be wrong about the only
+			// thing an all-or-nothing import promises.
+			outcome = fmt.Sprintf("applied %s, after %s earlier -- one transaction each",
+				rowsPhrase(msg.rows), rowsPhrase(msg.earlier))
+		}
+		m.say = m.say.Report(outcome)
 		m.view = viewHoldings
 		return m, m.load(m.view)
 

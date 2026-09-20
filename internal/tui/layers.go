@@ -58,16 +58,27 @@ func (m Model) layers() []layer {
 		// a field, and enter settled the row instead of saving what they had
 		// typed into it.
 		{name: "import plan", active: m.flow.reviewing(), handle: Model.handleImport,
-			offers: keys.Hint(keys.Plan,
-				[]keys.Action{keys.Confirm},
-				[]keys.Action{keys.Drop},
-				[]keys.Action{keys.Undrop},
-				[]keys.Action{keys.ApplyAll},
-				[]keys.Action{keys.Quit})},
+			offers: m.planKeys()},
 		{name: "input line", active: m.box.Mode() != omnibox.Closed, handle: Model.handleOmnibox,
 			// The line is the mode, and it draws its own accept and cancel.
 			offers: ""},
 	}
+}
+
+// planKeys is what the plan screen takes, which depends on which stage it is.
+//
+// Skipping is offered only where it is possible. A key named under a screen
+// that ignores it is worse than a key named nowhere: the line at the bottom is
+// permanent, so the only thing that makes it worth the row is that it can be
+// believed.
+func (m Model) planKeys() string {
+	groups := [][]keys.Action{
+		{keys.Confirm}, {keys.Drop}, {keys.Undrop}, {keys.ApplyAll},
+	}
+	if m.flow.plan.Stage().Skippable {
+		groups = append(groups, []keys.Action{keys.SkipStage})
+	}
+	return keys.Hint(keys.Plan, append(groups, []keys.Action{keys.Quit})...)
 }
 
 // mode names what has the keystroke, or "browsing" when nothing is over the

@@ -531,3 +531,303 @@ acquire,Cardamom,50,Shelf 1
 		t.Errorf("%d items called Cardamom, want 1", got)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// The two stages
+//
+// A file written from a photograph routinely proposes a CLASSIFICATION and the
+// things filed under it at the same time, and the two cannot be reviewed as one
+// list: a row filed under a category the same file is about to create has
+// nothing to resolve against. So the categories go first, as their own screen
+// and their own transaction, and the rest is bound again afterwards.
+// ---------------------------------------------------------------------------
+
+// proposal is a file that says something about the classification and something
+// about the house.
+const proposal = `op,name,under,item,qty,at
+new category,Baking,,,,
+acquire,,,Basmati Rice,100,Shelf 1
+`
+
+// The categories are their own stage, and the screen says which one you are on.
+func TestAFileThatProposesCategoriesIsReviewedInTwoStages(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, proposal))
+
+	s.ShowsText("STAGE 1 OF 2 - CATEGORIES")
+	// Only the category row is on this screen. The acquire row is not something
+	// to review yet -- it will be bound again once this stage has been settled.
+	s.ShowsText("CATEGORIES   1 row")
+	s.ShowsText("1 need confirming")
+	s.ShowsText("S skip the stage")
+}
+
+// Creation is never silent, and this is what makes it not silent: the row
+// stands at "needs confirming" until a person agrees, and is then applied in
+// the same transaction as the rest of its stage.
+func TestTheCategoryStageAppliesAndThenHandsOverToTheReview(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, proposal))
+
+	s.Send(sim.Enter) // agree to the category this row would create
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+
+	// The second stage is on screen, and it says what the first one did.
+	s.ShowsText("STAGE 2 OF 2 - ITEMS AND HOLDINGS")
+	s.ShowsText("stage 1 (categories) applied 1 row in one transaction")
+	s.HasCategory("Baking")
+
+	// And the row that was waiting behind it is an ordinary ready row.
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 600*domain.Scale)
+	s.ShowsText("after 1 row earlier -- one transaction each")
+}
+
+// The bulk category upload can be skipped, and skipping it writes nothing.
+//
+// A proposed classification is the part of a file an agent is most likely to
+// get wrong, and the review screen can already file a row into a category that
+// exists -- so the fastest path through a bad one is not to fix it row by row.
+func TestTheCategoryStageCanBeSkipped(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, proposal))
+
+	s.Send(sim.Press("S"))
+	s.ShowsText("STAGE 2 OF 2")
+	s.ShowsText("skipped")
+	s.ShowsText("the house is as it was")
+	if got := countCategoriesNamed(t, s, "Baking"); got != 0 {
+		t.Errorf("%d categories called Baking after skipping the stage, want none", got)
+	}
+
+	// The rest of the file is still there to review and apply.
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+	s.OnHand(rice, 600*domain.Scale)
+}
+
+// The point of applying the categories first: a row that names one of them is
+// bound AGAIN afterwards, against a house that now has it.
+//
+// Before the first stage was applied this row could not resolve its category.
+// Nobody retypes anything for it.
+func TestTheSecondStageIsBoundAgainstWhatTheFirstStageMade(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under,counting,unit,category
+new category,Baking,,,,
+new item,Flour,,measured,g,Baking
+`))
+
+	s.Send(sim.Enter) // the category
+	s.Send(sim.Press("A"))
+	s.ShowsText("STAGE 2 OF 2")
+
+	// The item row resolves its category now, so all that is left is agreeing
+	// to the item itself.
+	s.ShowsText("1 need confirming")
+	s.ShowsText("would create an item")
+	s.Send(sim.Enter)
+	s.ShowsText("1 ready")
+	s.Send(sim.Press("A"))
+
+	if got := countItemsNamed(t, s, "Flour"); got != 1 {
+		t.Errorf("%d items called Flour, want 1", got)
+	}
+}
+
+// Two rows creating one category must create it once. The domain permits two
+// categories with one name -- sibling uniqueness was never an integrity rule --
+// so the review screen is the only place that can see it.
+func TestASecondRowCreatingTheSameCategoryIsRefused(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under
+new category,Baking,
+new category,baking,
+`))
+	s.ShowsText("2 need confirming")
+
+	s.Send(sim.Enter)
+	s.Send(sim.CtrlN)
+	s.Send(sim.Enter)
+	s.ShowsText("already creates that")
+	s.ShowsText("1 need confirming")
+
+	// Dropping it is what the refusal suggests, and then the stage applies.
+	s.Send(sim.Press("d"))
+	s.Send(sim.Press("A"))
+	if got := countCategoriesNamed(t, s, "Baking"); got != 1 {
+		t.Errorf("%d categories called Baking, want 1", got)
+	}
+}
+
+// A file that says nothing about the classification is one stage, and says
+// nothing about stages. "Stage 1 of 1" describes the screen rather than the
+// file, which is chrome nobody asked for.
+func TestAFileWithoutCategoriesHasNoStageChrome(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, messy))
+
+	s.HidesText("STAGE")
+	s.HidesText("skip the stage")
+	s.ShowsText("5 rows")
+}
+
+// Skipping is offered only where it means something. On the last stage there is
+// nothing behind it to go on to, and a key that quietly did nothing would be
+// the third such key this screen has had.
+func TestTheReviewStageCannotBeSkipped(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	rice := s.HasItem("Basmati Rice")
+	s.Import(receipt(t, proposal))
+
+	s.Send(sim.Press("S")) // past the categories
+	s.ShowsText("STAGE 2 OF 2")
+	s.Send(sim.Press("S")) // and again, which must do nothing at all
+	s.ShowsText("STAGE 2 OF 2")
+	s.ShowsText("1 ready")
+	s.OnHand(rice, 500*domain.Scale)
+}
+
+func countCategoriesNamed(t *testing.T, s *sim.Simulator, name string) int {
+	t.Helper()
+	nodes, err := s.Reader().CategoryForest(s.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, node := range nodes {
+		if strings.EqualFold(node.Category.Name, name) && !node.Category.IsArchived() {
+			n++
+		}
+	}
+	return n
+}
+
+// A proposed tree is built from the top down.
+//
+// A row filed under a category another row of the same file creates cannot bind
+// until that row has been APPLIED -- a Command holds an identifier, and the
+// category does not have one yet. So the category stage applies in passes: the
+// ready rows now, the rest bound again against what was just made.
+func TestACategoryTreeIsBuiltFromTheTopDown(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under,item,qty,at
+new category,Baking,,,,
+new category,Flours,Baking,,,
+acquire,,,Basmati Rice,100,Shelf 1
+`))
+
+	// The second row is waiting for the first, and says so instead of offering
+	// to make a second Baking.
+	s.ShowsText("waits for row 2")
+
+	s.Send(sim.Enter) // agree to Baking
+	s.ShowsText("A applies the 1 row ready now")
+	s.Send(sim.Press("A"))
+
+	// Still stage 1, with the row that was waiting now bound against the
+	// category the pass created.
+	s.ShowsText("STAGE 1 OF 2")
+	s.ShowsText("applied 1 row in one transaction")
+	s.ShowsText(`create category "Flours" under Baking`)
+
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	// Both categories exist, one under the other, and the stage reports what it
+	// did as a whole rather than what its last pass did.
+	s.ShowsText("STAGE 2 OF 2")
+	s.ShowsText("applied 2 rows in 2 transactions")
+	parent, child := s.HasCategory("Baking"), s.HasCategory("Flours")
+	if under := parentOf(t, s, child); under != parent {
+		t.Errorf("Flours is filed under %d, want Baking (%d)", under, parent)
+	}
+}
+
+// The row that is waiting must not offer to make the thing it is waiting for.
+//
+// Opening the creation panel there made a SECOND category of the same name --
+// immediately, in its own transaction -- and left both rows still proposing
+// one, which is the two-Turmerics failure wearing a hat.
+func TestARowWaitingForAnotherRowDoesNotOfferToMakeItAgain(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under
+new category,Baking,
+new category,Flours,Baking
+`))
+
+	s.Send(sim.CtrlN) // onto the row that is waiting
+	s.Send(sim.Enter)
+
+	s.HidesText("what it is called") // the creation panel did not open
+	s.ShowsText("row 2 creates that")
+	if got := countCategoriesNamed(t, s, "Baking"); got != 0 {
+		t.Errorf("%d categories called Baking were made by a keystroke that should have refused", got)
+	}
+}
+
+func parentOf(t *testing.T, s *sim.Simulator, id domain.CategoryID) domain.CategoryID {
+	t.Helper()
+	nodes, err := s.Reader().CategoryForest(s.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range nodes {
+		if node.Category.ID != id {
+			continue
+		}
+		if node.Category.Parent == nil {
+			return 0
+		}
+		return *node.Category.Parent
+	}
+	t.Fatalf("no category %d", id)
+	return 0
+}
+
+// A file of nothing but categories is one stage, and it still builds its tree
+// from the top down.
+//
+// It has no stage chrome -- "stage 1 of 1" describes the screen rather than the
+// file -- but the pass is the same pass, and the import is not over until the
+// rows are.
+func TestAFileOfOnlyCategoriesStillAppliesInPasses(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, `op,name,under
+new category,Baking,
+new category,Flours,Baking
+`))
+	s.HidesText("STAGE")
+	s.ShowsText("waits for row 2")
+
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	// Still the import: the row that was waiting is here, bound against the
+	// category the pass created.
+	s.ShowsText(`create category "Flours" under Baking`)
+	s.Send(sim.Enter)
+	s.Send(sim.Press("A"))
+
+	// And now it is over, back on the house, with what the whole import did.
+	s.ShowsText("applied 1 row, after 1 row earlier")
+	s.HidesText("IMPORT")
+	parent, child := s.HasCategory("Baking"), s.HasCategory("Flours")
+	if under := parentOf(t, s, child); under != parent {
+		t.Errorf("Flours is filed under %d, want Baking (%d)", under, parent)
+	}
+}
