@@ -78,8 +78,6 @@ type Namer interface {
 	Describe(row importer.Entry) string
 }
 
-var ()
-
 // columns are the plan's. The state comes FIRST and is never dropped: if you
 // have to read the issue text to know a row is blocked, the screen has failed
 // at the only thing it is for.

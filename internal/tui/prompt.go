@@ -3,13 +3,14 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/keys"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

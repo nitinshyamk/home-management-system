@@ -54,18 +54,30 @@ func TestSummaryReadsLikeTheReceipt(t *testing.T) {
 		cmd  command.Command
 		want string
 	}{
-		{command.Consume{Item: rice, Location: pantry, Amount: domain.FromMilli(100_000), Reason: "dinner"},
-			"use 100 of Food > Grains > Basmati Rice (dinner)"},
-		{command.Receive{Item: rice, Location: pantry, Amount: domain.FromMilli(2_000), Source: "corner shop", ExpiresOn: &march},
-			"add 2 of Food > Grains > Basmati Rice to Kitchen > Left Pantry from corner shop, expiring 2027-03-01"},
-		{command.NewItem{Name: "Turmeric", Category: 2, Counting: command.CountingMeasured, ContentUnit: "g", PackageSize: &size},
-			`create "Turmeric" as measured in g, 2000 per package in Food > Grains`},
-		{command.ArchiveLocation{Location: pantry, Resolution: domain.ResolutionLift},
-			"put Kitchen > Left Pantry away, lifting its contents"},
-		{command.Promote{Item: rice},
-			"track each Food > Grains > Basmati Rice individually"},
-		{command.Rename{Target: command.Target{Kind: domain.EntityLocation, ID: 1}, Name: "Larder"},
-			`rename Kitchen > Left Pantry to "Larder"`},
+		{
+			command.Consume{Item: rice, Location: pantry, Amount: domain.FromMilli(100_000), Reason: "dinner"},
+			"use 100 of Food > Grains > Basmati Rice (dinner)",
+		},
+		{
+			command.Receive{Item: rice, Location: pantry, Amount: domain.FromMilli(2_000), Source: "corner shop", ExpiresOn: &march},
+			"add 2 of Food > Grains > Basmati Rice to Kitchen > Left Pantry from corner shop, expiring 2027-03-01",
+		},
+		{
+			command.NewItem{Name: "Turmeric", Category: 2, Counting: command.CountingMeasured, ContentUnit: "g", PackageSize: &size},
+			`create "Turmeric" as measured in g, 2000 per package in Food > Grains`,
+		},
+		{
+			command.ArchiveLocation{Location: pantry, Resolution: domain.ResolutionLift},
+			"put Kitchen > Left Pantry away, lifting its contents",
+		},
+		{
+			command.Promote{Item: rice},
+			"track each Food > Grains > Basmati Rice individually",
+		},
+		{
+			command.Rename{Target: command.Target{Kind: domain.EntityLocation, ID: 1}, Name: "Larder"},
+			`rename Kitchen > Left Pantry to "Larder"`,
+		},
 	} {
 		if got := command.Summary(tc.cmd, index()); got != tc.want {
 			t.Errorf("%T\n got %q\nwant %q", tc.cmd, got, tc.want)

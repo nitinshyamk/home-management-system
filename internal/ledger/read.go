@@ -185,32 +185,40 @@ func hydrateEvent(row sqlc.Event, pl *payloadSet) (domain.Event, error) {
 		if !ok {
 			return nil, missing("placement")
 		}
-		return domain.HoldingCreated{EventBase: base, Holding: holding,
-			StowedLocation: domain.LocationID(p.ToLocationID)}, nil
+		return domain.HoldingCreated{
+			EventBase: base, Holding: holding,
+			StowedLocation: domain.LocationID(p.ToLocationID),
+		}, nil
 
 	case domain.TypeMoved:
 		p, ok := pl.placement[row.ID]
 		if !ok {
 			return nil, missing("placement")
 		}
-		return domain.Moved{EventBase: base, Holding: holding,
-			From: domain.LocationID(p.FromLocationID.Int64), To: domain.LocationID(p.ToLocationID)}, nil
+		return domain.Moved{
+			EventBase: base, Holding: holding,
+			From: domain.LocationID(p.FromLocationID.Int64), To: domain.LocationID(p.ToLocationID),
+		}, nil
 
 	case domain.TypeRehomed:
 		p, ok := pl.placement[row.ID]
 		if !ok {
 			return nil, missing("placement")
 		}
-		return domain.Rehomed{EventBase: base, Holding: holding,
-			From: domain.LocationID(p.FromLocationID.Int64), To: domain.LocationID(p.ToLocationID)}, nil
+		return domain.Rehomed{
+			EventBase: base, Holding: holding,
+			From: domain.LocationID(p.FromLocationID.Int64), To: domain.LocationID(p.ToLocationID),
+		}, nil
 
 	case domain.TypeAcquired:
 		p, ok := pl.acquisition[row.ID]
 		if !ok {
 			return nil, missing("acquisition")
 		}
-		e := domain.Acquired{EventBase: base, Holding: holding,
-			Delta: domain.FromMilli(p.Delta), Source: db.StringOrEmpty(p.Source)}
+		e := domain.Acquired{
+			EventBase: base, Holding: holding,
+			Delta: domain.FromMilli(p.Delta), Source: db.StringOrEmpty(p.Source),
+		}
 		if p.Price.Valid {
 			price := p.Price.Int64
 			e.Price = &price
@@ -274,8 +282,10 @@ func hydrateEvent(row sqlc.Event, pl *payloadSet) (domain.Event, error) {
 		if !ok {
 			return nil, missing("observation")
 		}
-		return domain.Counted{EventBase: base, Holding: holding,
-			Observed: domain.FromMilli(p.ObservedQuantity)}, nil
+		return domain.Counted{
+			EventBase: base, Holding: holding,
+			Observed: domain.FromMilli(p.ObservedQuantity),
+		}, nil
 
 	case domain.TypeVerified:
 		p, ok := pl.presence[row.ID]
@@ -324,8 +334,10 @@ func hydrateEvent(row sqlc.Event, pl *payloadSet) (domain.Event, error) {
 		if !ok {
 			return nil, missing("node_lifecycle")
 		}
-		return domain.NodeArchived{EventBase: base, Location: location,
-			Resolution: domain.Resolution(p.Resolution.String)}, nil
+		return domain.NodeArchived{
+			EventBase: base, Location: location,
+			Resolution: domain.Resolution(p.Resolution.String),
+		}, nil
 
 	case domain.TypeNodeRestored:
 		if _, ok := pl.nodeLifecycle[row.ID]; !ok {

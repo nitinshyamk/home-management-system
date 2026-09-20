@@ -474,8 +474,9 @@ func TestProjectionAndEventLandTogether(t *testing.T) {
 
 	// A Moved to a location that does not exist: the fold succeeds, then the
 	// payload insert violates a foreign key.
-	_, err := f.p.Apply(f.ctx, domain.Moved{EventBase: evAt(),
-		Holding: f.rice, From: f.pantry, To: domain.LocationID(999999),
+	_, err := f.p.Apply(f.ctx, domain.Moved{
+		EventBase: evAt(),
+		Holding:   f.rice, From: f.pantry, To: domain.LocationID(999999),
 	})
 	if err == nil {
 		t.Fatal("expected a foreign key violation")
@@ -591,8 +592,9 @@ func TestEventsRejectedAgainstTheWrongKind(t *testing.T) {
 	if _, err := f.p.Apply(f.ctx, domain.CheckedOut{EventBase: evAt(), Holding: f.rice}); !errors.Is(err, domain.ErrWrongKind) {
 		t.Errorf("CheckedOut against a Bulk holding: err = %v, want ErrWrongKind", err)
 	}
-	if _, err := f.p.Apply(f.ctx, domain.Consumed{EventBase: evAt(),
-		Holding: f.cable, Delta: domain.FromMilli(-1),
+	if _, err := f.p.Apply(f.ctx, domain.Consumed{
+		EventBase: evAt(),
+		Holding:   f.cable, Delta: domain.FromMilli(-1),
 	}); !errors.Is(err, domain.ErrWrongKind) {
 		t.Errorf("Consumed against a Unique holding: err = %v, want ErrWrongKind", err)
 	}
@@ -608,8 +610,9 @@ func TestRetiredHoldingsAcceptNothing(t *testing.T) {
 	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(1_000)})
 	f.apply(t, domain.Gone{EventBase: evAt(), Holding: f.rice, Reason: "donated"})
 
-	if _, err := f.p.Apply(f.ctx, domain.Consumed{EventBase: evAt(),
-		Holding: f.rice, Delta: domain.FromMilli(-1),
+	if _, err := f.p.Apply(f.ctx, domain.Consumed{
+		EventBase: evAt(),
+		Holding:   f.rice, Delta: domain.FromMilli(-1),
 	}); !errors.Is(err, domain.ErrRetired) {
 		t.Errorf("err = %v, want ErrRetired", err)
 	}
@@ -619,8 +622,9 @@ func TestQuantityCannotGoNegativeThroughTheLedger(t *testing.T) {
 	f := newFixture(t)
 	f.apply(t, domain.Acquired{EventBase: evAt(), Holding: f.rice, Delta: domain.FromMilli(100)})
 
-	if _, err := f.p.Apply(f.ctx, domain.Consumed{EventBase: evAt(),
-		Holding: f.rice, Delta: domain.FromMilli(-101),
+	if _, err := f.p.Apply(f.ctx, domain.Consumed{
+		EventBase: evAt(),
+		Holding:   f.rice, Delta: domain.FromMilli(-101),
 	}); !errors.Is(err, domain.ErrNegativeQuantity) {
 		t.Errorf("err = %v, want ErrNegativeQuantity", err)
 	}

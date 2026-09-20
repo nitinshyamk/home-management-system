@@ -1,10 +1,10 @@
 package tui
 
 import (
+	"context"
 	"strings"
 	"testing"
 
-	"context"
 	"home-management-system/internal/tui/keys"
 )
 

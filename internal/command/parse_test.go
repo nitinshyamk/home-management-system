@@ -14,26 +14,44 @@ func TestParseTheLine(t *testing.T) {
 		op     string
 		fields map[string]string
 	}{
-		{`consume rice 100g`, "consume",
-			map[string]string{"item": "rice", "qty": "100g"}},
-		{`consume rice 100g at kitchen reason dinner`, "consume",
-			map[string]string{"item": "rice", "qty": "100g", "at": "kitchen", "reason": "dinner"}},
-		{`acquire "Basmati Rice" 2bag at "Left Pantry > Shelf 1" from "corner shop"`, "acquire",
-			map[string]string{"item": "Basmati Rice", "qty": "2bag",
-				"at": "Left Pantry > Shelf 1", "from": "corner shop"}},
+		{
+			`consume rice 100g`, "consume",
+			map[string]string{"item": "rice", "qty": "100g"},
+		},
+		{
+			`consume rice 100g at kitchen reason dinner`, "consume",
+			map[string]string{"item": "rice", "qty": "100g", "at": "kitchen", "reason": "dinner"},
+		},
+		{
+			`acquire "Basmati Rice" 2bag at "Left Pantry > Shelf 1" from "corner shop"`, "acquire",
+			map[string]string{
+				"item": "Basmati Rice", "qty": "2bag",
+				"at": "Left Pantry > Shelf 1", "from": "corner shop",
+			},
+		},
 		// Two-word ops are matched before one-word ones could swallow them.
-		{`archive location Pantry resolution lift`, "archive location",
-			map[string]string{"location": "Pantry", "resolution": "lift"}},
-		{`restore category Spices`, "restore category",
-			map[string]string{"target": "Spices"}},
-		{`new item Turmeric counting measured unit g package 2000`, "new item",
-			map[string]string{"name": "Turmeric", "counting": "measured", "unit": "g", "package": "2000"}},
+		{
+			`archive location Pantry resolution lift`, "archive location",
+			map[string]string{"location": "Pantry", "resolution": "lift"},
+		},
+		{
+			`restore category Spices`, "restore category",
+			map[string]string{"target": "Spices"},
+		},
+		{
+			`new item Turmeric counting measured unit g package 2000`, "new item",
+			map[string]string{"name": "Turmeric", "counting": "measured", "unit": "g", "package": "2000"},
+		},
 		// Pairs are order-free.
-		{`acquire rice 2bag from shop at pantry`, "acquire",
-			map[string]string{"item": "rice", "qty": "2bag", "from": "shop", "at": "pantry"}},
+		{
+			`acquire rice 2bag from shop at pantry`, "acquire",
+			map[string]string{"item": "rice", "qty": "2bag", "from": "shop", "at": "pantry"},
+		},
 		// Case does not matter for the op or the keys, and does for the values.
-		{`CONSUME Rice 100g AT Kitchen`, "consume",
-			map[string]string{"item": "Rice", "qty": "100g", "at": "Kitchen"}},
+		{
+			`CONSUME Rice 100g AT Kitchen`, "consume",
+			map[string]string{"item": "Rice", "qty": "100g", "at": "Kitchen"},
+		},
 	} {
 		got, err := command.Parse(tc.line)
 		if err != nil {

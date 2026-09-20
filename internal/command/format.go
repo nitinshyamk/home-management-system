@@ -154,9 +154,11 @@ func (n naming) item(id domain.ItemID) string { return n.label(domain.EntityItem
 func (n naming) holding(id domain.HoldingID) string {
 	return n.label(domain.EntityHolding, int64(id))
 }
+
 func (n naming) location(id domain.LocationID) string {
 	return n.label(domain.EntityLocation, int64(id))
 }
+
 func (n naming) category(id domain.CategoryID) string {
 	return n.label(domain.EntityCategory, int64(id))
 }

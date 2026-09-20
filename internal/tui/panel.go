@@ -1,11 +1,12 @@
 package tui
 
 import (
+	"strings"
+
 	"home-management-system/internal/command"
 	"home-management-system/internal/tui/complete"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/text"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

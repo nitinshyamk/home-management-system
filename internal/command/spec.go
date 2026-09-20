@@ -136,8 +136,10 @@ var specs = []Spec{
 	// -----------------------------------------------------------------------
 	{Op: OpNewItem, What: "add a kind of thing you keep", Creates: domain.EntityItem, Fields: []Field{
 		{Key: "name", Type: FieldText, What: "what it is called", Required: true, Positional: true},
-		{Key: "counting", Type: FieldChoice, What: "how it is counted -- PERMANENT",
-			Required: true, Choices: []string{"unique", "pile", "measured"}},
+		{
+			Key: "counting", Type: FieldChoice, What: "how it is counted -- PERMANENT",
+			Required: true, Choices: []string{"unique", "pile", "measured"},
+		},
 		{Key: "unit", Type: FieldUnit, What: "what it is measured in -- PERMANENT"},
 		{Key: "package", Type: FieldQuantity, What: "how much is in one package -- PERMANENT"},
 		// Required, because items.category_id is NOT NULL. Left optional it
@@ -160,8 +162,10 @@ var specs = []Spec{
 	{Op: OpNewHolding, What: "keep a thing somewhere, at nothing", Creates: domain.EntityHolding, Fields: []Field{
 		name("item", "what is kept there", true, true, domain.EntityItem),
 		name("at", "where it is kept", true, false, domain.EntityLocation),
-		{Key: "basis", Type: FieldChoice, What: "counted as sealed packages or as contents",
-			Choices: []string{"content", "package"}},
+		{
+			Key: "basis", Type: FieldChoice, What: "counted as sealed packages or as contents",
+			Choices: []string{"content", "package"},
+		},
 		{Key: "expires", Type: FieldDate, What: "the date printed on it"},
 		text("label", "which one this is"),
 	}},
@@ -251,8 +255,10 @@ var specs = []Spec{
 	}},
 	{Op: OpArchiveLocation, What: "put a place away", Fields: []Field{
 		name("location", "which place", true, true, domain.EntityLocation),
-		{Key: "resolution", Type: FieldChoice, What: "what happens to what is in it",
-			Required: true, Choices: []string{"lift", "move", "block"}},
+		{
+			Key: "resolution", Type: FieldChoice, What: "what happens to what is in it",
+			Required: true, Choices: []string{"lift", "move", "block"},
+		},
 		name("to", "where its contents go, if moving", false, false, domain.EntityLocation),
 	}},
 	{Op: OpRestoreLocation, What: "bring a place back", Fields: []Field{
@@ -299,8 +305,10 @@ var specs = []Spec{
 	}},
 	{Op: OpArchiveCategory, What: "put a classification away", Fields: []Field{
 		name("target", "which classification", true, true, domain.EntityCategory),
-		{Key: "resolution", Type: FieldChoice, What: "what happens to what is filed under it",
-			Required: true, Choices: []string{"lift", "move", "block"}},
+		{
+			Key: "resolution", Type: FieldChoice, What: "what happens to what is filed under it",
+			Required: true, Choices: []string{"lift", "move", "block"},
+		},
 		name("to", "where its contents go, if moving", false, false, domain.EntityCategory),
 	}},
 	{Op: OpRestoreCategory, What: "bring a classification back", Fields: []Field{
