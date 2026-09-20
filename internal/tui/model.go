@@ -48,9 +48,8 @@ type Model struct {
 	// box is the one input line. Its mode says whether a keystroke is a
 	// character or a command, which is why every key handler consults it first.
 	box omnibox.Model
-	// jump holds the palette's results, rendered through the same table so the
-	// density decisions are not made twice.
-	jump       table.Model
+	// candidates is everything there is to name: what the resolver resolves
+	// against, what the completions offer, and what the jump palette searches.
 	candidates []resolve.Candidate
 	// index is the candidates, ready to resolve against. Built once when they
 	// arrive rather than per keystroke: named() rebuilt it on every character
@@ -122,7 +121,6 @@ func New(ctx context.Context, ctrl app.Controller) Model {
 		creator:  creator.New(),
 		flow:     newFlow(),
 		say:      status.New(),
-		jump:     table.New(jumpColumns).Fixed(),
 		contents: map[view]bool{},
 		folds:    map[view]map[int64]bool{},
 	}

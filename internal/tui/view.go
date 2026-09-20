@@ -35,7 +35,7 @@ func (m Model) View() string {
 		// searches everything, so leaving the current view visible underneath
 		// would suggest it is being searched, which is the confusion between
 		// the two modes that this substage exists to avoid.
-		body = m.jump.View()
+		body = m.box.Results()
 	}
 
 	if m.flow.reviewing() && m.confirm == nil {
@@ -241,8 +241,7 @@ func (m Model) facts() string {
 	// describes IT. Counting the list underneath would be describing a screen
 	// nobody is reading.
 	if m.box.Mode() == omnibox.Jump {
-		shown, _ := m.jump.Counts()
-		return style.Dim.Render(fmt.Sprintf("%d matches across every kind", shown))
+		return style.Dim.Render(fmt.Sprintf("%d matches across every kind", m.box.Matches()))
 	}
 
 	// The count leads, and it is built in one place rather than by each view: a
