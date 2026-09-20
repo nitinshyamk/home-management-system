@@ -565,7 +565,10 @@ func TestTheHelpScrollsWithItsCursor(t *testing.T) {
 	awkwardHouse(t, s)
 	s.Resize(88, 20)
 	s.Send(sim.AltX)
-	s.Send(sim.Type("help"))
+	// `help all` rather than `help`, which is the index now and fits on one
+	// screen -- which is the whole point of it. The scrolling this is about
+	// belongs to the long page.
+	s.Send(sim.Type("help all"))
 	s.Send(sim.Enter)
 
 	first := s.PlainView()
@@ -669,4 +672,78 @@ func TestABatchThatWouldMergeIsRefused(t *testing.T) {
 	// The harness verifies every holding against its events on the way out, so
 	// the assertion that matters most is made for us.
 	s.OnHand(rice, 1000*domain.Scale)
+}
+
+// TAB steps between the sections of the long help page.
+//
+// Line-at-a-time is the only motion a page of prose has, and the whole listing
+// is four screens: without this, finding the section you want means scrolling
+// past the ones you do not. The keys are the tree's fold keys, because on a
+// page of sections they mean what the tree means by them -- move by structure
+// rather than by line.
+func TestTabStepsThroughTheHelpSections(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(88, 20)
+	s.Send(sim.AltX)
+	s.Send(sim.Type("help all"))
+	s.Send(sim.Enter)
+
+	// The cursor starts on the first heading, so one TAB reaches the second.
+	s.Send(sim.Tab)
+	if got := cursorLine(s); !strings.Contains(got, "CHOOSING ROWS") {
+		t.Errorf("TAB landed on %q, want the second section", got)
+	}
+
+	// And it keeps going, past the bottom of the first screen.
+	for i := 0; i < 6; i++ {
+		s.Send(sim.Tab)
+	}
+	if got := cursorLine(s); !strings.Contains(got, "TYPING IN A FIELD") {
+		t.Errorf("seven TABs landed on %q, want the eighth section", got)
+	}
+
+	// S-TAB comes back one.
+	s.Send(sim.ShiftTab)
+	if got := cursorLine(s); !strings.Contains(got, "ACTING ON A ROW") {
+		t.Errorf("S-TAB landed on %q, want the section before", got)
+	}
+
+	// The last section is the end of it: TAB there stops rather than wrapping
+	// round to the top, which in a document reads as having lost your place.
+	for i := 0; i < 20; i++ {
+		s.Send(sim.Tab)
+	}
+	last := cursorLine(s)
+	if !strings.Contains(last, "COMMANDS") {
+		t.Errorf("TAB past the end landed on %q, want the last section", last)
+	}
+	s.Send(sim.Tab)
+	if got := cursorLine(s); got != last {
+		t.Errorf("TAB at the last section wrapped round to %q", got)
+	}
+}
+
+// The index fits one screen, which is the whole reason it exists: the listing
+// it replaces is four.
+func TestTheHelpOpensOnAnIndexThatFits(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(88, 24)
+	s.Send(sim.AltX)
+	s.Send(sim.Type("help"))
+	s.Send(sim.Enter)
+
+	view := s.PlainView()
+	s.FitsWidth(88)
+	for _, want := range []string{"WHAT THERE IS", "carrying", "commands", "help all"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("the help index does not mention %q:\n%s", want, view)
+		}
+	}
+	// Nothing from inside a section: the index names the sections, it does not
+	// unroll them.
+	if strings.Contains(view, "put the cursor back in the middle") {
+		t.Errorf("the index unrolled a section into itself:\n%s", view)
+	}
 }
