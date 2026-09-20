@@ -7,5 +7,5 @@
 
   [enter] go ahead    [esc] back
 --------------------------------------------------------------------------------------------
-1 of 4 holdings - sorted by item a-z
+1 of 4 holdings - sorted by item a-z - enter for history
   filtered  thunder

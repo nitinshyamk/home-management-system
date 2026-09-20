@@ -20,7 +20,7 @@ import (
 func (m Model) openEditor() Model {
 	sel, ok := m.current.Current()
 	if !ok || sel.Name == "" {
-		m.status = "nothing selected"
+		m.say = m.say.Report("nothing selected")
 		return m
 	}
 	if sel.Contained {
@@ -65,9 +65,9 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 		// point: esc there is not abandoning the move, it is choosing the other
 		// half of it. The banner says what is happening; a second message
 		// alongside it would be a second thing to read.
-		m.status = ""
+		m.say = m.say.Clear()
 		if m.copied == nil {
-			m.status = "unchanged"
+			m.say = m.say.Report("unchanged")
 		}
 		// And if it is still in hand, the tree becomes a list of destinations
 		// now rather than a list of everything: esc here is choosing to point
@@ -87,7 +87,7 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 		name := m.subject().Name
 		m.editor = m.editor.Close()
 		if !changed || value == "" {
-			m.status = "unchanged"
+			m.say = m.say.Report("unchanged")
 			return m, nil
 		}
 		// Through the command line's own path: the same Parse, the same Bind,
@@ -115,7 +115,7 @@ func (m Model) promptFor(purpose editor.Purpose, initial string) Model {
 	if why, ok := refuses(purpose, rows); !ok {
 		return m.refuse("%s", why)
 	}
-	m.problem = nil
+	m.say = m.say.Clear()
 	spec := prompt(purpose)
 	m.editor = m.editor.
 		OpenFor(purpose, "Holding", int64(rows[0].ID), spec.label, initial).
@@ -140,7 +140,7 @@ func (m Model) promptForNode() (Model, tea.Cmd) {
 	if sel.Kind == "Item" {
 		purpose = editor.Reclassify
 	}
-	m.problem = nil
+	m.say = m.say.Clear()
 	spec := prompt(purpose)
 	m.editor = m.editor.
 		OpenFor(purpose, sel.Kind, sel.ID, spec.label, "").
@@ -183,12 +183,11 @@ func (m Model) actOnPrompt() (Model, tea.Cmd) {
 	m.editor = m.editor.Close()
 	// Answering the prompt finishes the move, so whatever `m` picked up is put
 	// down with it. Without this, naming the destination would relocate the
-	// thing and leave the banner insisting it was still in hand.
-	m.copied = nil
-	m = m.aiming()
+	// thing and leave the line insisting it was still in hand.
+	m = m.drop()
 
 	if answer == "" {
-		m.status = "nothing entered"
+		m.say = m.say.Report("nothing entered")
 		return m, nil
 	}
 

@@ -3,5 +3,5 @@
   KIND  NAME                                                                              
   (nothing here)
 ------------------------------------------------------------------------------------------
-0 matches across every kind - enter go - esc cancel
+0 matches across every kind
   JUMP      shelf                                                    enter go   esc cancel

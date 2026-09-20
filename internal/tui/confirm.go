@@ -28,7 +28,7 @@ func (m Model) handleConfirm(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Line, msg) {
 	case keys.Cancel:
 		m.confirm = nil
-		m.status = "nothing was created"
+		m.say = m.say.Report("nothing was created")
 		return m, nil
 	case keys.Confirm:
 		pending := *m.confirm
