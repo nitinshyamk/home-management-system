@@ -20,6 +20,9 @@ type loadedMsg struct {
 	cells       []table.Row
 	nodes       []tree.Node
 	holdingRows map[int64]app.HoldingRow
+	// headings are the rows that begin a section, for the prose views that have
+	// sections. Only Help does; the others send none and their TAB does nothing.
+	headings []int
 	// hint is the view's standing hint -- "enter for history", "TAB fold" --
 	// which is all a load has ever had to say. It was called status, and that
 	// name is why three unrelated things ended up sharing one field.

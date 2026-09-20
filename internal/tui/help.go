@@ -30,25 +30,99 @@ import (
 // helpSection is a heading and its rows, each a key or name against what it
 // does.
 type helpSection struct {
+	// topic is what `help <topic>` answers to, and what the index lists. Empty
+	// for the sections that only ever appear inside one command's help, which
+	// are reached by naming the command instead.
+	topic string
 	title string
-	rows  [][2]string
+	// what is the topic in a few lowercase words, for the index. The title is a
+	// heading and shouts; an index of eleven shouting headings is the wall of
+	// text this exists to break up.
+	what string
+	rows [][2]string
 	// prose is free text under the heading, wrapped to the terminal. The
 	// two-column layout is for keys against meanings; a whole command written
 	// out is one long thing and forcing it into a column truncates it.
 	prose []string
 }
 
-// helpLines renders the help for a topic. An empty topic is the general help.
+// helpLines renders the help for a topic.
+//
+// An empty topic is the INDEX -- eleven lines naming what there is -- rather
+// than the whole listing. The whole listing is 102 lines on a 100-column
+// terminal, of which one section is 35 rows, on a surface that scrolls a line
+// at a time: four screens of it, with no way to see what sections exist without
+// going past all of them. A page nobody reaches the end of teaches whatever is
+// on its first screen and nothing else.
+//
+// `help all` is still the whole thing, for anyone who wants to read or search
+// it in one piece.
 func (m Model) helpLines(topic string) []string {
+	lines, _ := m.helpPage(topic)
+	return lines
+}
+
+// helpPage is helpLines plus where the headings are, for the surface that steps
+// between them.
+func (m Model) helpPage(topic string) (lines []string, headings []int) {
 	width := max(40, m.width-6)
-	if topic == "" {
+	switch topic {
+	case "":
+		return renderHelp(m.helpIndex(), width)
+	case "all":
 		return renderHelp(m.generalHelp(), width)
+	}
+	// A topic names a section, a command, or neither.
+	for _, section := range m.generalHelp() {
+		if section.topic != "" && strings.EqualFold(section.topic, topic) {
+			return renderHelp([]helpSection{section}, width)
+		}
 	}
 	sections, ok := m.commandHelp(topic)
 	if !ok {
 		return renderHelp(m.noSuchCommand(topic), width)
 	}
 	return renderHelp(sections, width)
+}
+
+// helpIndex is what there is: one line per section, with how much is in it.
+//
+// It exists so that the first screen of the help answers "what can I ask
+// about", which the listing itself never did -- you had to read all of it to
+// find out it had an IN A TREE section, by which point you had read the tree
+// keys anyway.
+func (m Model) helpIndex() []helpSection {
+	var rows [][2]string
+	for _, section := range m.generalHelp() {
+		if section.topic == "" {
+			continue
+		}
+		unit := "keys"
+		if section.topic == "commands" {
+			unit = "names"
+		}
+		rows = append(rows, [2]string{
+			fmt.Sprintf("%s  %d %s", section.topic, len(section.rows), unit),
+			section.what,
+		})
+	}
+	// Rows rather than prose, because these ARE two columns: a thing to type
+	// against what it gets you. Prose is wrapped by words, which collapses the
+	// gap that was doing the aligning.
+	line := keys.Show(keys.Browse, keys.CommandLine) + " help "
+	return []helpSection{
+		{title: "WHAT THERE IS", rows: rows},
+		{title: "READING MORE OF IT", rows: [][2]string{
+			{line + "<topic>", "one of the above"},
+			{line + "<command>", "one command, and what it will accept"},
+			{line + "all", "the whole listing, as one page"},
+			// The keys that move around whatever you open, said here because
+			// the page they work on is the page you reach from this one.
+			pair(keys.Tree, "step to the next section, and the one before",
+				keys.FoldToggle, keys.FoldCycleAll),
+			pair(keys.Browse, "back to where you were", keys.Cancel),
+		}},
+	}
 }
 
 // noSuchCommand says so, and offers the nearest names.
@@ -62,14 +136,13 @@ func (m Model) noSuchCommand(topic string) []helpSection {
 		prose: []string{"There is nothing called " + strconv.Quote(topic) + "."},
 	}}
 	var vocabulary []complete.Match
-	for _, name := range helpTopics() {
+	for _, name := range m.helpTopics() {
 		vocabulary = append(vocabulary, complete.Match{Path: name, Leaf: name})
 	}
 	if near := complete.Near(vocabulary, topic); len(near) > 0 {
 		var rows [][2]string
 		for _, name := range near {
-			spec, _ := command.SpecOf(command.Op(name))
-			rows = append(rows, [2]string{name, spec.What})
+			rows = append(rows, [2]string{name, m.describeTopic(name)})
 		}
 		sections = append(sections, helpSection{title: "DID YOU MEAN", rows: rows})
 	}
@@ -88,32 +161,32 @@ func (m Model) noSuchCommand(topic string) []helpSection {
 // two, and a page of rows reading "move / move" teaches nobody anything.
 func (m Model) generalHelp() []helpSection {
 	sections := []helpSection{
-		{title: "MOVING", rows: [][2]string{
+		{topic: "moving", what: "around a list or a tree, a row or a screen at a time", title: "MOVING", rows: [][2]string{
 			pair(keys.Table, "down and up a row", keys.MoveDown, keys.MoveUp),
 			pair(keys.Table, "between columns, or in and out of a tree", keys.MoveRight, keys.MoveLeft),
 			pair(keys.Table, "half a screen", keys.PageDown, keys.PageUp),
 			pair(keys.Table, "the first row, and the last", keys.Top, keys.Bottom),
 			pair(keys.Table, "put the cursor back in the middle", keys.Recenter),
 		}},
-		{title: "CHOOSING ROWS", rows: [][2]string{
+		{topic: "rows", what: "picking rows to act on, sorting, clearing", title: "CHOOSING ROWS", rows: [][2]string{
 			pair(keys.Table, "pick this row, and move on", keys.ToggleSelect),
 			pair(keys.Table, "pick everything a filter left", keys.SelectVisible),
 			pair(keys.Table, "sort by the focused column", keys.Sort),
 			pair(keys.Browse, "clear the selection, then the filter", keys.Cancel),
 		}},
-		{title: "FINDING THINGS", rows: [][2]string{
+		{topic: "finding", what: "filtering, jumping across the house, the command line", title: "FINDING THINGS", rows: [][2]string{
 			pair(keys.Browse, "search this view -- comes back with what is applied", keys.Search),
 			pair(keys.Table, "step through what the search left", keys.NextMatch, keys.PrevMatch),
 			pair(keys.Browse, "jump to anything, of any kind", keys.Jump),
 			pair(keys.Browse, "the command line", keys.CommandLine),
 		}},
-		{title: "VIEWS", rows: [][2]string{
+		{topic: "views", what: "the five views, a holding's history, refresh, quit", title: "VIEWS", rows: [][2]string{
 			{"1 - 5", "Categories, Locations, Items, Holdings, Integrity"},
 			pair(keys.Browse, "open a holding's history", keys.Confirm),
 			pair(keys.Browse, "read it again from the database", keys.Refresh),
 			pair(keys.Browse, "quit", keys.Quit),
 		}},
-		{title: "IN A TREE", rows: [][2]string{
+		{topic: "trees", what: "folding, and showing what a node contains", title: "IN A TREE", rows: [][2]string{
 			pair(keys.Tree, "fold the node under the cursor", keys.FoldToggle),
 			pair(keys.Tree, "fold everything, or unfold it", keys.FoldCycleAll),
 			pair(keys.Browse, "show what the nodes contain -- items, or holdings", keys.ShowContents),
@@ -125,21 +198,22 @@ func (m Model) generalHelp() []helpSection {
 		// often as in a tree, and CROSSING VIEWS in the middle is the whole
 		// point -- you pick a thing up where you can see it is wrong and put it
 		// down where it is right.
-		{title: "MOVING A THING BY POINTING AT WHERE IT GOES", rows: [][2]string{
+		{topic: "carrying", what: "picking a thing up here and putting it down there", title: "MOVING A THING BY POINTING AT WHERE IT GOES", rows: [][2]string{
 			pair(keys.Browse, "pick up the row under the cursor", keys.Copy),
 			pair(keys.Browse, "or pick it up and be asked where it goes", keys.MoveTo),
 			pair(keys.Browse, "put it in the place or classification you are on", keys.Paste),
 			pair(keys.Browse, "put it down, having changed your mind", keys.Cancel),
 		}, prose: []string{
-			"What is in hand is named at the top of the screen until it is put " +
-				"down, and it stays in hand across the views -- so you can pick " +
-				"a thing up in one and go looking for where it belongs in another.",
+			"What is in hand is named at the bottom of the screen until it is " +
+				"put down, and it stays in hand across the views -- so you can " +
+				"pick a thing up in one and go looking for where it belongs in " +
+				"another.",
 			"While something is in hand, a tree showing its contents goes faint " +
 				"over the things inside and the cursor steps over them: what you " +
 				"are looking for is a place to put the thing, and the things " +
 				"already in those places are not places.",
 		}},
-		{title: "ACTING ON A ROW", rows: [][2]string{
+		{topic: "acting", what: "use, count, move, custody, rename, create, retire", title: "ACTING ON A ROW", rows: [][2]string{
 			pair(keys.Browse, "use some of it", keys.Consume),
 			pair(keys.Browse, "say how much is actually there", keys.Count),
 			pair(keys.Browse, "move it somewhere", keys.MoveTo),
@@ -148,14 +222,14 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Browse, "make a new one inside this", keys.Create),
 			pair(keys.Browse, "retire it -- it asks first", keys.Kill),
 		}},
-		{title: "TYPING IN A FIELD", rows: [][2]string{
+		{topic: "fields", what: "readline, as emacs has it", title: "TYPING IN A FIELD", rows: [][2]string{
 			pair(keys.Line, "the start of the line, and the end", keys.LineStart, keys.LineEnd),
 			pair(keys.Line, "a word back, and a word forward", keys.WordLeft, keys.WordRight),
 			pair(keys.Line, "delete the character under the cursor", keys.DeleteForward),
 			pair(keys.Line, "kill to the start, and to the end", keys.KillToStart, keys.KillToEnd),
 			pair(keys.Line, "kill the word behind, and the word ahead", keys.KillWordBack, keys.KillWordForward),
 		}},
-		{title: "WHEN A LIST IS OPEN OVER A FIELD", rows: [][2]string{
+		{topic: "completion", what: "taking what is offered, and walking a path", title: "WHEN A LIST IS OPEN OVER A FIELD", rows: [][2]string{
 			pair(keys.Line, "take what is highlighted -- and taking a place "+
 				"offers what is inside it, so a path is walked rather than "+
 				"typed out", keys.Complete, keys.Confirm),
@@ -164,7 +238,7 @@ func (m Model) generalHelp() []helpSection {
 			pairAll(keys.Line, "choose", keys.MoveDown, keys.MoveUp),
 			pair(keys.Line, "put the list away and keep typing", keys.Dismiss, keys.Cancel),
 		}},
-		{title: "ON THE IMPORT PLAN", rows: [][2]string{
+		{topic: "plan", what: "settling rows, dropping them, applying the file", title: "ON THE IMPORT PLAN", rows: [][2]string{
 			pair(keys.Plan, "settle the row under the cursor", keys.Confirm),
 			pair(keys.Plan, "drop a row, or take it back", keys.Drop, keys.Undrop),
 			pair(keys.Plan, "apply the whole file, in one transaction", keys.ApplyAll),
@@ -179,10 +253,29 @@ func (m Model) generalHelp() []helpSection {
 		commands = append(commands, [2]string{string(spec.Op), spec.What})
 	}
 	sections = append(sections, helpSection{
+		topic: "commands",
+		what:  "everything the command line takes",
 		title: "COMMANDS  (" + keys.Show(keys.Browse, keys.CommandLine) + " help <name> for one of them)",
 		rows:  commands,
 	})
 	return sections
+}
+
+// describeTopic says what a name will get you, whether it is a command or one
+// of the sections.
+func (m Model) describeTopic(name string) string {
+	if spec, ok := command.SpecOf(command.Op(name)); ok {
+		return spec.What
+	}
+	for _, section := range m.generalHelp() {
+		if section.topic == name {
+			return section.what
+		}
+	}
+	if name == "all" {
+		return "the whole listing, as one page"
+	}
+	return ""
 }
 
 // commandHelp is one command's shape, in the order it is written.
@@ -295,7 +388,7 @@ func pairAll(ctx keys.Context, what string, actions ...keys.Action) [2]string {
 // renderHelp lays the sections out in two columns, the left one wide enough for
 // the widest key in the whole listing rather than per section -- so the
 // descriptions line up down the page and the eye reads one column, not nine.
-func renderHelp(sections []helpSection, width int) []string {
+func renderHelp(sections []helpSection, width int) (lines []string, headings []int) {
 	// The key column is sized across the WHOLE listing rather than per section,
 	// so the meanings line up down the page and the eye reads one column
 	// instead of nine.
@@ -316,6 +409,7 @@ func renderHelp(sections []helpSection, width int) []string {
 		if len(out) > 0 {
 			out = append(out, "")
 		}
+		headings = append(headings, len(out))
 		out = append(out, "  "+style.Strong.Render(s.title))
 		for _, line := range s.prose {
 			for _, wrapped := range wrap(line, width-4) {
@@ -330,14 +424,14 @@ func renderHelp(sections []helpSection, width int) []string {
 			if row[0] == "" {
 				continue // nothing on this surface binds it
 			}
-			lines := wrap(row[1], width-len(hang))
-			out = append(out, fmt.Sprintf("    %-*s  %s", keyWidth, row[0], style.Dim.Render(lines[0])))
-			for _, rest := range lines[1:] {
+			wrapped := wrap(row[1], width-len(hang))
+			out = append(out, fmt.Sprintf("    %-*s  %s", keyWidth, row[0], style.Dim.Render(wrapped[0])))
+			for _, rest := range wrapped[1:] {
 				out = append(out, hang+style.Dim.Render(rest))
 			}
 		}
 	}
-	return out
+	return out, headings
 }
 
 // helpAsked reports whether a command line is asking for help, and about what.
@@ -354,12 +448,22 @@ func helpAsked(line string) (topic string, ok bool) {
 }
 
 // helpTopics is every name `help` will answer to, for the completion the
-// command line offers.
-func helpTopics() []string {
-	out := make([]string, 0, len(command.Specs()))
+// command line offers and for the near-miss suggestions.
+//
+// The sections are in it as well as the commands. A topic you cannot complete
+// and are never offered is a topic only somebody who already read the index
+// knows about, and the index exists for the people who have not.
+func (m Model) helpTopics() []string {
+	out := make([]string, 0, len(command.Specs())+12)
 	for _, spec := range command.Specs() {
 		out = append(out, string(spec.Op))
 	}
+	for _, section := range m.generalHelp() {
+		if section.topic != "" {
+			out = append(out, section.topic)
+		}
+	}
+	out = append(out, "all")
 	sort.Strings(out)
 	return out
 }

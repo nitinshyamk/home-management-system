@@ -51,6 +51,10 @@ func (m Model) load(v view) tea.Cmd {
 			if err != nil {
 				return errMsg{err}
 			}
+			if v == viewHelp {
+				_, headings := m.helpPage(m.helpTopic)
+				return loadedMsg{view: v, rows: rows, hint: hint, headings: headings}
+			}
 			return loadedMsg{view: v, rows: rows, hint: hint}
 		}
 	}
@@ -74,7 +78,7 @@ func (m Model) surfaceFor(msg loadedMsg) surface {
 			WithFolds(m.folds[msg.view]).
 			SetNodes(msg.nodes).SetSize(m.width, height)}
 	default:
-		return newTextSurface(msg.rows, m.width, height)
+		return newSectionedText(msg.rows, msg.headings, m.width, height)
 	}
 }
 
@@ -104,9 +108,9 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error
 
 	case viewHelp:
 		lines := m.helpLines(m.helpTopic)
-		hint := "every key and every command"
+		hint := keys.Show(keys.Browse, keys.CommandLine) + " help <topic>"
 		if m.helpTopic != "" {
-			hint = m.helpTopic
+			hint = "help " + m.helpTopic
 		}
 		return lines, hint, nil
 
