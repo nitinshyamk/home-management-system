@@ -1,7 +1,0 @@
- 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
-------------------------------------------------------------------------------------------
-  KIND  NAME                                                                              
-  (nothing here)
-------------------------------------------------------------------------------------------
-0 matches across every kind
-  JUMP      shelf                                                    enter go   esc cancel

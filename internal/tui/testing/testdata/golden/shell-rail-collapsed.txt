@@ -1,0 +1,10 @@
+BY PLACE  the house                                                       4 holdings
+------------------------------------------------------------------------------------
+  NAME                           │  ITEM ^                     QTY  WHERE           
+> ▸ the house                   4│  Ancho Chile              100 g  Left Pantry     
+                                 │  Ancho Chile              100 g  Garage          
+                                 │  Ancho Chile              100 g  Small Parts Tray
+                                 │  Thunderbolt 4 to Dua…  at rest  Small Parts Tray
+------------------------------------------------------------------------------------
+the house - 4 holdings below here - 2 places inside
+            TAB fold - o new - e rename - m move - \ lens - M-g jump

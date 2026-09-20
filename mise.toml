@@ -86,6 +86,17 @@ run = "go run ./cmd/hmsdev plan"
 description = "Run every test"
 run = "go test ./..."
 
+# Re-capturing a golden is not part of running the tests, and it has its own
+# task so that it cannot be reached by adding a flag to one.
+#
+# A golden means UNCHANGED, and it is worth something only because the layout
+# it holds was reviewed by a person and accepted. So this is the deliberate
+# second step after that review -- never something a failing run does for
+# itself, which would be an elaborate way of asserting nothing.
+[tasks.golden]
+description = "Re-capture the golden frames -- only after a screen has been signed off"
+run = "go test ./internal/tui/testing -run TestGolden -update-golden"
+
 [tasks.format]
 description = "Format all Go source with gofumpt"
 run = "gofumpt -w ."

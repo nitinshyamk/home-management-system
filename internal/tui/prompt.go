@@ -133,12 +133,12 @@ func (m Model) promptFor(purpose editor.Purpose, initial string) Model {
 // interface with one word for two answers.
 func (m Model) promptForNode() (Model, tea.Cmd) {
 	sel, ok := m.current.Current()
-	if !ok || !sel.Contained {
+	if !ok || (sel.Kind != kindItem && sel.Kind != kindHolding) {
 		return m.refuse("move one of the things inside -- a place is moved with %s",
 			keys.Show(keys.Browse, keys.CommandLine)+" reparent location"), nil
 	}
 	purpose := editor.Move
-	if sel.Kind == "Item" {
+	if sel.Kind == kindItem {
 		purpose = editor.Reclassify
 	}
 	m.say = m.say.Clear()
@@ -180,7 +180,12 @@ func (m Model) actOnPrompt() (Model, tea.Cmd) {
 	purpose := m.editor.Purpose()
 	rows := m.selectedHoldings()
 	subject, kind := m.editor.Subject(), m.editor.Kind()
-	inTree := m.onRail()
+	// A prompt opened for ONE node has no selection behind it, and an empty
+	// selection is exactly how the two paths differ: promptFor refuses to
+	// open without rows, promptForNode never has any. Asking which pane is
+	// showing stopped answering this once both prompts opened over the same
+	// one.
+	forNode := len(rows) == 0
 	m.editor = m.editor.Close()
 	// Answering the prompt finishes the move, so whatever `m` picked up is put
 	// down with it. Without this, naming the destination would relocate the
@@ -192,11 +197,7 @@ func (m Model) actOnPrompt() (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// A prompt opened over a TREE has one subject and it is the node, not a
-	// selection: selectedHoldings is the Holdings table's idea of "what am I
-	// acting on", and it is empty here -- which would have made this report
-	// "nothing to do" for a perfectly complete answer.
-	if inTree {
+	if forNode {
 		built, err := m.buildForNode(purpose, kind, subject, answer)
 		if err != nil {
 			return m.refuse("%v", err), nil

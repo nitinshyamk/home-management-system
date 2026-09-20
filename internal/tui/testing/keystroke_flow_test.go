@@ -401,9 +401,9 @@ func TestTheMovePromptCompletesOnlyPlaces(t *testing.T) {
 	s.Send(sim.Type("grain")) // the Grains CATEGORY, and no location
 
 	s.HidesText("TAB to take it")
-	if strings.Contains(s.PlainView(), "Grains") {
-		t.Errorf("a destination field offered a classification:\n%s", s.PlainView())
-	}
+	// The dropdown, not the screen: the inspector names the item's own
+	// classification, correctly, on the line below the house.
+	s.DoesNotOffer("Grains")
 }
 
 // A quantity has nothing to complete against, and offering it a list would be
@@ -419,7 +419,9 @@ func TestTheQuantityPromptOffersNothing(t *testing.T) {
 	// silent whether it is filtering by kind or not filtering at all.
 	s.Send(sim.Type("gar"))
 	s.HidesText("TAB to take it")
-	s.HidesText("Garage")
+	// The rail is showing the Garage all the while, correctly. The claim is
+	// about what the field offered.
+	s.DoesNotOffer("Garage")
 }
 
 // Enter takes the highlighted place. It does not guess at the text, and it does
@@ -709,7 +711,9 @@ func TestABatchThatWouldMergeIsRefused(t *testing.T) {
 	s.Send(sim.Enter)
 
 	s.ShowsText("one holding")
-	s.HidesText("Shed  ") // no row landed there
+	// The Shed is on the rail as an empty place, correctly; what must not
+	// have happened is a row landing in it.
+	s.ContentsHide("Shed")
 	// The harness verifies every holding against its events on the way out, so
 	// the assertion that matters most is made for us.
 	s.OnHand(rice, 1000*domain.Scale)

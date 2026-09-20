@@ -1,0 +1,9 @@
+BY PLACE  the house                                                             4 holdings
+------------------------------------------------------------------------------------------
+  KIND      NAME                                                                          
+> Location  Garage > Metal Shelving Unit > Bay 3 > Blue Crate                             
+  Location  Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray          
+  Item      Spices > Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space Grey, 0.8m)     
+------------------------------------------------------------------------------------------
+3 matches across every kind
+  JUMP      crate                                                    enter go   esc cancel

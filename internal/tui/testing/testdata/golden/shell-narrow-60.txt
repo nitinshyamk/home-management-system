@@ -1,0 +1,10 @@
+BY PLACE  the house                               4 holdings
+------------------------------------------------------------
+  ITEM ^                               QTY  WHERE           
+> Ancho Chile                        100 g  Left Pantry     
+  Ancho Chile                        100 g  Garage          
+  Ancho Chile                        100 g  Small Parts Tray
+  Thunderbolt 4 to Dual DisplayP…  at rest  Small Parts Tray
+------------------------------------------------------------
+Ancho Chile - Spices - 100 g here, 300 g in the house
+            c consume - # count - m move - t custody

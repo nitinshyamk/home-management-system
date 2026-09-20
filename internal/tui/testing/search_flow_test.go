@@ -71,13 +71,17 @@ func TestFilterAndJumpAreVisiblyDifferent(t *testing.T) {
 	awkwardHouse(t, s)
 	s.ByPlace()
 	s.OnContents()
+	// A word this house actually contains, so the palette has rows to say the
+	// kind of. It used to be "shelf", which matches nothing here -- the
+	// assertion below passed on the tab bar's "2 Locations" instead, and only
+	// stopped passing when the tabs went.
 	s.Send(sim.CtrlS)
-	s.Send(sim.Type("shelf"))
+	s.Send(sim.Type("crate"))
 	filtering := s.PlainView()
 
 	s.Send(sim.Esc)
 	s.Send(sim.AltG)
-	s.Send(sim.Type("shelf"))
+	s.Send(sim.Type("crate"))
 	jumping := s.PlainView()
 
 	if filtering == jumping {
@@ -85,6 +89,9 @@ func TestFilterAndJumpAreVisiblyDifferent(t *testing.T) {
 	}
 	if !strings.Contains(jumping, "JUMP") {
 		t.Errorf("the jump does not say what it is:\n%s", jumping)
+	}
+	if !strings.Contains(jumping, "Blue Crate") {
+		t.Fatalf("the jump found nothing to say the kind of:\n%s", jumping)
 	}
 	// A jump result says what KIND of thing it is, or Enter lands somewhere
 	// surprising.
@@ -104,16 +111,15 @@ func TestJumpingGoesToTheThing(t *testing.T) {
 	s.Send(sim.Type("blue crate"))
 	s.Send(sim.Enter)
 
-	// A Location, so it lands in the Locations tree with the cursor on it.
-	s.ShowsText("Locations")
-	cursor := ""
-	for _, line := range strings.Split(s.PlainView(), "\n") {
-		if strings.HasPrefix(line, ">") {
-			cursor = line
-		}
+	// A Location, so it lands on the rail of the place lens with the cursor
+	// on it -- and unfolds the branch to get there, since the crate is four
+	// levels down.
+	s.ShowsText("BY PLACE")
+	if !s.Model().OnRail() {
+		t.Error("the jump landed in the contents pane, not on the place it named")
 	}
-	if !strings.Contains(cursor, "Blue Crate") {
-		t.Errorf("the jump landed on %q, want Blue Crate", cursor)
+	if got := s.Model().RailName(); got != "Blue Crate" {
+		t.Errorf("the jump landed on %q, want Blue Crate", got)
 	}
 }
 
@@ -175,22 +181,36 @@ func typedInto(s *sim.Simulator, prompt, text string) bool {
 	return false
 }
 
-// A tree filter keeps the ancestors of a match, because what a tree adds over a
-// list is where the thing sits.
-func TestFilteringATreeKeepsThePath(t *testing.T) {
+// The filter narrows the CONTENTS, and leaves the rail alone.
+//
+// The asymmetry is deliberate. Filtering a tree gives you a tree with holes
+// in it; what somebody typing a name wants is the things that match, which is
+// what the contents pane holds. Finding a PLACE by name is the jump palette's
+// job -- it searches every kind and moves the rail -- so the two searches
+// stay distinguishable instead of one key meaning different things depending
+// on which half the cursor was in.
+//
+// tree.SetFilter still keeps a match's ancestors; see the tree package, which
+// is where that behaviour is now reachable from.
+func TestFilteringNarrowsTheContentsAndNotTheRail(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.ByPlace()
-	s.OnRail()
+	s.OnContents()
 	s.Send(sim.CtrlS)
-	s.Send(sim.Type("small parts"))
+	s.Send(sim.Type("thunder"))
 	s.Send(sim.Enter)
 
-	for _, ancestor := range []string{"Garage", "Metal Shelving Unit", "Bay 3", "Blue Crate"} {
-		s.ShowsText(ancestor)
+	s.ContentsShow("Thunderbolt")
+	if got := s.CountRows("Ancho Chile"); got != 0 {
+		t.Errorf("the filter left %d chile rows in the contents, want none", got)
 	}
-	s.ShowsText("Small Parts Tray")
-	s.HidesText("Left Pantry")
+
+	// The house is still the house: you have not lost your way around it by
+	// searching within it.
+	for _, place := range []string{"Garage", "Metal Shelving Unit", "Left Pantry"} {
+		s.RailShows(place)
+	}
 }
 
 // Searching is a read.

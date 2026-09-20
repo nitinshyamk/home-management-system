@@ -460,3 +460,29 @@ func TestAFilteredTreeStillRulesOutTheContents(t *testing.T) {
 		t.Error("the filter hid the row it matched; it should be shown and merely not offered")
 	}
 }
+
+// A filtered tree keeps a match's ANCESTORS, because what a tree adds over a
+// list is where the thing sits: a match five levels down that arrives without
+// its path is a list entry.
+//
+// Asserted here rather than through the interface. The shell filters its
+// contents pane and leaves the rail alone, so this is the only place the
+// behaviour is now reachable -- and it is still the behaviour, so it is still
+// worth holding.
+func TestAFilteredTreeKeepsThePathToAMatch(t *testing.T) {
+	m := newTree().SetFilter("small parts")
+
+	for _, ancestor := range []string{"Garage", "Metal Shelving Unit", "Bay 3", "Blue Crate"} {
+		if !contains(m, ancestor) {
+			t.Errorf("the filter dropped %q; a match without its path is a list entry", ancestor)
+		}
+	}
+	if !contains(m, "Small Parts Tray") {
+		t.Error("the filter dropped the row it matched")
+	}
+	for _, gone := range []string{"Attic", "Kitchen", "Spice Cabinet"} {
+		if contains(m, gone) {
+			t.Errorf("the filter kept %q, a branch with no match in it", gone)
+		}
+	}
+}

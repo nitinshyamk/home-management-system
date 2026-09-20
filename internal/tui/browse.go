@@ -269,10 +269,19 @@ func (m Model) handleAction(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	if action == keys.Copy {
 		return m.copy(), nil, true
 	}
-	// On the rail, the only verb is move: a place or a category is renamed
-	// with `e`, created with `o`, and otherwise reorganised rather than
-	// consumed.
+	// The rail is renamed with `e` and created into with `o`. Re-parenting a
+	// place is still the typed command until the move gesture is one thing.
 	if m.onRail() {
+		if action == keys.MoveTo {
+			return m.refuse("a place is moved with %s reparent location",
+				keys.Show(keys.Browse, keys.CommandLine)), nil, true
+		}
+		return m, nil, false
+	}
+	// In the kind lens the contents are Items, and the one thing you do to an
+	// Item from here is file it somewhere else. Consuming would have to ask
+	// which pile.
+	if m.lens == lensKind {
 		if action == keys.MoveTo {
 			next, cmd := m.promptForNode()
 			return next, cmd, true

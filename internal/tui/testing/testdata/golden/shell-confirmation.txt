@@ -1,4 +1,4 @@
- 1 Categories   2 Locations   3 Items  [4 Holdings]  5 Integrity 
+BY PLACE  the house                                                               4 holdings
 --------------------------------------------------------------------------------------------
   create "Turmeric" as measured in g, 2000 per package in Spices?
 
@@ -7,5 +7,5 @@
 
   [enter] create    [esc] back
 --------------------------------------------------------------------------------------------
-4 holdings - sorted by item a-z - enter for history
+Ancho Chile - Spices - 100 g here, 300 g in the house - Left Pantry
 

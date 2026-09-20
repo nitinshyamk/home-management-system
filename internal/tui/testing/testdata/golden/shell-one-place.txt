@@ -1,0 +1,13 @@
+BY PLACE  the house > Left Pantry                                                          1 holding
+----------------------------------------------------------------------------------------------------
+  NAME                              │  ITEM ^                                                    QTY
+  ▾ the house                      4│  Ancho Chile                                             100 g
+    ▾ Garage                       3│
+      ▾ Metal Shelving Unit        2│
+        ▾ Bay 3                    2│
+          ▾ Blue Crate             2│
+              Small Parts Tray     2│
+>     Left Pantry                  1│
+----------------------------------------------------------------------------------------------------
+the house > Left Pantry - 1 holding below here
+            TAB fold - o new - e rename - m move - \ lens - M-g jump

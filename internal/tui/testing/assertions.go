@@ -258,3 +258,16 @@ func (s *Simulator) ContentsHide(unwanted string) {
 		s.t.Errorf("the contents pane still shows %q:\n%s", unwanted, text.StripANSI(s.model.ContentsView()))
 	}
 }
+
+// Offers is what the open field suggests -- the dropdown, not the screen.
+func (s *Simulator) Offers() []string { return s.model.Offers() }
+
+func (s *Simulator) DoesNotOffer(unwanted string) {
+	s.t.Helper()
+	for _, o := range s.Offers() {
+		if strings.Contains(o, unwanted) {
+			s.t.Errorf("the field offered %q: %v", unwanted, s.Offers())
+			return
+		}
+	}
+}

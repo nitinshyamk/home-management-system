@@ -16,7 +16,7 @@ import (
 // A failure is not automatically a bug. It is a prompt to re-review the screen
 // and, if the change is wanted, re-capture with -update-golden.
 
-func TestGoldenHoldingsTable(t *testing.T) {
+func TestGoldenTheHouse(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 
@@ -24,10 +24,11 @@ func TestGoldenHoldingsTable(t *testing.T) {
 		name          string
 		width, height int
 	}{
-		{"10a-holdings-100", 100, 22},
-		// 60 columns is where the layout has to shed something, so it is the
-		// frame most worth guarding.
-		{"10a-holdings-60", 60, 22},
+		{"shell-place-100", 100, 22},
+		// 60 columns is below narrowWidth, where the shell gives up the
+		// second pane entirely. That fallback is a design decision rather
+		// than a resize rule, so it is the frame most worth guarding.
+		{"shell-narrow-60", 60, 22},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s.Resize(tc.width, tc.height)
@@ -36,6 +37,18 @@ func TestGoldenHoldingsTable(t *testing.T) {
 			s.AssertFrame(tc.name)
 		})
 	}
+}
+
+// Standing on a shelf rather than at the top of the house: the contents pane
+// narrows to what is in there, and WHERE drops out because every row is in
+// the same place.
+func TestGoldenAShelf(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(100, 22)
+	s.ByPlace()
+	s.GoTo("Left Pantry")
+	s.AssertFrame("shell-one-place")
 }
 
 // The selected state has its own frame: the gutter marks are the part of a
@@ -48,16 +61,16 @@ func TestGoldenHoldingsWithASelection(t *testing.T) {
 	s.ByPlace()
 	s.OnContents()
 	s.Send(sim.Space, sim.Space, sim.Space)
-	s.AssertFrame("10a-holdings-selected")
+	s.AssertFrame("shell-selection")
 }
 
-func TestGoldenItemsTable(t *testing.T) {
+func TestGoldenTheKindLens(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(100, 22)
 	s.ByKind()
 	s.OnContents()
-	s.AssertFrame("10a-items-100")
+	s.AssertFrame("shell-kind-100")
 }
 
 // 10b and 10c, provisionally accepted 2026-08-20 with more UI shifts expected.
@@ -66,17 +79,17 @@ func TestGoldenItemsTable(t *testing.T) {
 // golden is for here is the change nobody intended. A deliberate shift means
 // re-capturing, which is one command and a legible diff.
 
-func TestGoldenLocationTree(t *testing.T) {
+func TestGoldenTheRail(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(84, 22)
 	s.ByPlace()
 	s.OnRail()
-	s.AssertFrame("10b-locations-84")
+	s.AssertFrame("shell-rail-84")
 
 	// Collapsed is the overview, and it is a different layout question.
 	s.Send(sim.ShiftTab)
-	s.AssertFrame("10b-locations-collapsed")
+	s.AssertFrame("shell-rail-collapsed")
 }
 
 func TestGoldenFilterAndJumpDoNotLookAlike(t *testing.T) {
@@ -89,12 +102,12 @@ func TestGoldenFilterAndJumpDoNotLookAlike(t *testing.T) {
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("loc:tray"))
 	s.Send(sim.Enter)
-	s.AssertFrame("10c-filtered")
+	s.AssertFrame("shell-filtered")
 
 	s.Send(sim.Esc)
 	s.Send(sim.AltG)
-	s.Send(sim.Type("shelf"))
-	s.AssertFrame("10c-jump")
+	s.Send(sim.Type("crate"))
+	s.AssertFrame("shell-jump")
 }
 
 // 10d, accepted 2026-08-20 after one round of rework.
@@ -111,7 +124,7 @@ func TestGoldenInlineEditor(t *testing.T) {
 	s.OnRail()
 	s.Send(sim.CtrlN, sim.CtrlN)
 	s.Send(sim.Press("e"))
-	s.AssertFrame("10d-editor-inline")
+	s.AssertFrame("shell-editor-inline")
 }
 
 func TestGoldenTheConfirmation(t *testing.T) {
@@ -123,7 +136,7 @@ func TestGoldenTheConfirmation(t *testing.T) {
 	s.Send(sim.AltX)
 	s.Send(sim.Type("new item Turmeric counting measured unit g package 2000 category Spices"))
 	s.Send(sim.Enter)
-	s.AssertFrame("10d-confirmation")
+	s.AssertFrame("shell-confirmation")
 }
 
 func TestGoldenARefusal(t *testing.T) {
@@ -135,7 +148,7 @@ func TestGoldenARefusal(t *testing.T) {
 	s.Send(sim.AltX)
 	s.Send(sim.Type("consume 5kg"))
 	s.Send(sim.Enter)
-	s.AssertFrame("10d-refusal-wrapped")
+	s.AssertFrame("shell-refusal-wrapped")
 }
 
 // 10f's confirmation, which asks for a different reason than 10d's.
@@ -153,15 +166,16 @@ func TestGoldenTheRetirementConfirmation(t *testing.T) {
 	s.Send(sim.Type("thunder"))
 	s.Send(sim.Enter)
 	s.Send(sim.CtrlK)
-	s.AssertFrame("10f-retire-confirmation")
+	s.AssertFrame("shell-retire-confirmation")
 }
 
-// The carry banner, which is a LAYOUT claim: it sits above the body with the
-// view tabs, and the rows give up the line rather than the screen overflowing.
+// The carry banner, which is a LAYOUT claim: it sits in the status block
+// below the house, and the rows give up a line rather than the screen
+// overflowing.
 //
 // Kept as a frame because that claim is exactly the kind a plain-text capture
-// can hold still, and because the banner is drawn in every view -- so a change
-// to where it goes changes every screen at once.
+// can hold still, and because the banner is drawn under every screen -- so a
+// change to where it goes changes all of them at once.
 func TestGoldenSomethingInHand(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
@@ -169,10 +183,10 @@ func TestGoldenSomethingInHand(t *testing.T) {
 	s.ByPlace()
 	s.OnContents()
 	s.Send(sim.AltW)
-	// Across a view switch, which is where it used to vanish.
-	s.ByPlace()
+	// And across the pane switch that is the middle of the gesture, which is
+	// where it used to vanish.
 	s.OnRail()
-	s.AssertFrame("11e-carrying")
+	s.AssertFrame("shell-carrying")
 }
 
 // The import plan, and the same plan having refused to apply.
