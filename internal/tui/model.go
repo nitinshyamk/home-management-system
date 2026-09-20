@@ -8,8 +8,9 @@ import (
 	"home-management-system/internal/tui/creator"
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/omnibox"
+	"home-management-system/internal/tui/status"
 	"home-management-system/internal/tui/table"
-	"strings"
+	"home-management-system/internal/tui/text"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -85,9 +86,6 @@ type Model struct {
 	editor  editor.Model
 	creator creator.Model
 	confirm *pendingPlan
-	// problem is what went wrong, held apart from status so it can be rendered
-	// loudly and wrapped rather than squeezed into a one-line summary.
-	problem []string
 
 	// holdingRows is what is on screen, by identifier. A keystroke reaches the
 	// identifiers behind its row through this rather than through the display
@@ -103,7 +101,11 @@ type Model struct {
 	flow     flow
 	fromView view
 
-	status string
+	// say is everything the interface has to say about itself: the view's
+	// hint, what just happened or why it did not, what is in hand, and what is
+	// in flight. Four lifetimes, which is why it is a value of its own rather
+	// than the two fields it replaces.
+	say    status.Model
 	width  int
 	height int
 	// ready says the terminal has told us its size. Until it has, there is no
@@ -119,6 +121,7 @@ func New(ctx context.Context, ctrl app.Controller) Model {
 		editor:   editor.New(),
 		creator:  creator.New(),
 		flow:     newFlow(),
+		say:      status.New(),
 		jump:     table.New(jumpColumns).Fixed(),
 		contents: map[view]bool{},
 		folds:    map[view]map[int64]bool{},
@@ -141,35 +144,21 @@ func Run(ctx context.Context, ctrl app.Controller) error {
 	return err
 }
 
-// wrap breaks text onto as many lines as it needs.
-//
-// Truncating an error is the worst thing to truncate: the part that says what
-// to do about it is at the END, so a cut message is a message that reports a
-// problem and withholds the answer.
-func wrap(text string, width int) []string {
-	if width < 20 {
-		width = 20
-	}
-	var lines []string
-	line := ""
-	for _, word := range strings.Fields(text) {
-		switch {
-		case line == "":
-			line = word
-		case len([]rune(line))+1+len([]rune(word)) <= width:
-			line += " " + word
-		default:
-			lines = append(lines, line)
-			line = word
-		}
-	}
-	if line != "" {
-		lines = append(lines, line)
-	}
-	return lines
-}
+// wrap breaks text onto as many lines as it needs, never narrower than is
+// readable. It defers to text.Wrap, which is where the one implementation
+// lives now that the status block wraps its own lines.
+func wrap(s string, width int) []string { return text.Wrap(s, max(20, width)) }
 
 // humanise defers to command.Humanise, which is where the list lives: an
 // importer, a plan screen, and this all render the same errors, and three
 // copies of the list would drift.
-func humanise(text string) string { return command.Humanise(text) }
+func humanise(issue string) string { return command.Humanise(issue) }
+
+// humaniseAll is humanise over a refusal's several reasons.
+func humaniseAll(issues []string) []string {
+	out := make([]string, 0, len(issues))
+	for _, issue := range issues {
+		out = append(out, humanise(issue))
+	}
+	return out
+}

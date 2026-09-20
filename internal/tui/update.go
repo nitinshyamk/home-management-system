@@ -20,7 +20,10 @@ type loadedMsg struct {
 	cells       []table.Row
 	nodes       []tree.Node
 	holdingRows map[int64]app.HoldingRow
-	status      string
+	// hint is the view's standing hint -- "enter for history", "TAB fold" --
+	// which is all a load has ever had to say. It was called status, and that
+	// name is why three unrelated things ended up sharing one field.
+	hint string
 }
 
 type errMsg struct{ err error }
@@ -61,7 +64,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case loadedMsg:
 		was := m.view
-		m.view, m.status = msg.view, msg.status
+		// The hint, and ONLY the hint. A load used to overwrite the one status
+		// string, which is what destroyed the feedback for every write and
+		// made the carry invisible.
+		m.view, m.say = msg.view, m.say.SetHint(msg.hint)
 		m.holdingRows = msg.holdingRows
 
 		// A filter belongs to the VIEW it narrowed. `/rice` means nothing in
@@ -113,7 +119,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case planMsg:
 		if msg.plan.Empty() {
-			m.status = "nothing to do"
+			m.say = m.say.Report("nothing to do")
 			return m, nil
 		}
 		if msg.plan.NeedsConfirmation() {
@@ -121,28 +127,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// so itself -- a non-empty Permanent IS the signal -- so the
 			// interface cannot fail to notice.
 			m.confirm = &pendingPlan{plan: msg.plan, summary: msg.summary}
-			m.status = ""
+			// The question IS the screen now, so the "working..." that got us
+			// here has nothing left to say.
+			m.say = m.say.Clear()
 			return m, nil
 		}
 		return m, m.apply(msg.plan, msg.summary)
 
 	case issuesMsg:
-		m.problem = msg.issues
-		m.status = ""
+		// Humanised HERE, where an error crosses from the controller into
+		// something a person reads. It used to happen in the renderer, which
+		// meant every future reader of m.problem got the raw text and had to
+		// remember: "ops: not enough on hand" is a call stack wearing a
+		// sentence.
+		m.say = m.say.Refuse(humaniseAll(msg.issues)...)
 		return m, nil
 
 	case importedMsg:
-		m.problem = nil
 		m.flow = m.flow.done()
-		// Said through the load rather than before it, because a loadedMsg
-		// carries the view's own status and would otherwise overwrite the only
-		// report a whole import ever makes.
-		m.status = fmt.Sprintf("applied %d rows in one transaction", msg.rows)
+		// Said before the load, and it survives it: a load replaces the view's
+		// hint and nothing else. This used to need reloadKeepingStatus, which
+		// re-ran the load and then put the old string back over the fresh one.
+		m.say = m.say.Report(fmt.Sprintf("applied %d rows in one transaction", msg.rows))
 		m.view = viewHoldings
-		return m, m.reloadKeepingStatus()
+		return m, m.load(m.view)
 
 	case appliedMsg:
-		m.problem = nil
 		// The panel closes only once something was actually created. Escaping
 		// the confirmation returns to the panel with what was typed still in
 		// it, which is what makes the confirmation a step rather than a
@@ -157,8 +167,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Reload, because something changed. The list a person is looking at
 		// must not disagree with the house.
-		m.status = msg.summary
-		return m, m.reloadKeepingStatus()
+		m.say = m.say.Report(msg.summary)
+		return m, m.load(m.view)
 
 	case reboundMsg:
 		return m.rebound(msg), nil
@@ -177,7 +187,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case errMsg:
-		m.status = "error: " + msg.err.Error()
+		// A refusal rather than an outcome, which is what it always was: it
+		// used to be written into the status string and rendered as though the
+		// thing had worked.
+		m.say = m.say.Refuse(humanise("error: " + msg.err.Error()))
 		return m, nil
 
 	case tea.KeyMsg:

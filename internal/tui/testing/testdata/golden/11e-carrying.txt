@@ -1,6 +1,5 @@
  1 Categories  [2 Locations]  3 Items   4 Holdings   5 Integrity 
 ------------------------------------------------------------------------------------
-  carrying "Ancho Chile" -- C-y puts it in a place, esc puts it down
   NAME                                                                      HOLDINGS
 > ▾ Garage                                                                         3
     ▾ Metal Shelving Unit                                                          2
@@ -9,5 +8,6 @@
             Small Parts Tray                                                       2
     Left Pantry                                                                    1
 ------------------------------------------------------------------------------------
+  carrying "Ancho Chile" -- C-y puts it in a place, esc puts it down
 6 locations - TAB fold - S-TAB fold all - v contents
             C-s search - M-g jump - M-x command

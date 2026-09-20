@@ -27,7 +27,7 @@ func (m Model) openCreator() Model {
 		}
 		parent = sel.Name
 	}
-	m.problem = nil
+	m.say = m.say.Clear()
 	m.creator = m.creator.Open(kind, parent).SetWidth(m.width)
 	return m.suggest()
 }
@@ -60,7 +60,7 @@ func (m Model) handleCreator(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.creator = m.creator.Close()
 		// As with the field: a cancelled settle is a finished settle.
 		m.flow = m.flow.settled()
-		m.status = "nothing was created"
+		m.say = m.say.Report("nothing was created")
 		return m, nil
 	case keys.Confirm:
 		if name := m.creator.Value("name"); name == "" {

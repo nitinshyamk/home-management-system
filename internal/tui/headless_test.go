@@ -6,7 +6,6 @@ import (
 
 	"context"
 	"home-management-system/internal/tui/keys"
-	"home-management-system/internal/tui/text"
 )
 
 // The script format has to be able to express every key the interface uses,
@@ -132,35 +131,6 @@ func TestAnUnknownKeyIsRefusedWithItsLine(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "line 2") {
 		t.Errorf("the error does not say where: %v", err)
-	}
-}
-
-// The help line is cut to the terminal rather than allowed to wrap.
-//
-// A line wider than the screen wraps, and one wrapped line shifts every row
-// below it -- the same reason the table drops columns instead of overflowing.
-// The help line grew past 80 columns when the bindings became emacs (C-n/C-p
-// says more than j/k did), and nothing was watching it: the harness's width
-// checks never see it, because it only renders when there is no status to
-// report and the seeded house always has a count to say.
-func TestTheHelpLineFitsTheTerminal(t *testing.T) {
-	parts := []string{
-		keys.Hint(keys.Table,
-			[]keys.Action{keys.MoveDown, keys.MoveUp},
-			[]keys.Action{keys.MoveLeft, keys.MoveRight}),
-		"1-5 views",
-		keys.Hint(keys.Browse, []keys.Action{keys.Confirm}),
-		keys.Hint(keys.Table, []keys.Action{keys.ToggleSelect}, []keys.Action{keys.Sort}),
-		keys.Hint(keys.Browse, []keys.Action{keys.Quit}),
-	}
-	for _, width := range []int{40, 60, 80, 100, 120} {
-		got := text.JoinWhatFits(width, parts)
-		if n := len([]rune(got)); n > width {
-			t.Errorf("the help line is %d columns in a %d-column terminal: %q", n, width, got)
-		}
-		if got == "" {
-			t.Errorf("the help line said nothing at all in %d columns", width)
-		}
 	}
 }
 

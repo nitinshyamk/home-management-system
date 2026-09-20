@@ -50,22 +50,39 @@ func (m Model) copy() Model {
 	return m.carry(carried{Kind: "Holding", ID: int64(row.ID), Name: row.Item})
 }
 
-// carry picks a thing up. What is being held is said by carryLine, which is a
-// BANNER rather than a status: a status is wiped by the next view switch, and a
-// view switch is the middle step of this gesture.
+// carry picks a thing up, and says so.
+//
+// What is in hand outlives everything until it is put down -- including the
+// view switch that is the middle step of this gesture. It used to be announced
+// through the one status string, which every load overwrote, so picking a thing
+// up and going to the tree to find its destination left the screen saying
+// nothing at all. That is what the separate lifetimes in status are for.
 func (m Model) carry(what carried) Model {
 	m.copied = &what
-	m.problem, m.status = nil, ""
+	m.say = m.say.Carrying(carryText(what))
+	return m.aiming()
+}
+
+// drop puts down whatever is in hand.
+//
+// The ONE place m.copied becomes nil, paired with the one place it is set.
+// Two facts -- what is held, and what the screen says is held -- can only
+// agree if one function moves both, and this gesture crosses views, which is
+// exactly where a forgotten second update would show. The tree's idea of the
+// carry is the third, and it goes through the same pair.
+func (m Model) drop() Model {
+	m.copied = nil
+	m.say = m.say.Dropped()
 	return m.aiming()
 }
 
 // aiming keeps the surface's idea of the carry in step with the model's.
 //
-// Called wherever m.copied changes and wherever the surface is rebuilt, which
-// is the second half and the easy one to forget: every load makes a fresh
-// surface, and a tree that arrived not knowing something was in hand would
-// quietly start offering its items again -- mid-gesture, which is the only
-// time it matters.
+// Called from carry and drop, the two places m.copied changes, and wherever
+// the surface is rebuilt -- which is the second half and the easy one to
+// forget: every load makes a fresh surface, and a tree that arrived not
+// knowing something was in hand would quietly start offering its items again
+// -- mid-gesture, which is the only time it matters.
 //
 // NOT while the prompt is open, although the thing is just as much in hand
 // there. `m` picks the row up AND opens the field over it, and the field is
@@ -119,13 +136,18 @@ func (m Model) put() (Model, tea.Cmd) {
 
 	switch {
 	case copied.Kind == "Holding" && kind == "Location":
-		m.copied = nil
-		return m.aiming(), m.runCommands([]command.Command{
+		// Said while it is in flight, not only once it has landed. A move is
+		// the one gesture here that crosses two views and a round trip, so it
+		// is the one with a gap to fall into.
+		m = m.drop()
+		m.say = m.say.Working(fmt.Sprintf("moving %q ...", copied.Name))
+		return m, m.runCommands([]command.Command{
 			command.Move{Holding: domain.HoldingID(copied.ID), To: domain.LocationID(id)},
 		})
 	case copied.Kind == "Item" && kind == "Category":
-		m.copied = nil
-		return m.aiming(), m.runCommands([]command.Command{
+		m = m.drop()
+		m.say = m.say.Working(fmt.Sprintf("filing %q ...", copied.Name))
+		return m, m.runCommands([]command.Command{
 			command.Reclassify{Item: domain.ItemID(copied.ID), Category: domain.CategoryID(id)},
 		})
 	case copied.Kind == "Holding":
@@ -171,33 +193,22 @@ func (m Model) destination() (kind string, id int64, ok bool) {
 	return "", 0, false
 }
 
-// carryLine says what is being held, and where it can be put down.
-//
-// It exists because the carry was INVISIBLE. carry() announced itself through
-// m.status, and every loadedMsg overwrites m.status -- so the one keystroke the
-// gesture requires in the middle, the view switch, destroyed the only evidence
-// that anything was being carried. You picked a thing up, went to the tree, and
-// the screen said nothing at all.
+// carryText says what is being held, and where it can be put down.
 //
 // Worded per kind, because where a thing can go is the useful half: a Holding
-// goes in a place, an Item is filed under a classification, and a banner that
+// goes in a place, an Item is filed under a classification, and a line that
 // said only "carrying X" would leave the person to find that out by being
 // refused.
-func (m Model) carryLine() []string {
-	if m.copied == nil {
-		return nil
-	}
+//
+// One line, unwrapped and unindented: the status block does both, for every
+// line it holds, so the block has one left edge rather than four.
+func carryText(what carried) string {
 	goes := "files it under a classification"
-	if m.copied.Kind == "Holding" {
+	if what.Kind == "Holding" {
 		goes = "puts it in a place"
 	}
-	text := fmt.Sprintf("carrying %q -- %s %s, %s puts it down",
-		m.copied.Name,
+	return fmt.Sprintf("carrying %q -- %s %s, %s puts it down",
+		what.Name,
 		keys.Show(keys.Browse, keys.Paste), goes,
 		keys.Show(keys.Browse, keys.Cancel))
-	out := wrap(text, max(20, m.width-2))
-	for i := range out {
-		out[i] = "  " + out[i]
-	}
-	return out
 }

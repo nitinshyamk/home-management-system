@@ -91,3 +91,31 @@ func JoinWhatFits(width int, parts []string) string {
 	}
 	return line
 }
+
+// Wrap breaks text onto as many lines as it needs.
+//
+// Truncating an error is the worst thing to truncate: the part that says what
+// to do about it is at the END, so a cut message is a message that reports a
+// problem and withholds the answer.
+func Wrap(s string, width int) []string {
+	if width < 20 {
+		width = 20
+	}
+	var lines []string
+	line := ""
+	for _, word := range strings.Fields(s) {
+		switch {
+		case line == "":
+			line = word
+		case len([]rune(line))+1+len([]rune(word)) <= width:
+			line += " " + word
+		default:
+			lines = append(lines, line)
+			line = word
+		}
+	}
+	if line != "" {
+		lines = append(lines, line)
+	}
+	return lines
+}

@@ -49,14 +49,14 @@ func (m Model) handleOmnibox(msg tea.KeyMsg) (Model, tea.Cmd) {
 			// nothing, and a write path with a no-op in it is a write path
 			// somebody will one day give something to do.
 			if topic, ok := helpAsked(line); ok {
-				m.problem, m.status = nil, ""
+				m.say = m.say.Clear()
 				m.helpTopic = topic
 				if m.view != viewHelp {
 					m.fromView = m.view
 				}
 				return m, m.load(viewHelp)
 			}
-			m.status = "working..."
+			m.say = m.say.Working(workingOn(line))
 			return m, m.runLine(line)
 		}
 		m.box = m.box.Accept()
