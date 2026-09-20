@@ -23,7 +23,7 @@ import (
 // one kind of documentation nobody re-reads, because the people who would spot
 // the drift are the people who already know the answer.
 //
-// The same argument is why `hms schema` emits the command spec rather than a
+// The same argument is why `hmsdev schema` emits the command spec rather than a
 // description of it, and this is that idea pointed at a person instead of an
 // agent.
 

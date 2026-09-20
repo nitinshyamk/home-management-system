@@ -13,15 +13,74 @@ gofumpt = "latest"
 sqlc = "1.31.1"
 
 [tasks.build]
-description = "Compile hms and seed into bin/"
+description = "Compile hms, hmsdev and seed into bin/"
 run = [
   "go build -o bin/hms ./cmd/hms",
+  "go build -o bin/hmsdev ./cmd/hmsdev",
   "go build -o bin/seed ./cmd/seed",
 ]
 
+# hms is a program somebody uses, not only one this repository builds. Typing
+# `hms` in any directory is the whole point of it, so putting it on PATH is a
+# task here rather than a paragraph in the README telling you to copy a file.
+#
+# $HMS_INSTALL_DIR, defaulting to ~/.local/bin, because that is the directory
+# a user's own binaries go in and it is already on PATH on most systems. If it
+# is not on this one, the task says so -- an install that appears to succeed and
+# leaves `hms: command not found` is worse than one that refuses.
+#
+# hmsdev is deliberately NOT installed. It is the test rig; it belongs to the
+# checkout, and `mise run render` is how it is reached.
+[tasks.install]
+description = "Build hms and put it on PATH (HMS_INSTALL_DIR, default ~/.local/bin)"
+run = '''
+dir="${HMS_INSTALL_DIR:-$HOME/.local/bin}"
+mkdir -p "$dir"
+go build -o "$dir/hms" ./cmd/hms
+echo "installed $dir/hms"
+
+case ":$PATH:" in
+  *":$dir:"*) ;;
+  *)
+    echo
+    echo "$dir is not on your PATH. Add this to your shell profile:"
+    echo "    export PATH=\"$dir:\$PATH\""
+    ;;
+esac
+'''
+
+[tasks.uninstall]
+description = "Remove the installed hms"
+run = '''
+dir="${HMS_INSTALL_DIR:-$HOME/.local/bin}"
+if [ -e "$dir/hms" ]; then
+  rm "$dir/hms"
+  echo "removed $dir/hms"
+else
+  echo "nothing installed at $dir/hms"
+fi
+'''
+
 [tasks.run]
-description = "Run hms against the configured database (mise run run -- --info)"
+description = "Run hms from source (mise run run -- info)"
 run = "go run ./cmd/hms"
+
+# The test rig. These were flags on hms until they were not: replaying a script
+# into frames, printing the contract, and binding a plan without a terminal are
+# things you do TO hms while working on it, and none of them belong on the
+# command line somebody types at their own house.
+
+[tasks.render]
+description = "Replay a .keys script and print each frame (mise run render -- script.keys)"
+run = "go run ./cmd/hmsdev render"
+
+[tasks.schema]
+description = "Print the agent contract (mise run schema -- --format json)"
+run = "go run ./cmd/hmsdev schema"
+
+[tasks.plan]
+description = "Bind a plan and print it as JSON, without a terminal (mise run plan -- file.csv)"
+run = "go run ./cmd/hmsdev plan"
 
 [tasks.test]
 description = "Run every test"
@@ -101,7 +160,7 @@ run = "go run ./cmd/seed --reset"
 
 [tasks.verify]
 description = "Run the integrity check against the configured database"
-run = "go run ./cmd/hms --verify"
+run = "go run ./cmd/hms verify"
 
 [tasks.deps]
 description = "Tidy the module"

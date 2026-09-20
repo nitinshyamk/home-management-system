@@ -33,6 +33,13 @@ const (
 
 	// DefaultDBFile is the database hms opens when nothing says otherwise.
 	DefaultDBFile = "hms.db"
+
+	// ImportsDirName is where bulk imports are kept, inside the hms home
+	// directory. An import is a folder of work in progress -- a schema handed
+	// out, a photograph dropped in, a plan that came back -- so it lives beside
+	// the database rather than in a scratch directory somewhere, and a backup
+	// of ~/hms still contains everything.
+	ImportsDirName = "imports"
 )
 
 // Config mirrors ~/hms/.hms.json.
@@ -45,6 +52,19 @@ type Config struct {
 	// DBFile names the SQLite database inside Home. An absolute path is taken
 	// as-is, so a database can stay where it already is.
 	DBFile string `json:"db_file"`
+
+	// ImportPlanner is the shell command `hms import` runs to turn the
+	// unstructured input of an import into a plan. It is given the import's
+	// directory as its working directory, the instructions on stdin, and the
+	// paths in the environment (HMS_IMPORT_DIR, HMS_SCHEMA_FILE, HMS_INPUT_DIR,
+	// HMS_PLAN_FILE); it is expected to write HMS_PLAN_FILE.
+	//
+	// Empty means hms does not run anything. That is the honest default: turning
+	// a photograph of a receipt into rows is a job for an agent, and hms has no
+	// business guessing which one you have. With it empty the workflow simply
+	// waits for the plan file to appear, which is the same workflow with a
+	// person doing the step by hand.
+	ImportPlanner string `json:"import_planner"`
 }
 
 // Defaults returns the configuration hms writes on first run.
@@ -62,6 +82,20 @@ func Home() (string, error) {
 		return "", fmt.Errorf("locating home directory: %w", err)
 	}
 	return filepath.Join(home, DirName), nil
+}
+
+// ImportsDir returns the directory bulk imports are kept in: $HMS_HOME/imports,
+// or ~/hms/imports.
+//
+// Here rather than in the importer for the same reason DBPath is here: where
+// hms keeps things is one decision, and a second package that knew the folder
+// name would be a second answer waiting to disagree with this one.
+func ImportsDir() (string, error) {
+	dir, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, ImportsDirName), nil
 }
 
 // Path returns the configuration file location.
@@ -136,7 +170,7 @@ func (c Config) DBPath() string {
 	return filepath.Join(c.Home, file)
 }
 
-// Resolution is a database path and what decided it, so `hms --info` can name
+// Resolution is a database path and what decided it, so `hms info` can name
 // the thing to edit rather than a file it never read.
 type Resolution struct {
 	// Path is the database to open.

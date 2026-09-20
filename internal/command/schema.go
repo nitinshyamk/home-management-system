@@ -12,8 +12,10 @@ import (
 
 // The agent contract.
 //
-// `hms schema` emits the vocabulary so an agent targets a FIXED spec rather
-// than a remembered one. It is generated from the same specs Bind reads, so it
+// `hms import` writes this into an import's schema/ directory, and `hmsdev
+// schema` prints it. Either way it is the vocabulary, so that an agent targets
+// a FIXED spec rather than a remembered one. It is generated from the same
+// specs Bind reads, so it
 // cannot drift: a command whose schema says one thing and whose binder does
 // another is the failure this exists to prevent, and it is unrepresentable
 // here rather than merely tested for.
@@ -98,7 +100,7 @@ func NewSchema() Schema {
 // WithHouse adds what already exists to the vocabulary.
 //
 // Separate from NewSchema, and a value rather than a lookup, because the
-// schema is otherwise a property of the CODE: `hms schema` can answer it
+// schema is otherwise a property of the CODE: the vocabulary can be answered
 // without a database, and the tests that walk the vocabulary must not need a
 // household to walk it against.
 func (s Schema) WithHouse(house House) Schema {
@@ -202,10 +204,10 @@ func ExportName(format string) string {
 // Export writes the schema into a directory, and reports the file it wrote.
 //
 // A directory rather than a stream, because this is the one output of the
-// program that is meant to be handed to something else: it goes next to the
-// photograph of the receipt, or into the folder an agent is pointed at, and
-// asking somebody to redirect stdout into the right place is asking them to get
-// it wrong once.
+// program that is meant to be handed to something else. `hms import` writes it
+// into the schema/ of the import it just made, next to the photograph of the
+// receipt -- and asking somebody to redirect stdout into the right place is
+// asking them to get it wrong once.
 //
 // The directory is created if it is not there. Writing the schema is not a
 // destructive act -- it is generated, and generating it again produces the same

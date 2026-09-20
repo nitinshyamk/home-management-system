@@ -9,7 +9,7 @@ import (
 // Named turns a written key name into the keystroke it names.
 //
 // It is the inverse of tea.KeyMsg.String(), and it exists because two things
-// outside the application have to be able to SAY a key: the `--render` scripts
+// outside the application have to be able to SAY a key: the `hmsdev render` scripts
 // that photograph the review screens, and the end-to-end harness. Both used to
 // keep their own list, and a key added to the interface but not to their lists
 // failed quietly -- the script produced a frame of something else, and the

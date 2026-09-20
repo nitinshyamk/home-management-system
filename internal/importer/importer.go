@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,6 +41,26 @@ type Row struct {
 	// silently and the row would do something subtly different from what was
 	// written.
 	Unknown []string
+}
+
+// ReadFile reads a plan off disk, picking the transport from the file's name.
+//
+// The two transports are interchangeable, so the only thing the extension
+// decides is which parser reads the bytes -- not what the rows mean. It lives
+// here, beside both parsers, because three callers were choosing between them
+// and a fourth would have been a fourth place for the choice to be made
+// differently.
+func ReadFile(path string) ([]Row, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	if strings.HasSuffix(strings.ToLower(path), ".csv") {
+		return ReadCSV(f)
+	}
+	return ReadJSONL(f)
 }
 
 // ReadCSV parses a CSV whose header names the fields.

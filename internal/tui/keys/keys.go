@@ -3,7 +3,7 @@
 // Every binding the interface has is in this file, and nowhere else. Before it
 // existed the bindings were string literals in nine switch statements, and four
 // separate places had to agree on them by hand: the switches themselves, the
-// `--render` script parser, the test harness's key vocabulary, and a test
+// `hmsdev render` script parser, the test harness's key vocabulary, and a test
 // holding a written-out list of every key. They drifted, and the drift was
 // silent -- a script naming a key nobody had taught the parser about failed by
 // producing a frame of something else.
