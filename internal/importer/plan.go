@@ -128,6 +128,57 @@ func (p Plan) Applicable() bool {
 	return blocked == 0 && confirmable == 0 && ready > 0
 }
 
+// ApplicableInPasses is the other rule, and the two belong side by side
+// because the difference between them is the difference between a receipt and a
+// classification.
+//
+// Applicable, above, is the receipt's: every row settled one way or the other,
+// or none of it applies. This one is the tree's. A tree is built from the top
+// down -- a row filed under a category that another row of the same file
+// creates cannot bind until that row has been APPLIED, because a Command holds
+// an identifier and the category does not have one yet. A stage that insisted
+// on settling every row before applying any of them could therefore never
+// apply a proposal two levels deep.
+//
+// So the ready rows apply now, as one transaction, and the rest stay on the
+// stage for another pass. Nothing is weakened by it: a category's creation does
+// not depend on its siblings', which is exactly why the receipt's rule cannot
+// be relaxed the same way -- two rows of a receipt about one item depend on
+// each other completely.
+func (p Plan) ApplicableInPasses() bool {
+	ready, _, blocked, _ := p.Counts()
+	return blocked == 0 && ready > 0
+}
+
+// WhyNotInPasses says what is stopping a pass.
+func (p Plan) WhyNotInPasses() string {
+	ready, _, blocked, _ := p.Counts()
+	switch {
+	case blocked > 0:
+		return fmt.Sprintf("%d %s blocked", blocked, plural(blocked, "row is", "rows are"))
+	case ready == 0:
+		return "no row is ready yet"
+	}
+	return ""
+}
+
+// Unapplied is what a pass would leave behind: the rows that are neither ready
+// nor deliberately set aside.
+//
+// The rows themselves, so the stage that comes back is about the same file and
+// still says which line each row was -- a remaining row renumbered from 1 would
+// be a row a person cannot find in the file they wrote.
+func (p Plan) Unapplied() Plan {
+	out := Plan{Source: p.Source}
+	for _, entry := range p.Entries {
+		if entry.State == Ready || entry.State == Dropped {
+			continue
+		}
+		out.Entries = append(out.Entries, entry)
+	}
+	return out
+}
+
 // Why says what is stopping an apply, for a refusal that is a reason rather
 // than a key that does nothing.
 func (p Plan) Why() string {
@@ -370,4 +421,87 @@ func Rewrite(entry Entry, raw command.RawCommand) Entry {
 // Settle re-binds one row after its text has been corrected.
 func Settle(vocabulary *command.Vocabulary, entry Entry) Entry {
 	return bindRow(vocabulary, entry.Row)
+}
+
+// IsCreation reports whether the row IS a creation, as opposed to a row that
+// would have to create something before it can mean anything.
+//
+// The difference decides what settling the row does, and it is not visible in
+// Creates alone: `new category Spices` and `acquire Cardamom` both say they
+// would create a category and an item respectively, but the first IS the
+// creation -- it bound completely, it holds a Command, and agreeing to it is
+// all that is left -- while the second cannot become a Command at all until the
+// thing it names exists.
+func (e Entry) IsCreation() bool {
+	if e.Command == nil {
+		return false
+	}
+	spec, ok := command.SpecOf(command.Op(strings.ToLower(strings.TrimSpace(e.Row.Raw.Op))))
+	return ok && spec.Creates != ""
+}
+
+// ConfirmCreation agrees to a creation row, as written.
+//
+// Creation is never silent, and this is what makes it not silent: the row
+// stands at "needs confirming" until a person says so, and then it is applied
+// in the same transaction as everything else rather than off to one side. An
+// earlier version opened the creation panel for these rows, which created the
+// thing immediately -- outside the plan, in its own transaction -- and left the
+// row still saying it would create one, so a file of `new category` rows could
+// never be applied at all and every row of it created something twice if you
+// tried.
+func ConfirmCreation(entry Entry) (Entry, bool) {
+	if entry.State != Confirmable || !entry.IsCreation() {
+		return entry, false
+	}
+	entry.State = Ready
+	return entry, true
+}
+
+// AlreadyCreatedBy reports the row that has already agreed to create the same
+// thing this one would, if there is one.
+//
+// Two rows naming one new thing must create it ONCE -- the property the whole
+// design is arranged around -- and for rows that ARE creations the plan is the
+// only place that can see it: the domain permits two categories with one name
+// (sibling uniqueness was never an integrity rule), so nothing below this will
+// refuse a file that says `new category Spices` twice.
+//
+// Only against rows that are Ready, because those are the ones that would
+// actually be applied. A second row still waiting to be confirmed conflicts
+// with nothing yet, and refusing it then would mean the order you confirmed
+// them in decided which row was the problem.
+func (p Plan) AlreadyCreatedBy(at int) (int, bool) {
+	return p.creatorOf(at, func(other Entry) bool { return other.State == Ready })
+}
+
+// WillBeCreatedBy reports the row that would bring into existence the thing
+// this row is missing, whether or not it has been agreed to yet.
+//
+// It is what stops the plan screen offering to make something a row two lines
+// up is already making. Opening the creation panel there made a SECOND category
+// of the same name -- immediately, in its own transaction -- and left both rows
+// still proposing one, which is the two-Turmerics failure wearing a hat.
+func (p Plan) WillBeCreatedBy(at int) (int, bool) {
+	return p.creatorOf(at, func(other Entry) bool { return other.State != Dropped })
+}
+
+// creatorOf finds a row that creates what the row at `at` names.
+func (p Plan) creatorOf(at int, wanted func(Entry) bool) (int, bool) {
+	if at < 0 || at >= len(p.Entries) {
+		return 0, false
+	}
+	for _, creation := range p.Entries[at].Creates {
+		for i, other := range p.Entries {
+			if i == at || !other.IsCreation() || !wanted(other) {
+				continue
+			}
+			for _, made := range other.Creates {
+				if made.Kind == creation.Kind && strings.EqualFold(made.Name, creation.Name) {
+					return i, true
+				}
+			}
+		}
+	}
+	return 0, false
 }

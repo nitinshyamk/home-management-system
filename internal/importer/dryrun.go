@@ -14,14 +14,25 @@ import (
 
 // DryRunRow is one row's outcome, for a program to read.
 type DryRunRow struct {
-	Line   int      `json:"line"`
-	Op     string   `json:"op"`
+	Line int    `json:"line"`
+	Op   string `json:"op"`
+	// Stage is which half of the review this row lands in. An agent that mixes
+	// a classification into a receipt should be able to see that it did: the
+	// two are reviewed and applied separately, so a file that is half categories
+	// is a file that asks for two decisions rather than one.
+	Stage  string   `json:"stage"`
 	State  string   `json:"state"`
 	Does   string   `json:"does,omitempty"`
 	Issues []string `json:"issues,omitempty"`
 	// Creates names what the row would bring into existence. An agent that sees
 	// this and did not mean it has guessed at something permanent.
 	Creates []string `json:"creates,omitempty"`
+	// WaitsFor is the line that makes what this row is missing, when another
+	// row of the same file makes it. It replaces Creates rather than joining
+	// it: a row filed under a category the row above it creates does NOT create
+	// that category, and an agent reading that it did would fix the file by
+	// deleting the row that does.
+	WaitsFor int `json:"waits_for,omitempty"`
 }
 
 // DryRun is the whole file's outcome, with the three numbers that matter.
@@ -51,9 +62,10 @@ func NewDryRun(plan Plan, names Describer) DryRun {
 		Source: plan.Source, Rows: len(plan.Entries),
 		Ready: ready, Confirmable: confirmable, Blocked: blocked,
 	}
-	for _, entry := range plan.Entries {
+	for at, entry := range plan.Entries {
 		row := DryRunRow{
 			Line: entry.Row.Line, Op: entry.Row.Raw.Op, State: entry.State.String(),
+			Stage: StageOf(entry.Row).String(),
 		}
 		if entry.Command != nil && names != nil {
 			row.Does = names.Describe(entry)
@@ -61,8 +73,12 @@ func NewDryRun(plan Plan, names Describer) DryRun {
 		for _, issue := range entry.Issues {
 			row.Issues = append(row.Issues, issue.String())
 		}
-		for _, creation := range entry.Creates {
-			row.Creates = append(row.Creates, string(creation.Kind)+" "+creation.Name)
+		if other, waiting := plan.WillBeCreatedBy(at); waiting && !entry.IsCreation() {
+			row.WaitsFor = plan.Entries[other].Row.Line
+		} else {
+			for _, creation := range entry.Creates {
+				row.Creates = append(row.Creates, string(creation.Kind)+" "+creation.Name)
+			}
 		}
 		out.Entries = append(out.Entries, row)
 	}

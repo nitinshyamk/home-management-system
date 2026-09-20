@@ -239,9 +239,16 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Line, "put the list away and keep typing", keys.Dismiss, keys.Cancel),
 		}},
 		{topic: "plan", what: "settling rows, dropping them, applying the file", title: "ON THE IMPORT PLAN", rows: [][2]string{
-			pair(keys.Plan, "settle the row under the cursor", keys.Confirm),
+			pair(keys.Plan, "settle the row under the cursor -- agree to what it "+
+				"would create, take the suggestion it rests on, or make the thing "+
+				"it names", keys.Confirm),
 			pair(keys.Plan, "drop a row, or take it back", keys.Drop, keys.Undrop),
-			pair(keys.Plan, "apply the whole file, in one transaction", keys.ApplyAll),
+			pair(keys.Plan, "apply the stage on screen, in one transaction", keys.ApplyAll),
+			// A file that proposes categories is reviewed in two stages, and the
+			// first one is optional. Saying so here is the only place somebody
+			// who has not met one yet will read it.
+			pair(keys.Plan, "skip the bulk category upload, applying none of it, "+
+				"and go on to the items and holdings", keys.SkipStage),
 		}},
 	}
 

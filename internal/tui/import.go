@@ -18,12 +18,19 @@ import (
 	"home-management-system/internal/tui/planview"
 )
 
-// The import flow: a file in, a plan screen, one transaction.
+// The import flow: a file in, one or two plan screens, a transaction each.
 //
 // It reuses the plan screen's table, the creation panel, and the confirmation
 // -- all unchanged. If any of them had needed reworking for this, the
 // interactive and bulk flows would have started to diverge into different
 // products, and the fix would be the shared piece rather than a fork.
+//
+// A file that proposes a classification AND the things filed under it is
+// reviewed in two stages, for the reason importer.Split gives: the second
+// stage's rows cannot resolve against categories that do not exist yet, so the
+// categories are applied -- or skipped -- first, and the rest is bound again
+// afterwards. Two stages is two transactions, which is the one thing about this
+// the screen has to be honest about, and it says so in both of them.
 
 // Import opens a file for review.
 func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error) {
@@ -40,9 +47,28 @@ func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error
 		return Model{}, err
 	}
 
+	categories, review := importer.Bind(ctx, vocabulary, path, rows).Split()
+	describe := summariser{names: names}
+
 	m := New(ctx, ctrl)
-	m.flow.active = true
-	m.flow.plan = planview.New(importer.Bind(ctx, vocabulary, path, rows), summariser{names: names})
+	switch {
+	case len(categories.Entries) == 0:
+		// The file says nothing about the classification, which is most files.
+		// It is one stage, and a screen that announced "stage 1 of 1" would be
+		// describing itself rather than the file.
+		m.flow = m.flow.staged(planview.New(review, describe), nil)
+	case len(review.Entries) == 0:
+		// Categories and nothing else: one stage again, and skipping it would
+		// be a longer way of pressing q. It still applies in passes -- a tree
+		// is built from the top down whether or not anything follows it.
+		m.flow = m.flow.staged(planview.New(categories, describe).
+			WithStage(planview.Stage{Name: importer.StageCategories.String(), InPasses: true}), nil)
+	default:
+		m.flow = m.flow.staged(planview.New(categories, describe).WithStage(planview.Stage{
+			Name: importer.StageCategories.String(), Number: 1, Of: 2,
+			Skippable: true, InPasses: true,
+		}), &review)
+	}
 	return m, nil
 }
 
@@ -94,6 +120,8 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, tea.Quit
 	case keys.ApplyAll:
 		return m.applyImport()
+	case keys.SkipStage:
+		return m.skipStage()
 	case keys.Confirm:
 		return m.settleRow()
 	case keys.EditInPlace:
@@ -113,13 +141,25 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-// applyImport commits the whole file, or none of it.
+// applyImport commits the stage on screen, or none of it.
+//
+// All-or-nothing, per stage. That is not a weakening of the promise: a stage is
+// a whole screen, reviewed and applied as one unit of work, and the person is
+// told before they apply the first one that a second follows.
 func (m Model) applyImport() (Model, tea.Cmd) {
 	plan := m.flow.plan.Plan()
-	if !plan.Applicable() {
-		return m.refuse("%s", plan.Why()), nil
+	if !m.flow.plan.Applicable() {
+		return m.refuse("%s", m.flow.plan.WhyNot()), nil
 	}
 	commands := plan.Commands()
+	_, more := m.flow.waiting()
+	// Another pass over this stage, when it applies in passes and rows are
+	// waiting for what this one is about to create. It is asked HERE rather
+	// than after the fact because the answer decides whether the import is
+	// over, and an import that ended with rows still on the screen would be an
+	// import that dropped rows nobody dropped.
+	again := m.flow.plan.Stage().InPasses && len(plan.Unapplied().Entries) > 0
+	earlier := m.flow.applied
 	return m, func() tea.Msg {
 		// Planned as one unit BEFORE anything is applied, so a row that cannot
 		// work is named here rather than rolling back a transaction and naming
@@ -131,8 +171,157 @@ func (m Model) applyImport() (Model, tea.Cmd) {
 		if err := m.ctrl.ApplyPlan(m.ctx, combined); err != nil {
 			return issuesMsg{issues: []string{err.Error()}}
 		}
-		return importedMsg{rows: len(commands)}
+		if again || more {
+			return stageAppliedMsg{rows: len(commands)}
+		}
+		return importedMsg{rows: len(commands), earlier: earlier}
 	}
+}
+
+// skipStage sets the whole stage aside, applying none of it.
+//
+// It is what makes the bulk category upload optional rather than a toll gate. A
+// proposed classification is the part of a file an agent is most likely to get
+// wrong, and the review screen can already file a row into a category that
+// exists -- so the fastest path through a bad one is not to fix it row by row.
+// Nothing is written, which is why this does not ask.
+func (m Model) skipStage() (Model, tea.Cmd) {
+	stage := m.flow.plan.Stage()
+	if !stage.Skippable {
+		return m, nil
+	}
+	return m, m.nextStage(fmt.Sprintf("stage %d (%s) skipped -- %s not applied, and the house is as it was",
+		stage.Number, stage.Name, rowsPhrase(len(m.flow.plan.Plan().Entries))), 0)
+}
+
+// stageApplied moves on from a stage that has just been committed -- to the
+// next stage, or to another pass over this one.
+//
+// Another pass, because a tree is built from the top down: a row filed under a
+// category this pass has just created could not bind until now, and it is
+// sitting on this screen waiting for exactly that. Handing it to the review
+// stage instead would be handing over a category row, and going on without it
+// would be dropping a row nobody dropped.
+func (m Model) stageApplied(rows int) tea.Cmd {
+	stage := m.flow.plan.Stage()
+	// What the STAGE has applied, not what this pass did. A pass is an
+	// implementation detail of building a tree; what was written to the house
+	// is not.
+	note := fmt.Sprintf("stage %d (%s) applied %s in %s",
+		stage.Number, stage.Name, rowsPhrase(m.flow.inStage+rows), transactions(m.flow.passes+1))
+
+	if left := m.flow.plan.Plan().Unapplied(); stage.InPasses && len(left.Entries) > 0 {
+		return m.samePass(left, note+fmt.Sprintf(" -- %s left, bound again against it",
+			rowsPhrase(len(left.Entries))), rows)
+	}
+	return m.nextStage(note, rows)
+}
+
+// samePass brings the rows a pass left behind back to the same stage, bound
+// against the vocabulary that pass created.
+func (m Model) samePass(left importer.Plan, note string, applied int) tea.Cmd {
+	stage := m.flow.plan.Stage()
+	return m.staging(left, stage, note, applied, true)
+}
+
+// nextStage binds the waiting stage against a vocabulary read now.
+//
+// Now, and not when the file was read: the stage just finished with may have
+// created the very categories these rows name, and binding them against the
+// older vocabulary would leave a row blocked by something that is sitting in
+// the database.
+func (m Model) nextStage(note string, applied int) tea.Cmd {
+	waiting, ok := m.flow.waiting()
+	if !ok {
+		return nil
+	}
+	was := m.flow.plan.Stage()
+	return m.staging(waiting, planview.Stage{
+		Name: importer.StageReview.String(), Number: was.Number + 1, Of: was.Of,
+	}, note, applied, false)
+}
+
+// staging reads the house as it now is and hands back the plan to show next.
+//
+// One trip for both stages and both passes, because the reason is the same
+// every time: whatever was just applied may be exactly what the rows being
+// shown are waiting for, and binding them against the older vocabulary would
+// leave a row blocked by something that is sitting in the database.
+func (m Model) staging(plan importer.Plan, stage planview.Stage, note string, applied int, same bool) tea.Cmd {
+	return func() tea.Msg {
+		vocabulary, err := m.ctrl.Vocabulary(m.ctx)
+		if err != nil {
+			return errMsg{err}
+		}
+		names, err := m.ctrl.SearchIndex(m.ctx)
+		if err != nil {
+			return errMsg{err}
+		}
+		return stagedMsg{
+			plan: plan, stage: stage, vocabulary: vocabulary, names: names,
+			note: note, applied: applied, same: same,
+		}
+	}
+}
+
+// stagedMsg carries the plan to show next, and the vocabulary to bind it
+// against.
+type stagedMsg struct {
+	plan       importer.Plan
+	stage      planview.Stage
+	vocabulary *command.Vocabulary
+	names      command.Namer
+	// same says this is another pass over the stage already on screen rather
+	// than the one behind it -- which is the difference between keeping the
+	// stage that is still waiting and losing it.
+	same bool
+	// note is what the stage before this one did. It is shown on the new screen
+	// rather than in the status line, because the plan replaces the whole
+	// interface -- a status line nobody can see is a report nobody got.
+	note    string
+	applied int
+}
+
+// staged puts the plan that came back on screen.
+func (m Model) staged(msg stagedMsg) Model {
+	// A fresh stage answers whatever the last one refused: the rows it refused
+	// over are behind us, and the new screen says for itself what it can do.
+	m.say = m.say.Clear()
+	plan := planview.New(msg.plan, summariser{names: msg.names}).
+		WithStage(msg.stage).
+		WithNote(msg.note).
+		// Every row that is not settled, against what the house holds NOW. A
+		// row that named a category the pass before it created is an ordinary
+		// row from here, and nobody had to retype anything for it.
+		RebindUnsettled(msg.vocabulary)
+	if msg.same {
+		m.flow = m.flow.again(plan, msg.applied)
+		return m
+	}
+	m.flow = m.flow.onward(plan, msg.applied)
+	return m
+}
+
+// stageAppliedMsg reports that a stage was committed and another one follows.
+type stageAppliedMsg struct{ rows int }
+
+// rowsPhrase counts rows in English. "1 rows" in the one line reporting what
+// was just written to the house reads as a screen that is not being careful,
+// on the screen where care is the whole product.
+func rowsPhrase(n int) string {
+	if n == 1 {
+		return "1 row"
+	}
+	return fmt.Sprintf("%d rows", n)
+}
+
+// transactions counts them the same way, because the number of them is the
+// claim this screen makes and hedging it would be the one place not to.
+func transactions(n int) string {
+	if n == 1 {
+		return "one transaction"
+	}
+	return fmt.Sprintf("%d transactions", n)
 }
 
 // rowOf maps a command's index back to the line it came from.
@@ -159,6 +348,35 @@ func (m Model) settleRow() (Model, tea.Cmd) {
 	switch {
 	case entry.State == importer.Ready || entry.State == importer.Dropped:
 		return m, nil
+
+	case entry.IsCreation():
+		// The row IS the creation -- it bound completely, and agreeing to it is
+		// all that is left. So enter agrees, and the thing is made when the
+		// stage is applied, in the same transaction as everything else.
+		//
+		// Opening the panel here instead was the bug that made a bulk category
+		// upload impossible: the panel created the category immediately, in a
+		// transaction of its own, and the row still said it would create one --
+		// so the stage could never be applied and pressing enter twice made two.
+		if other, clash := m.flow.plan.Plan().AlreadyCreatedBy(at); clash {
+			return m.refuse("row %d already creates that -- drop this row, or edit it to name something else",
+				m.flow.plan.Plan().Entries[other].Row.Line), nil
+		}
+		settled, ok := importer.ConfirmCreation(entry)
+		if !ok {
+			return m, nil
+		}
+		m.flow.plan = m.flow.plan.Settle(at, settled)
+		return m, nil
+
+	case m.flow.plan.Stage().InPasses && waitsFor(m.flow.plan.Plan(), at):
+		// Another row of this file is already making the thing this one is
+		// missing. Offering to make it here would make a second one --
+		// immediately, in its own transaction -- and leave both rows still
+		// proposing one.
+		other, _ := m.flow.plan.Plan().WillBeCreatedBy(at)
+		return m.refuse("row %d creates that -- %s applies this stage, and this row is bound again against it",
+			m.flow.plan.Plan().Entries[other].Row.Line, keys.Show(keys.Plan, keys.ApplyAll)), nil
 
 	case len(entry.Creates) > 0:
 		// The SAME panel `o` opens, with the same confirmation behind it. A
@@ -226,8 +444,24 @@ func (m Model) acceptSuggestions(entry importer.Entry, at int) tea.Cmd {
 	return m.rebindRow(at, importer.AcceptSuggestions(entry))
 }
 
-// importedMsg reports that a whole file was applied.
-type importedMsg struct{ rows int }
+// waitsFor reports whether the row at `at` is waiting for another row of the
+// same plan rather than for a person.
+//
+// Asked only on a stage that applies in passes. On one that applies all at
+// once, waiting comes to nothing -- the thing is never made until the whole
+// stage goes in -- so the panel is the row's only route and refusing would be
+// refusing the only thing that could work.
+func waitsFor(plan importer.Plan, at int) bool {
+	_, ok := plan.WillBeCreatedBy(at)
+	return ok
+}
+
+// importedMsg reports that the last stage of a file was applied.
+//
+// earlier is what the stages before it committed, so the report can be about
+// the import rather than about its final screen -- and can say plainly that it
+// took more than one transaction.
+type importedMsg struct{ rows, earlier int }
 
 // creatorKindFor maps what a row would create to the panel that makes one.
 func creatorKindFor(kind resolve.Kind) creator.Kind {
