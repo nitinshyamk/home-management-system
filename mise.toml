@@ -1,0 +1,130 @@
+# The single entry point for working on this project. Every gate a reviewer,
+# a hook, or CI runs is a task here, so all three run the same thing.
+
+[tools]
+go = "1.25"
+golangci-lint = "latest"
+gofumpt = "latest"
+
+# Pinned, unlike the rest. sqlc stamps its version into every generated file,
+# so `verify-generate` reads a floating sqlc as "the committed output is
+# stale" the day a new one ships -- a red build caused by nothing anybody did.
+# Bump this deliberately and commit the regenerated files with it.
+sqlc = "1.31.1"
+
+[tasks.build]
+description = "Compile hms and seed into bin/"
+run = [
+  "go build -o bin/hms ./cmd/hms",
+  "go build -o bin/seed ./cmd/seed",
+]
+
+[tasks.run]
+description = "Run hms against the configured database (mise run run -- --info)"
+run = "go run ./cmd/hms {{arg(name='args', var=true, default='')}}"
+
+[tasks.test]
+description = "Run every test"
+run = "go test ./..."
+
+[tasks.format]
+description = "Format all Go source with gofumpt"
+run = "gofumpt -w ."
+
+[tasks."format:check"]
+description = "Fail if any Go source is unformatted"
+run = '''
+unformatted="$(gofumpt -l .)"
+if [ -n "$unformatted" ]; then
+  echo "These files need formatting (run 'mise run format'):"
+  echo "$unformatted"
+  exit 1
+fi
+'''
+
+[tasks.vet]
+description = "Run go vet"
+run = "go vet ./..."
+
+[tasks."lint:arch"]
+description = "Enforce the architectural boundaries (plan 1.1)"
+run = "./scripts/archlint.sh"
+
+[tasks."lint:go"]
+description = "Run golangci-lint"
+run = "golangci-lint run"
+
+[tasks.lint]
+description = "Every lint: architecture, golangci-lint, go vet"
+depends = ["lint:arch", "lint:go", "vet"]
+
+[tasks.generate]
+description = "Regenerate sqlc output and anything behind go:generate"
+run = '''
+if ls internal/db/queries/*.sql >/dev/null 2>&1; then
+  sqlc generate
+else
+  echo "sqlc: no query files - skipping"
+fi
+go generate ./...
+'''
+
+# The generated registry only closes the exhaustiveness hole if generation
+# actually runs. Without this, adding an event type and forgetting to
+# regenerate leaves a stale registry that hides it -- the very gap the
+# generator exists to prevent.
+#
+# Uses git status rather than git diff: diff does not report UNTRACKED files,
+# so a newly generated file that was never committed would slip through.
+[tasks."verify-generate"]
+description = "Fail if generated files are stale or uncommitted"
+depends = ["generate"]
+run = '''
+dirty="$(git status --porcelain -- '*_gen.go' internal/db/sqlc internal/db/probe)"
+if [ -n "$dirty" ]; then
+  echo "generated files are stale or uncommitted - run 'mise run generate' and commit:" >&2
+  echo "$dirty" >&2
+  exit 1
+fi
+echo "generated files are up to date"
+'''
+
+[tasks.seed]
+description = "Build a sample house through the real write paths"
+run = "go run ./cmd/seed {{arg(name='args', var=true, default='')}}"
+
+# Separate from seed, and explicit, because the configured database may be a
+# real one and deleting it is not a thing to do as a side effect.
+[tasks.reseed]
+description = "Throw the sample house away and build it again"
+run = "go run ./cmd/seed --reset {{arg(name='args', var=true, default='')}}"
+
+[tasks.verify]
+description = "Run the integrity check against the configured database"
+run = "go run ./cmd/hms --verify"
+
+[tasks.deps]
+description = "Tidy the module"
+run = "go mod tidy"
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "rm -rf bin/"
+
+[tasks.setup]
+description = "Full build from a clean checkout"
+depends = ["deps", "generate", "build"]
+
+[tasks.hooks]
+description = "Install the git pre-commit hook that runs the pre-commit gate"
+run = "mise generate git-pre-commit --task=pre-commit --write"
+
+[tasks."pre-commit"]
+description = "Verification gate: format check, lint, build, test"
+depends = ["format:check", "lint", "build", "test"]
+
+# Everything pre-commit runs, plus the staleness check that only makes sense
+# where the tree is expected to be committed.
+[tasks.ci]
+description = "What CI runs"
+depends = ["format:check", "lint", "build", "test", "verify-generate"]
