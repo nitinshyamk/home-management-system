@@ -7,8 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/line"
+	"home-management-system/internal/tui/table"
 
 	"home-management-system/internal/tui/style"
 	"home-management-system/internal/tui/text"
@@ -52,6 +54,14 @@ type Model struct {
 	// box, not a filter.
 	applied string
 	width   int
+	// results is what a jump would land on, and candidates is everything there
+	// is to land on. They live here because they are what this widget DISPLAYS:
+	// the line owned the typing while the application owned the results, so the
+	// screen had to ask the mode what it was doing twice.
+	results       table.Model
+	candidates    []resolve.Candidate
+	resultsWidth  int
+	resultsHeight int
 	// offers is what the mode that owns the keyboard takes, which the line
 	// shows while it is resting.
 	//
@@ -117,7 +127,13 @@ var gutterWidth = func() int {
 // textColumn is where the typed text begins, in every state without exception.
 var textColumn = len(indent) + gutterWidth + len(separator)
 
-func New() Model { return Model{width: 80, offers: browseKeys()} }
+func New() Model {
+	return Model{
+		width: 80, offers: browseKeys(),
+		results:      table.New(resultColumns).Fixed(),
+		resultsWidth: 80, resultsHeight: 12,
+	}
+}
 
 // browseKeys is what the line offers when nothing has told it otherwise, so a
 // Model built by hand in a test is not silently blank.
@@ -151,6 +167,9 @@ func (m Model) Open(mode Mode) Model {
 		m.input = ""
 	}
 	m.cursor = len([]rune(m.input))
+	if mode == Jump {
+		return m.refresh()
+	}
 	return m
 }
 
@@ -205,7 +224,16 @@ func (m Model) Update(msg tea.KeyMsg) (Model, bool) {
 	// as "consume100g".
 	if input, cursor, ok := line.Edit(m.input, m.cursor, msg); ok {
 		m.input, m.cursor = input, cursor
+		if m.mode == Jump {
+			// Narrowed as you type, the way the filter narrows the list.
+			m = m.refresh()
+		}
 		return m, true
+	}
+	// A key the line does not want. In a jump that is cursor motion through the
+	// results, which this widget now owns.
+	if m.mode == Jump {
+		return m.updateResults(msg)
 	}
 	return m, false
 }

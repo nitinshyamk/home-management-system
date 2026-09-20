@@ -62,7 +62,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.ready = true
 		m.current = m.current.SetSize(msg.Width, m.bodyHeight())
-		m.jump = m.jump.SetSize(msg.Width, m.bodyHeight())
+		m = m.refreshJump()
 		return m, nil
 
 	case loadedMsg:

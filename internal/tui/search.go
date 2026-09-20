@@ -1,25 +1,15 @@
 package tui
 
 import (
-	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
 	"home-management-system/internal/tui/table"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // The input line: filtering the list, jumping across the house, and the
 // palette that shows where a jump would land.
-
-// jumpColumns are the palette's. KIND comes first and is never dropped:
-// "Shelf 1" as a Location and "Shelf 1" inside a Holding path are different
-// destinations, and a jump that does not say which lands somewhere surprising.
-var jumpColumns = []table.Column{
-	{Title: "KIND", Min: 8},
-	{Title: "NAME", Min: 12, Grow: true, Elide: table.ElideStart},
-}
 
 // handleOmnibox takes the keystroke when the input line is open.
 //
@@ -65,22 +55,11 @@ func (m Model) handleOmnibox(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	if next, handled := m.box.Update(msg); handled {
 		m.box = next
-		switch m.box.Mode() {
-		case omnibox.Jump:
-			m = m.refreshJump()
-		case omnibox.Filter:
+		if m.box.Mode() == omnibox.Filter {
 			// Narrow as you type: the filter that would apply if accepted now.
 			m = m.applyLive()
 		}
 		return m, nil
-	}
-	// A key the input line does not want -- cursor motion through the results,
-	// which the palette owns.
-	if m.box.Mode() == omnibox.Jump {
-		if next, handled := m.jump.Update(msg); handled {
-			m.jump = next
-			return m, nil
-		}
 	}
 	return m, nil
 }
@@ -110,65 +89,23 @@ func facetTests(v view, q omnibox.Query) []table.FacetTest {
 	return out
 }
 
-// refreshJump re-runs the search across everything.
-//
-// It re-sizes as well as re-filters, because the palette replaces the body and
-// therefore has to fit the same space the list did -- a widget that is only
-// sized on a terminal resize is a widget that is the wrong size until one
-// happens.
-func (m Model) refreshJump() Model {
-	m.jump = m.jump.SetSize(m.width, m.bodyHeight())
-	rows := make([]table.Row, 0, len(m.candidates))
-	for i, c := range m.candidates {
-		if c.Archived {
-			continue
-		}
-		if !matchesJump(c, m.box.Input()) {
-			continue
-		}
-		rows = append(rows, table.Row{Key: int64(i), Cells: []string{string(c.Kind), c.Path}})
-		if len(rows) >= 12 {
-			break
-		}
-	}
-	m.jump = m.jump.SetRows(rows)
-	return m
-}
-
-func matchesJump(c resolve.Candidate, text string) bool {
-	if strings.TrimSpace(text) == "" {
-		return true
-	}
-	return fuzzyContains(strings.ToLower(c.Path), strings.ToLower(strings.TrimSpace(text)))
-}
-
-// fuzzyContains is subsequence matching: every character of the query, in
-// order. The same rule the resolver uses, so the palette and the `:` line agree
-// about what a name nearly is.
-func fuzzyContains(haystack, needle string) bool {
-	at := 0
-	for _, r := range needle {
-		if r == ' ' {
-			continue
-		}
-		i := strings.IndexRune(haystack[at:], r)
-		if i < 0 {
-			return false
-		}
-		at += i + 1
-	}
-	return true
-}
-
 // acceptJump goes to the chosen thing: the view it lives in, cursor on its row.
+//
+// WHERE a jump lands is the application's: it owns the views. What the palette
+// is showing, and which row of it is under the cursor, is the widget's.
 func (m Model) acceptJump() (Model, tea.Cmd) {
-	row, ok := m.jump.Current()
-	if !ok || int(row.Key) >= len(m.candidates) {
-		m.box = m.box.Cancel()
+	target, ok := m.box.Chosen()
+	m.box = m.box.Cancel()
+	if !ok {
 		return m, nil
 	}
-	target := m.candidates[row.Key]
-	m.box = m.box.Cancel()
 	m.pending = &target
 	return m, m.load(viewFor(target.Kind))
+}
+
+// refreshJump sizes the palette to the space the list it replaces had, and
+// hands it whatever vocabulary has arrived.
+func (m Model) refreshJump() Model {
+	m.box = m.box.SetResultsSize(m.width, m.bodyHeight()).SetCandidates(m.candidates)
+	return m
 }
