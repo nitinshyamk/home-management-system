@@ -186,12 +186,23 @@ func (m Model) facts() string {
 		if hint := m.say.Hint(); hint != "" {
 			parts = append(parts, hint)
 		}
-		return style.Dim.Render(text.JoinWhatFits(m.width, parts))
+		return joinQuietly(m.width, parts)
 	}
 	if inspected := m.inspect(); inspected != "" {
 		return inspected
 	}
-	return style.Dim.Render(text.JoinWhatFits(m.width, []string{m.countPhrase(), m.say.Hint()}))
+	return joinQuietly(m.width, []string{m.countPhrase(), m.say.Hint()})
+}
+
+// joinQuietly dims the parts that are not already saying something for
+// themselves, then joins. Dimming the JOINED string instead puts a reset in
+// the middle of the outer style, and everything after the first styled part
+// comes out at full brightness.
+func joinQuietly(width int, parts []string) string {
+	for i, p := range parts {
+		parts[i] = quiet(p)
+	}
+	return text.JoinWhatFits(width, parts)
 }
 
 // noun is what the thing on screen is a list of.

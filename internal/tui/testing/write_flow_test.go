@@ -8,6 +8,7 @@ import (
 	"github.com/muesli/termenv"
 
 	"home-management-system/internal/domain"
+	"home-management-system/internal/tui/style"
 	sim "home-management-system/internal/tui/testing"
 )
 
@@ -478,8 +479,13 @@ func TestARefusalWrapsRatherThanTruncating(t *testing.T) {
 	}
 }
 
-// And it is loud. Everything else here is deliberately quiet, which is exactly
-// what makes one loud thing readable.
+// And it is loud, in the one hue that means no.
+//
+// The claim used to be "a foreground colour, which nothing else here uses",
+// and that stopped being true when the palette arrived: the cursor row and
+// the lens indicator carry the accent. So the assertion is now about WHICH
+// colour rather than about there being one, which is the sharper claim
+// anyway -- a refusal drawn in the accent would be worse than a grey one.
 func TestARefusalIsNotQuiet(t *testing.T) {
 	previous := lipgloss.ColorProfile()
 	lipgloss.SetColorProfile(termenv.TrueColor)
@@ -499,14 +505,33 @@ func TestARefusalIsNotQuiet(t *testing.T) {
 	s.Send(sim.Enter)
 	angry := s.View()
 
-	// A FOREGROUND colour, which nothing else on this screen uses -- banding
-	// and selection are backgrounds, and everything else is weight.
-	if !strings.Contains(angry, "38;5;") {
-		t.Errorf("the refusal carries no colour:\n%q", angry)
+	// Taken from the style package rather than written out, so the test says
+	// "the refusal hue" instead of pinning an encoding: a hex colour renders
+	// as 38;2;r;g;b here and as 38;5;n on a 256-colour terminal.
+	stop := sgrOf(style.Error.Render("x"))
+	if stop == "" {
+		t.Fatal("style.Error renders no colour at all")
 	}
-	if strings.Contains(calm, "38;5;") {
-		t.Error("the calm screen already uses a foreground colour, so the refusal does not stand out")
+	if !strings.Contains(angry, stop) {
+		t.Errorf("the refusal is not in the refusal hue %q:\n%q", stop, angry)
 	}
+	if strings.Contains(calm, stop) {
+		t.Error("the calm screen already uses the refusal hue, so the refusal does not stand out")
+	}
+}
+
+// sgrOf is the escape sequence a style opens with, so a test can look for
+// that style's output without knowing how the terminal encodes colour.
+func sgrOf(rendered string) string {
+	_, rest, found := strings.Cut(rendered, "\x1b[")
+	if !found {
+		return ""
+	}
+	seq, _, found := strings.Cut(rest, "m")
+	if !found {
+		return ""
+	}
+	return "\x1b[" + seq + "m"
 }
 
 // A message wearing a call stack is a message a person has to decode. The

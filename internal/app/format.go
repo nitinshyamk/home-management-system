@@ -198,20 +198,34 @@ func describeState(d query.HoldingDetail, where names) string {
 // describeFlags renders the knowledge and lifecycle notes -- the
 // directly-mutable attributes that replay does not reconstruct and does not
 // claim to.
-func describeFlags(d query.HoldingDetail) string {
+// describeFlags is what is notable about a Holding, and how loudly it reads.
+//
+// Both together, because this is the one place that knows WHY each flag is
+// there. An interface reading "EXPIRED" back out of the sentence to decide
+// what colour to draw it would be the round trip through text that the rest
+// of this layer exists to avoid.
+func describeFlags(d query.HoldingDetail) (string, Attention) {
 	var parts []string
+	worst := AttentionNone
+	note := func(label string, level Attention) {
+		parts = append(parts, label)
+		if level > worst {
+			worst = level
+		}
+	}
 	base := d.Holding.Base()
 
 	if base.RetiredAt != nil {
-		parts = append(parts, "gone "+base.RetiredAt.Format("2006-01-02"))
+		note("gone "+base.RetiredAt.Format("2006-01-02"), AttentionOver)
 	}
 	if base.ExpiresOn != nil {
-		label := "expires " + base.ExpiresOn.Format("2006-01-02")
 		if base.ExpiresOn.Before(time.Now()) {
-			label = "EXPIRED " + base.ExpiresOn.Format("2006-01-02")
+			note("EXPIRED "+base.ExpiresOn.Format("2006-01-02"), AttentionOver)
+		} else {
+			note("expires "+base.ExpiresOn.Format("2006-01-02"), AttentionSoon)
 		}
-		parts = append(parts, label)
 	}
+	// Snoozing is a deliberate "not now", so it says so and asks nothing.
 	if base.SnoozedUntil != nil && base.SnoozedUntil.After(time.Now()) {
 		parts = append(parts, "snoozed")
 	}
@@ -220,10 +234,10 @@ func describeFlags(d query.HoldingDetail) string {
 		if days >= 1 {
 			// The out-of-place nudge: a thing out for weeks has not been "in
 			// use", it has been lost or silently relocated.
-			parts = append(parts, fmt.Sprintf("out %dd", days))
+			note(fmt.Sprintf("out %dd", days), AttentionSoon)
 		}
 	}
-	return strings.Join(parts, ", ")
+	return strings.Join(parts, ", "), worst
 }
 
 func describeMeasure(item domain.Item) string {

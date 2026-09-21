@@ -134,6 +134,7 @@ func (m Model) holdingsIn(at int64, atRoot bool) (contents, error) {
 			// Shown, never matched, so `loc:` keeps meaning the place itself
 			// rather than the branch it hangs from.
 			Paths: []string{"", "", r.LocationPath, ""},
+			Tone:  toneFor(r.Attention),
 		})
 		out.kinds[int64(r.ID)] = kindHolding
 		out.holdings[int64(r.ID)] = r
@@ -173,6 +174,22 @@ func (m Model) itemsIn(at int64, atRoot bool) (contents, error) {
 		out.items[r.ID] = r
 	}
 	return out, nil
+}
+
+// toneFor is how loudly a row reads, translated from the controller's word
+// for it to the widget's.
+//
+// Two vocabularies rather than one shared enum, because they are about
+// different things: app says what is TRUE of a holding, table says how a row
+// is DRAWN, and a third screen may want to draw the same truth differently.
+func toneFor(a app.Attention) table.Tone {
+	switch a {
+	case app.AttentionSoon:
+		return table.ToneAttention
+	case app.AttentionOver:
+		return table.ToneStop
+	}
+	return table.ToneNormal
 }
 
 // fitPlaceColumns drops what this node has nothing to say about. WHERE earns

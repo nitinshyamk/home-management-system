@@ -18,6 +18,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"home-management-system/internal/tui/keys"
+	"home-management-system/internal/tui/style"
 )
 
 // Align says which edge a cell is anchored to. Numbers read right-aligned
@@ -76,6 +77,21 @@ type Column struct {
 }
 
 // Row is one line. Key is the caller's identifier, untouched.
+// Tone is a row's own state, drawn as a foreground colour.
+type Tone int
+
+const (
+	// ToneNormal is the great majority of rows, and says nothing.
+	ToneNormal Tone = iota
+	// ToneAttention needs an answer, or has been true for too long: a cable
+	// out three weeks, a jar past its date, a row of an import to settle.
+	ToneAttention
+	// ToneStop will not work or is over: a blocked row, a retired holding.
+	ToneStop
+	// ToneGood is settled, and asks nothing.
+	ToneGood
+)
+
 type Row struct {
 	Key   int64
 	Cells []string
@@ -88,16 +104,20 @@ type Row struct {
 	// behaviour changes hiding inside a rendering one.
 	Paths []string
 
-	// Accent marks a row that is a different KIND of thing from the rows
-	// around it -- the items shown inside a category, the holdings inside a
-	// location.
+	// Tone is what the row is saying about itself, beyond its cells: this
+	// needs an answer, this will not work, this is settled.
 	//
 	// A hue rather than another grey step, for the same reason the selection
-	// is: banding already owns lightness, and saying "different kind" and
-	// "different band" in one dimension makes them compete. It is also not
-	// dimming, because these rows are not less important than the structure
-	// holding them -- they are the things the structure exists to hold.
-	Accent bool
+	// is a tint: banding already owns lightness, and saying two things in one
+	// dimension makes them compete. A row can be banded AND picked AND urgent
+	// at once, so the three get three channels.
+	//
+	// It replaces a boolean that meant "a different kind of thing from the
+	// rows around it", which was for the items shown inside a category and
+	// the holdings inside a location. Those rows moved to a pane of their
+	// own, so the meaning went; the channel is the same one, and the
+	// structural argument for using a foreground for it is unchanged.
+	Tone Tone
 
 	// Inert marks a row that is not a candidate for whatever is going on: it
 	// is drawn ruled out, the cursor steps over it, and it cannot be picked.
@@ -177,17 +197,18 @@ var (
 	// never have to be distinguished by degree.
 	picked = lipgloss.AdaptiveColor{Light: "189", Dark: "17"}
 
-	// accent is the FOREGROUND of a row that is a different kind of thing.
+	// A row's tone is its FOREGROUND, because the two background channels are
+	// spoken for: lightness is banding, hue is selection. A row can be urgent
+	// AND picked AND banded at once -- three independent facts needing three
+	// independent channels.
 	//
-	// Foreground because the two background channels are spoken for: lightness
-	// is banding, hue is selection. A third background state would have to be
-	// told apart from both, and a row can be contained AND picked AND banded at
-	// once -- three independent facts needing three independent channels.
-	//
-	// A tint rather than a dim, because these rows are not lesser. The holdings
-	// under a shelf are what the shelf is for; dimming them would say the
-	// opposite of what showing them was meant to say.
-	accent = lipgloss.AdaptiveColor{Light: "24", Dark: "74"}
+	// The hues come from style, so an amber row and an amber word are the same
+	// amber. Two ambers meaning one thing is what that package exists to stop.
+	tones = map[Tone]lipgloss.TerminalColor{
+		ToneAttention: style.Attention,
+		ToneStop:      style.Stop,
+		ToneGood:      style.Good,
+	}
 )
 
 // rowStyle composes what a row is saying.
@@ -201,13 +222,17 @@ var (
 //
 // One style rather than nested spans, so a selected row under the cursor reads
 // as both rather than as whichever was applied last.
+//
 // An inert row is FAINT -- style.Dim's appearance, applied here rather than
 // through style.Dim.Render because the row already carries a background and
 // rendering it through another style would throw the banding away. Faint over
-// the accent, not beside it: the accent says "an item, inside this shelf", and
-// being ruled out is the more urgent of the two things to know about a row
-// nothing can be done to.
-func rowStyle(striped, selected, cursor, accented, inert bool) lipgloss.Style {
+// the tone, not beside it: being ruled out is the more urgent of the two
+// things to know about a row nothing can be done to.
+//
+// The cursor is the accent as well as bold. Bold alone was doing two jobs at
+// once -- "this is the thing itself" and "a keystroke lands here" -- and on a
+// screen with two panes only one of those is true at a time.
+func rowStyle(striped, selected, cursor, inert bool, tone Tone) lipgloss.Style {
 	s := lipgloss.NewStyle()
 	switch {
 	case selected:
@@ -218,11 +243,14 @@ func rowStyle(striped, selected, cursor, accented, inert bool) lipgloss.Style {
 	switch {
 	case inert:
 		s = s.Faint(true)
-	case accented:
-		s = s.Foreground(accent)
+	case tones[tone] != nil:
+		s = s.Foreground(tones[tone])
 	}
 	if cursor {
 		s = s.Bold(true)
+		if tones[tone] == nil {
+			s = s.Foreground(style.Accent)
+		}
 	}
 	return s
 }

@@ -427,10 +427,10 @@ func (m Model) rows() []table.Row {
 			skipBelow = -1
 		}
 		out = append(out, table.Row{
-			Key:    n.Key(),
-			Cells:  []string{m.label(n), measure(n)},
-			Accent: n.Contained(),
-			Inert:  m.targeting && n.Contained(),
+			Key:   n.Key(),
+			Cells: []string{m.label(n), measure(n)},
+			Tone:  toneOf(n),
+			Inert: m.targeting && n.Contained(),
 		})
 		if m.collapsed[n.Key()] {
 			skipBelow = n.Depth
@@ -466,12 +466,24 @@ func (m Model) filteredRows() []table.Row {
 			Key: n.Key(),
 			// No fold marker while filtering: what is shown is what matched,
 			// not what is open, and a marker would claim otherwise.
-			Cells:  []string{strings.Repeat(indent, n.Depth) + "  " + n.Name, measure(n)},
-			Accent: n.Contained(),
-			Inert:  m.targeting && n.Contained(),
+			Cells: []string{strings.Repeat(indent, n.Depth) + "  " + n.Name, measure(n)},
+			Tone:  toneOf(n),
+			Inert: m.targeting && n.Contained(),
 		})
 	}
 	return out
+}
+
+// toneOf is what a node says about itself.
+//
+// Nothing, for every node of the rail: a place is a place. The shell's rail
+// holds only structure now, so the contained case exists for a tree that
+// still shows its contents -- which is the import plan's, not the house's.
+func toneOf(n Node) table.Tone {
+	if n.Contained() {
+		return table.ToneGood
+	}
+	return table.ToneNormal
 }
 
 // measure is what the second column says for a node.

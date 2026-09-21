@@ -9,7 +9,6 @@ import (
 	"home-management-system/internal/domain"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/style"
-	"home-management-system/internal/tui/text"
 )
 
 // The top line and the bottom two: where you are, what you are on, and what
@@ -24,7 +23,10 @@ func (m Model) header() string {
 			style.Dim.Render("esc goes back") + "\n" + m.rule()
 	}
 
-	left := style.Strong.Render(m.lens.spec().name) + "  " + style.Dim.Render(m.breadcrumb())
+	// The lens is the mode, so it takes the accent: one colour, one meaning,
+	// and it is the only thing on this line that is about the interface
+	// rather than about the house.
+	left := style.Focus.Render(m.lens.spec().name) + "  " + m.breadcrumb()
 	right := style.Dim.Render(m.headerCount())
 
 	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right)
@@ -50,17 +52,21 @@ func (m Model) breadcrumb() string {
 	}
 	path := sh.pathTo(node.Key())
 	if len(path) == 0 {
-		return m.lens.spec().root
+		return style.Dim.Render(m.lens.spec().root)
 	}
-	for len(path) > 1 {
-		joined := strings.Join(path, pathSeparator)
-		if lipgloss.Width(joined) <= m.width/2 {
-			return joined
-		}
+	for len(path) > 1 && lipgloss.Width(strings.Join(path, pathSeparator)) > m.width/2 {
 		path = path[1:]
 		path[0] = "..."
 	}
-	return path[0]
+	// The leaf is where you are; the rest is how you got here. Drawing them
+	// at one weight makes a five-deep path read as one long string.
+	leaf := path[len(path)-1]
+	above := path[:len(path)-1]
+	if len(above) == 0 {
+		return style.Strong.Render(leaf)
+	}
+	return style.Dim.Render(strings.Join(above, pathSeparator)+pathSeparator) +
+		style.Strong.Render(leaf)
 }
 
 func (m Model) headerCount() string {
@@ -108,7 +114,15 @@ func (m Model) inspect() string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return style.Dim.Render(text.JoinWhatFits(m.width, parts))
+	return joinQuietly(m.width, parts)
+}
+
+// quiet dims a part that is not already saying something for itself.
+func quiet(s string) string {
+	if strings.Contains(s, "\x1b") {
+		return s
+	}
+	return style.Dim.Render(s)
 }
 
 func (m Model) inspectHolding(sel selection) []string {
