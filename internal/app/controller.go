@@ -135,6 +135,9 @@ type HoldingRow struct {
 	LocationID domain.LocationID
 	State      string // "1.8 kg" or "Out (garage)"
 	Note       string // expiry, retirement, and other flags
+	// Attention is how loudly Note reads. It is decided here, beside the
+	// sentence, because this is the layer that knows why each flag is there.
+	Attention Attention
 	// Custody is "AtRest", "Out", "Lost", or "" for a measured Holding. It is
 	// what lets one key toggle rather than two keys remember.
 	Custody string
@@ -142,6 +145,20 @@ type HoldingRow struct {
 	// before the ledger has to.
 	Retired bool
 }
+
+// Attention is how urgently a row reads. Ordered, so the loudest flag on a
+// row wins without the caller comparing strings.
+type Attention int
+
+const (
+	// AttentionNone is the great majority of rows.
+	AttentionNone Attention = iota
+	// AttentionSoon wants an answer: a cable out three weeks, a jar with a
+	// date coming up.
+	AttentionSoon
+	// AttentionOver is past it: expired, or gone.
+	AttentionOver
+)
 
 // EventRow is one ledger entry, rendered.
 type EventRow struct {
@@ -344,6 +361,7 @@ func (c *controller) Holdings(ctx context.Context) ([]HoldingRow, error) {
 	out := make([]HoldingRow, 0, len(details))
 	for _, d := range details {
 		base := d.Holding.Base()
+		note, attention := describeFlags(d)
 		row := HoldingRow{
 			ID:           base.ID,
 			Item:         d.ItemName,
@@ -353,7 +371,8 @@ func (c *controller) Holdings(ctx context.Context) ([]HoldingRow, error) {
 			LocationPath: paths[int64(base.StowedLocation)],
 			LocationID:   base.StowedLocation,
 			State:        describeState(d, where),
-			Note:         describeFlags(d),
+			Note:         note,
+			Attention:    attention,
 			Retired:      base.RetiredAt != nil,
 		}
 		if u, ok := d.Holding.(domain.UniqueHolding); ok {

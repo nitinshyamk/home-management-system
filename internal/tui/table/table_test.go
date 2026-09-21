@@ -881,12 +881,12 @@ func TestAnInertRowCannotBeSelected(t *testing.T) {
 }
 
 // It is drawn ruled out as well as behaving that way, and faintly rather than
-// in the accent it would otherwise wear: being unavailable is the more urgent
+// in the tone it would otherwise wear: being unavailable is the more urgent
 // of the two things to know about a row nothing can be done to.
 func TestAnInertRowIsDrawnFaint(t *testing.T) {
 	defer withColour()()
 	out := rows(4)
-	out[2].Accent = true
+	out[2].Tone = table.ToneAttention
 	inert := append([]table.Row(nil), out...)
 	inert[2].Inert = true
 

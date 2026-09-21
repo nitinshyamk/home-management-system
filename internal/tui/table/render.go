@@ -109,7 +109,7 @@ func (m Model) line(r Row, index int, isCursor bool, widths []int, visible []int
 	// Striping follows the row's place in the DATA, not its place on screen, so
 	// a row keeps its band while the list scrolls under the cursor. Banding by
 	// screen position makes every stripe appear to move on every keystroke.
-	return rowStyle(index%2 == 1, selected, isCursor && !m.blurred, r.Accent, r.Inert).
+	return rowStyle(index%2 == 1, selected, isCursor && !m.blurred, r.Inert, r.Tone).
 		Render(pad(text, m.width, Left))
 }
 
