@@ -161,6 +161,11 @@ type Model struct {
 	// being edited and the rows around it stay where the eye left them.
 	overlay []string
 
+	// headerless drops the column titles. A menu has no columns to name --
+	// its cells are a key, a verb and a fact -- and a row of blanks above it
+	// is a line of the screen spent saying nothing.
+	headerless bool
+
 	// blurred means this table is on screen beside another one that has the
 	// keyboard.
 	//
@@ -280,6 +285,13 @@ func New(cols []Column) Model {
 // draw it, because the mark means "a keystroke lands here".
 func (m Model) Focused(on bool) Model {
 	m.blurred = !on
+	return m
+}
+
+// Headerless drops the column titles, for a table whose columns have no
+// names worth reading.
+func (m Model) Headerless() Model {
+	m.headerless = true
 	return m
 }
 
@@ -627,7 +639,15 @@ func sign(n int) int {
 //
 // The overlay eats into it, because it occupies lines the rows would otherwise
 // have had.
-func (m Model) page() int { return max(1, m.height-2-len(m.overlay)) }
+// page is how many rows fit: the height, less the header where there is one
+// and the line the table keeps for itself, less whatever is spliced in.
+func (m Model) page() int {
+	chrome := 2
+	if m.headerless {
+		chrome = 1
+	}
+	return max(1, m.height-chrome-len(m.overlay))
+}
 
 func (m *Model) centre() {
 	m.top = clamp(m.cursor-m.page()/2, 0, max(0, len(m.visible)-m.page()))

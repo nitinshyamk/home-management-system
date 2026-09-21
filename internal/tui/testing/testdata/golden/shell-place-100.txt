@@ -10,4 +10,4 @@ BY PLACE  the house                                                             
       Left Pantry                  1│
 ----------------------------------------------------------------------------------------------------
 Ancho Chile - Spices - 100 g here, 300 g in the house - Left Pantry
-            c consume - # count - m move - t custody - \ lens - M-g jump
+            space act - c consume - # count - m move - e rename - C-k retire - \ lens - M-g jump

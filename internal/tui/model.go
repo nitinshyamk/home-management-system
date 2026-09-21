@@ -106,7 +106,9 @@ type Model struct {
 	flow flow
 	// picking is the list of plans waiting to be reviewed, while it is up.
 	// Nil the rest of the time, which is nearly always.
-	picking  *pickImport
+	picking *pickImport
+	// acting is the act palette, while it is open.
+	acting   *palette
 	fromView view
 
 	// say is everything the interface has to say about itself: the view's

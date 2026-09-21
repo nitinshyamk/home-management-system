@@ -10,4 +10,4 @@ BY PLACE  the house                                                             
       Left Pantry                  1│
 ----------------------------------------------------------------------------------------------------
 3 selected - TAB fold - \ lens - v here only
-            c consume - # count - m move - t custody - \ lens - M-g jump
+            space act - t take out - m move - e rename - C-k retire - \ lens - M-g jump

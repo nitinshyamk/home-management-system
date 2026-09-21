@@ -24,7 +24,14 @@ func (m Model) View() string {
 	// "Garage > Metal Shelving Unit" off mid-path and the hint off mid-word.
 	// It is drawn full width below the house instead, which states the parent
 	// in words where position used to imply it.
-	body := m.current.SetOverlay(m.field().Lines()).View()
+	// Sized HERE rather than when a drawer opens. bodyHeight depends on what
+	// is in the drawer, so every open and close would otherwise have to
+	// remember to resize the house -- and the one that forgot would draw a
+	// screen taller than the terminal, which wraps and shifts every row.
+	body := m.current.
+		SetSize(m.width, m.bodyHeight()).
+		SetOverlay(m.field().Lines()).
+		View()
 	if m.confirm != nil {
 		body = m.confirmView()
 	}
@@ -64,9 +71,14 @@ func (m Model) View() string {
 	}
 
 	parts := []string{m.header(), body}
-	if m.picking != nil {
-		// The same place the plan will take, so choosing one and reviewing it
-		// happen in one region of the screen rather than two.
+	// The drawer: one region below the house, whatever is in it. Everything
+	// transient goes here, so there is one place to look rather than one per
+	// kind of thing.
+	switch {
+	case m.acting != nil:
+		parts = append(parts, m.rule())
+		parts = append(parts, m.paletteView()...)
+	case m.picking != nil:
 		parts = append(parts, m.rule())
 		parts = append(parts, m.pickerView()...)
 	}
@@ -128,8 +140,13 @@ func (m Model) field() editor.Model {
 // below the house rather than in it.
 func (m Model) bodyHeight() int {
 	room := m.height - 5 - m.say.Height(m.width) - m.creator.Height()
-	if m.flow.reviewing() {
+	switch {
+	case m.flow.reviewing():
 		room -= m.drawerHeight() + 1 // and the rule above it
+	case m.acting != nil:
+		room -= m.paletteHeight() + 1
+	case m.picking != nil:
+		room -= m.drawerHeight() + 1
 	}
 	if room > 3 {
 		return room

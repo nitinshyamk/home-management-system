@@ -10,4 +10,4 @@ BY PLACE  the house                                                       4 hold
       Left Pantry               1│
 ------------------------------------------------------------------------------------
 the house - 4 holdings below here - 2 places inside
-            TAB fold - o new - e rename - m move - \ lens - M-g jump
+            space act - TAB fold - o new - e rename - \ lens - M-g jump

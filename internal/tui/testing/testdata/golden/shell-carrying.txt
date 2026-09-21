@@ -11,4 +11,4 @@ BY PLACE  the house                                                       4 hold
 ------------------------------------------------------------------------------------
   carrying "Ancho Chile" -- C-y puts it in a place, esc puts it down
 the house - 4 holdings below here - 2 places inside
-            TAB fold - o new - e rename - m move - \ lens - M-g jump
+            space act - TAB fold - o new - e rename - \ lens - M-g jump
