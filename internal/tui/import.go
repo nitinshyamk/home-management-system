@@ -15,6 +15,7 @@ import (
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/planview"
+	"home-management-system/internal/tui/tree"
 )
 
 // The import flow: a file in, a plan screen per stage, a transaction each.
@@ -58,6 +59,10 @@ func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error
 	m.flow = m.flow.staged(
 		planview.New(first.Plan, describe).WithStage(stageScreen(first.Stage, 1, len(stages))),
 		stages[1:])
+	// Pointed at the first row before the terminal is touched, so the house
+	// arrives showing the shelf that row is about rather than the top of the
+	// tree.
+	m, _ = m.steer()
 	return m, nil
 }
 
@@ -120,10 +125,11 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case keys.EditInPlace:
 		return m.editRow()
 	}
+	was, _, _ := m.flow.plan.Current()
 	next, handled := m.flow.plan.Update(msg)
 	m.flow.plan = next
 	if handled {
-		return m, nil
+		return m.follow(was)
 	}
 	// Anything the plan does not want is still CONSUMED. Falling through put
 	// the browse keystrokes live underneath the review screen: `#` opened a
@@ -133,6 +139,56 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// review screen.
 	return m, nil
 }
+
+// follow points the house at whatever the row under the cursor would touch.
+//
+// This is the reason the plan stopped taking the screen. "add 100 g to Shelf
+// 1" is not reviewable on its own -- to what, and how much is there already
+// -- so the rail goes to the place the row lands and the contents pane shows
+// what is in it now.
+//
+// Only on a CHANGE of row, and only where the row names a place: reloading
+// per keystroke would be a query for the same rows, and a row that names
+// nowhere leaves the house where it was rather than moving it somewhere
+// arbitrary.
+func (m Model) follow(was importer.Entry) (Model, tea.Cmd) {
+	entry, _, ok := m.flow.plan.Current()
+	if !ok || sameRow(was, entry) {
+		return m, nil
+	}
+	next, moved := m.steer()
+	if !moved {
+		return m, nil
+	}
+	return next, next.load(viewShell)
+}
+
+// steer points the house at the row under the cursor, reporting whether it
+// had to move. Separate from follow because the plan ARRIVING is the same
+// question as the cursor moving within it, and a drawer that only steered on
+// the second would open showing the wrong shelf.
+func (m Model) steer() (Model, bool) {
+	entry, _, ok := m.flow.plan.Current()
+	if !ok || entry.Command == nil {
+		return m, false
+	}
+	at, ok := app.Lands(entry.Command)
+	if !ok {
+		return m, false
+	}
+	key := tree.Node{ID: int64(at), Kind: kindLocation}.Key()
+	if m.lens == lensPlace && m.railKey[lensPlace] == key {
+		return m, false
+	}
+	m.lens = lensPlace
+	m.railKey[lensPlace] = key
+	return m, true
+}
+
+// sameRow reports two entries being the same row of the file. The LINE is the
+// identity: an entry is re-bound and re-stated as it is settled, so comparing
+// the whole thing would say "different" every time it changed.
+func sameRow(a, b importer.Entry) bool { return a.Row.Line == b.Row.Line }
 
 // applyImport commits the stage on screen, or none of it.
 //

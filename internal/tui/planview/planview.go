@@ -134,17 +134,28 @@ func (m Model) Stage() Stage { return m.stage }
 
 func (m Model) SetSize(width, height int) Model {
 	m.width = width
-	// The heading and the lines the screen ends with, plus the note when a
-	// stage before this one left one. A line taken from around the table has to
-	// be taken OFF the table, or the screen grows by one and the last row of it
-	// is the one that scrolls away.
-	chrome := 3
-	if m.note != "" {
-		chrome++
-	}
-	m.tbl = m.tbl.SetSize(width, height-chrome)
+	m.tbl = m.tbl.SetSize(width, height-m.chrome())
 	return m
 }
+
+// chrome is the lines this screen spends on itself: the heading and the lines
+// it ends with, plus the note when a stage before this one left one.
+//
+// A line taken from around the table has to be taken OFF the table, or the
+// screen grows by one and the last row of it is the one that scrolls away.
+func (m Model) chrome() int {
+	if m.note != "" {
+		return 4
+	}
+	return 3
+}
+
+// Wants is the height at which every row of the plan is on screen at once.
+//
+// Asked by the drawer, because the drawer decides how much of the screen to
+// take and only this knows what it would need -- the table keeps two lines
+// for itself on top of the chrome above.
+func (m Model) Wants() int { return len(m.plan.Entries) + m.chrome() + 2 }
 
 // SetOverlay draws lines immediately after the cursor's row, which is how a
 // field opens ON the row it belongs to rather than under the whole plan.
@@ -374,12 +385,18 @@ func (m Model) Facts() []string {
 		facts = append(facts, style.Dim.Render(fmt.Sprintf("%d dropped", dropped)))
 	}
 
-	// Last, because it is the longest and the least surprising: the counts
-	// above already say whether anything is in the way.
+	// Last, because it is the least surprising: the counts above already say
+	// whether anything is in the way.
+	//
+	// The REASON is not here. It ends with what to do about it, and that
+	// sentence is long enough that JoinWhatFits drops the whole part rather
+	// than truncating it -- so the line silently lost the one thing it was
+	// added for. Pressing the key is what asks the question, and the refusal
+	// is where the answer belongs.
 	apply := keys.Show(keys.Plan, keys.ApplyAll)
-	switch reason := m.WhyNot(); {
-	case reason != "":
-		return append(facts, style.Dim.Render(apply+" is unavailable: "+reason))
+	switch {
+	case m.WhyNot() != "":
+		return append(facts, style.Dim.Render(apply+" is unavailable"))
 	case m.stage.InPasses && confirmable > 0:
 		// What a pass applies is the ready rows, and saying so is the only way
 		// the count to its left and the key it names agree with each other.

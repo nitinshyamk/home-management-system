@@ -37,34 +37,30 @@ func (m Model) View() string {
 	}
 
 	if m.flow.reviewing() && m.confirm == nil {
-		// The plan REPLACES the house. A file proposing a batch of changes is
-		// not something to look at alongside what you own; it is the only thing
-		// worth looking at until it is settled.
+		// The plan sits BELOW the house rather than instead of it.
 		//
-		// And a panel opened for one of its rows sits ON the plan, not on the
-		// house behind it -- otherwise settling a row shows you a screen that
-		// has nothing to do with what you are settling.
-		// The field goes INTO the plan, spliced after the row it belongs to --
-		// the same overlay the browse views use, for the same reason.
+		// A row saying "add 100 g to Shelf 1" is unreadable without the thing
+		// it is proposed against -- to what, and how much was there? Taking
+		// the screen made that the one question the review screen could not
+		// answer, and moving the cursor through the rows now points the house
+		// at what each one would touch.
 		//
-		// The creation panel does not: it is about a thing that does not exist
-		// yet rather than about the row's text, and it is tall enough that
-		// splicing it would push the plan off the screen it is confirming.
-		//
-		// The height is the same arithmetic every other screen uses, less the
-		// tab bar this screen does not have. It used to be its own formula,
-		// kept in step with bodyHeight's by hand.
-		height := m.bodyHeight() + 2 - m.creator.Height()
-		plan := m.flow.plan.SetSize(m.width, height).SetOverlay(m.editor.SetWidth(m.width).Lines())
-		parts := []string{plan.View()}
+		// The field goes INTO the plan, spliced after its row. The creation
+		// panel does not: it is about a thing that does not exist yet rather
+		// than about the row's text, and it is tall enough that splicing it
+		// would push the plan off the screen it is confirming.
+		plan := m.flow.plan.
+			SetSize(m.width, m.drawerHeight()).
+			SetOverlay(m.editor.SetWidth(m.width).Lines())
+
+		parts := []string{m.header(), body, m.rule(), plan.View()}
 		if m.creator.IsOpen() {
 			parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
 		}
-		// And it ends the way every screen ends: the rule, the status block,
-		// the facts, the line. The plan's own counts ARE its facts, which is
-		// why they moved out of planview and are handed in here.
+		// The plan's own counts ARE its facts, which is why they moved out of
+		// planview and are handed in here.
 		return strings.Join(append(parts,
-			m.chrome(text.JoinWhatFits(m.width, m.flow.plan.Facts()))...), "\n")
+			m.chrome(joinQuietly(m.width, m.flow.plan.Facts()))...), "\n")
 	}
 
 	parts := []string{m.header(), body}
@@ -115,19 +111,39 @@ func (m Model) field() editor.Model {
 	return f
 }
 
-// bodyHeight is the room left once the chrome has taken its lines.
+// bodyHeight is the room left once the chrome, and anything in the drawer,
+// have taken their lines.
 //
 // Five are fixed -- the header and its rule, the rule below the body, the
 // facts, the line -- and the status block takes what it needs on top.
 //
 // The one-line editor is NOT subtracted: it takes its lines from inside the
-// surface. The creation panel is, because it sits below the house rather than
-// in it.
+// surface. The creation panel and the review drawer are, because they sit
+// below the house rather than in it.
 func (m Model) bodyHeight() int {
-	if h := m.height - 5 - m.say.Height(m.width) - m.creator.Height(); h > 3 {
-		return h
+	room := m.height - 5 - m.say.Height(m.width) - m.creator.Height()
+	if m.flow.reviewing() {
+		room -= m.drawerHeight() + 1 // and the rule above it
+	}
+	if room > 3 {
+		return room
 	}
 	return 3
+}
+
+// drawerHeight is what the review drawer gets: as much as it needs for its
+// rows, and never so much that the house stops being visible behind it.
+//
+// The house keeps at least a few rows, because a drawer that squeezed it to
+// nothing would be the full-screen takeover again with an extra rule drawn
+// across it.
+func (m Model) drawerHeight() int {
+	const (
+		leastHouse  = 6
+		leastDrawer = 6 // the chrome, and one row to look at
+	)
+	room := m.height - 5 - m.say.Height(m.width) - m.creator.Height() - leastHouse - 1
+	return max(leastDrawer, min(m.flow.plan.Wants(), room))
 }
 
 // countPhrase says how many, and how many of how many when a filter is on.

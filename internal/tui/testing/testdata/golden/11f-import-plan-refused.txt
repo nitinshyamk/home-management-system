@@ -1,3 +1,9 @@
+BY PLACE  the house > Shelf 1                                                             2 holdings
+----------------------------------------------------------------------------------------------------
+  NAME                              │  ITEM ^                                                    QTY
+  ▾ the house                      2│> Basmati Rice                                            500 g
+      Shelf 1                      2│  Cumin                                                   500 g
+----------------------------------------------------------------------------------------------------
 IMPORT  receipt.csv   5 rows
       ROW  WHAT IT WOULD DO                             WHY NOT                                     
 > OK    2  add 100 of Spices > Basmati Rice to Shelf 1                                              
@@ -6,6 +12,6 @@ IMPORT  receipt.csv   5 rows
   ?     5  acquire Cardamom 50 Shelf 1                  would create an item                        
   !     6  consume Basmati Rice lots Shelf 1 dinner     qty: "lots" has no number in it             
 ----------------------------------------------------------------------------------------------------
-  1 rows are blocked and 2 need confirming
-2 ready - 2 need confirming - 1 blocked - A is unavailable: 1 rows are blocked and 2 need confirming
+  1 rows are blocked and 2 need confirming; settle or drop them to apply the rest
+2 ready - 2 need confirming - 1 blocked - A is unavailable
             enter settle - d drop - u undrop - A apply - q cancel

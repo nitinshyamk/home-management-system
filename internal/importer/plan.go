@@ -179,21 +179,39 @@ func (p Plan) Unapplied() Plan {
 	return out
 }
 
-// Why says what is stopping an apply, for a refusal that is a reason rather
-// than a key that does nothing.
+// Why says what is stopping an apply, and what to do about it.
+//
+// The second half matters as much as the first. All-or-nothing is the right
+// rule -- a half-applied receipt is the worst outcome, because some of it
+// happened, you do not know which, and the file no longer describes the house
+// -- but a refusal that only names the obstacle reads as a dead end. It is
+// not one: every unsettled row can be dropped, and a dropped row counts as
+// settled. Saying so is the difference between "you are stuck" and "decide
+// about these three".
 func (p Plan) Why() string {
 	ready, confirmable, blocked, _ := p.Counts()
+	left := blocked + confirmable
 	switch {
 	case blocked > 0 && confirmable > 0:
-		return fmt.Sprintf("%d rows are blocked and %d need confirming", blocked, confirmable)
+		return fmt.Sprintf("%d rows are blocked and %d need confirming; %s",
+			blocked, confirmable, orDrop(left))
 	case blocked > 0:
-		return fmt.Sprintf("%d %s blocked", blocked, plural(blocked, "row is", "rows are"))
+		return fmt.Sprintf("%d %s blocked; %s",
+			blocked, plural(blocked, "row is", "rows are"), orDrop(left))
 	case confirmable > 0:
-		return fmt.Sprintf("%d %s confirming", confirmable, plural(confirmable, "row needs", "rows need"))
+		return fmt.Sprintf("%d %s confirming; %s",
+			confirmable, plural(confirmable, "row needs", "rows need"), orDrop(left))
 	case ready == 0:
 		return "nothing left to apply"
 	}
 	return ""
+}
+
+// orDrop is the way out of every unsettled row, in the words of the rule:
+// settle it, or set it aside deliberately.
+func orDrop(n int) string {
+	return fmt.Sprintf("settle or drop %s to apply the rest",
+		plural(n, "it", "them"))
 }
 
 func plural(n int, one, many string) string {
