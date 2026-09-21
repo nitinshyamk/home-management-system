@@ -87,15 +87,6 @@ type surface interface {
 	Focus(key int64) surface
 }
 
-// targeting is the part of a rail no other surface has: something is being
-// carried, and this tree is being read for somewhere to put it down.
-//
-// Kept off the surface interface and reached by assertion, because a page of
-// prose asked to rule rows out would have to invent which.
-type targeting interface {
-	SetTargeting(on bool) surface
-}
-
 // ---------------------------------------------------------------------------
 // The text surface: Integrity, History, and Help.
 // ---------------------------------------------------------------------------

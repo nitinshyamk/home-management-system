@@ -69,6 +69,14 @@ func (m Model) layers() []layer {
 			offers: keys.Hint(keys.Browse, []keys.Action{keys.Cancel}),
 		},
 		{
+			name: "destinations", active: m.moving != nil, handle: Model.handleMoving,
+			// Worded here rather than taken from the keymap: enter is
+			// "history" everywhere else, and a line that said so under a list
+			// of shelves would be naming the wrong thing entirely.
+			offers: keys.Show(keys.Browse, keys.Confirm) + " put it there - " +
+				keys.Show(keys.Browse, keys.Cancel) + " put it down - type to narrow",
+		},
+		{
 			name: "import plan", active: m.flow.reviewing(), handle: Model.handleImport,
 			offers: m.planKeys(),
 		},

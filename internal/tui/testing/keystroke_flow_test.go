@@ -282,12 +282,10 @@ func TestMoveByKeystroke(t *testing.T) {
 	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
 }
 
-// Copy and put: the same operation as the move prompt, for when you would
-// rather look for the destination than name it.
-//
-// M-w then C-y, which is emacs's copy and paste. Note that the words swap sides
-// coming from vim, where a yank is the COPY rather than the paste.
-func TestCopyAndPut(t *testing.T) {
+// Pointing at the destination rather than naming it, which used to be the
+// other gesture -- M-w here, a tab switch, a walk, C-y there -- and is now
+// the arrows in the same list that typing filters.
+func TestAMoveCanBePointedAtRatherThanTyped(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
 	s.ByPlace()
@@ -295,19 +293,24 @@ func TestCopyAndPut(t *testing.T) {
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
-	s.Send(sim.AltW)
-	s.ShowsText("carrying")
 
-	s.ByPlace()
-	s.OnRail()
-	moveTo(t, s, "Garage")
-	s.Send(sim.CtrlY)
+	s.Send(sim.Press("m"))
+	s.ShowsText("MOVE")
+	// Down the list to the Garage, typing nothing.
+	for range 12 {
+		if strings.Contains(cursorLine(s), "Garage") {
+			break
+		}
+		s.Send(sim.CtrlN)
+	}
+	if !strings.Contains(cursorLine(s), "Garage") {
+		t.Fatalf("never reached the Garage in the destinations:\n%s", s.PlainView())
+	}
+	s.Send(sim.Enter)
 
-	s.ByPlace()
-	s.OnContents()
-	s.OnHand(rice, 500*domain.Scale)
-	if !strings.Contains(s.PlainView(), "Garage") {
-		t.Errorf("the rice did not move:\n%s", s.PlainView())
+	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
+	if at := locationOf(t, s, rice); at != s.HasLocation("Garage") {
+		t.Errorf("the rice did not move to the Garage")
 	}
 }
 
@@ -417,14 +420,10 @@ func TestARefusalClearsTheLastSuccess(t *testing.T) {
 	s.HidesText("use 100")
 }
 
-// TestMovePromptCompletes is what the 10f review found missing: the machinery
-// was there and nothing was wired to it.
-//
-// It goes through the same completer the creation panel uses, which goes
-// through the same resolve index as the jump palette, the `:` line, and the
-// bulk importer. A second completer would be a second opinion about what a name
-// nearly is.
-func TestMovePromptCompletes(t *testing.T) {
+// Typing narrows the destinations, and the list is the same resolve index
+// the jump palette, the `:` line and the bulk importer read. A second source
+// of names would be a second opinion about what the house contains.
+func TestMovingFiltersTheDestinations(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
 	s.ByPlace()
@@ -435,20 +434,13 @@ func TestMovePromptCompletes(t *testing.T) {
 
 	s.Send(sim.Press("m"))
 	s.Send(sim.Type("gar"))
-
 	s.ShowsText("Garage")
-	s.ShowsText("TAB to take it")
-	s.ShowsText("gar") // offered, not applied
+	s.ShowsText("matching") // what is narrowing, said
 
-	s.Send(sim.Tab)
-	s.HidesText("TAB to take it")
 	s.Send(sim.Enter)
-
-	s.ByPlace()
-	s.OnContents()
 	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
-	if !strings.Contains(s.PlainView(), "Garage") {
-		t.Errorf("the rice did not move:\n%s", s.PlainView())
+	if at := locationOf(t, s, rice); at != s.HasLocation("Garage") {
+		t.Errorf("the rice did not move to the Garage")
 	}
 }
 
@@ -486,15 +478,14 @@ func TestTheQuantityPromptOffersNothing(t *testing.T) {
 	s.DoesNotOffer("Garage")
 }
 
-// Enter takes the highlighted place. It does not guess at the text, and it does
-// not move anything on its own.
+// There is nothing to guess at, which is the simplification.
 //
-// It used to submit what had been TYPED, which meant that walking the list to
-// the place you meant and pressing enter came back as "did you mean" -- the
-// interface refusing to guess at the very thing it had just been told. Now the
-// first enter fills the field in with the whole path, where it can be read, and
-// the second one is what moves the stock.
-func TestEnterTakesThePlaceItIsPointingAt(t *testing.T) {
+// The prompt this replaced took a typed name and had to decide what a
+// half-typed one meant: take the highlight, or refuse with "did you mean".
+// Two enters, and a whole class of near-miss to arbitrate. A list of real
+// places has no near misses -- you are pointing at one or the list is empty
+// -- so a filter matching nothing offers nothing and enter does nothing.
+func TestAMoveNeverGuessesAtADestination(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stocked(t, s)
 	s.ByPlace()
@@ -502,65 +493,23 @@ func TestEnterTakesThePlaceItIsPointingAt(t *testing.T) {
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
+	before := locationOf(t, s, rice)
 
 	s.Send(sim.Press("m"))
-	s.Send(sim.Type("gar"))
-	s.Send(sim.Enter) // takes the highlight
-
+	s.Send(sim.Type("nowhere at all"))
 	s.HidesText("did you mean")
-	s.ShowsText("Garage")
-	// Taken, not applied. On the ROW rather than anywhere on the screen,
-	// because the field itself now says Garage.
-	if placed(s) {
-		t.Error("taking a suggestion moved the stock by itself")
-	}
-
-	s.Send(sim.Enter) // and this moves it
-	s.Send(sim.Esc)
-	s.ByPlace()
-	s.OnContents()
-	s.OnHand(rice, 500*domain.Scale)
-	if !placed(s) {
-		t.Errorf("the move never happened:\n%s", s.PlainView())
-	}
-}
-
-// With the list put away there is nothing to take, so a half-typed name is
-// still a refusal rather than a guess -- the resolver reports, and the
-// interface asks.
-func TestAnUntakenSuggestionRefusesRatherThanGuessing(t *testing.T) {
-	s := sim.New(t)
-	rice, _ := stocked(t, s)
-	s.ByPlace()
-	s.OnContents()
-	s.Send(sim.CtrlS)
-	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 
-	s.Send(sim.Press("m"))
-	s.Send(sim.Type("gar"))
-	s.Send(sim.Esc)   // the list goes away, the field stays
-	s.Send(sim.Enter) // on "gar", which is nobody's name
-
-	s.ShowsText("did you mean")
-	s.Send(sim.Esc)
-	s.ByPlace()
-	s.OnContents()
 	s.OnHand(rice, 500*domain.Scale)
-	if placed(s) {
-		t.Error("a suggestion was applied without being taken")
+	if at := locationOf(t, s, rice); at != before {
+		t.Error("a destination nobody chose was used anyway")
 	}
 }
 
-// placed reports whether the rice row says Garage, which is what a move shows.
-func placed(s *sim.Simulator) bool {
-	for _, line := range strings.Split(s.PlainView(), "\n") {
-		if strings.Contains(line, "Basmati Rice") && strings.Contains(line, "Garage") {
-			return true
-		}
-	}
-	return false
-}
+// Where a thing ended up is asked of the DATABASE now, through locationOf,
+// rather than read back off the screen. The screen was the only answer while
+// a move was two gestures with a banner between them; the picker commits a
+// Command, so the ledger is the honest place to check.
 
 // Retiring asks, and the reason is not the write path it uses.
 //

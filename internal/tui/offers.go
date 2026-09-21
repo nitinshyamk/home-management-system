@@ -208,7 +208,7 @@ func (m Model) itemOffers(id domain.ItemID) []offer {
 		},
 		{
 			label: "file it elsewhere", note: "now in " + item.Category,
-			global: keys.MoveTo, run: promptNode,
+			global: keys.MoveTo, run: startMove,
 		},
 		{
 			label: "rename it", note: item.Name,
@@ -274,11 +274,7 @@ func asks(p editor.Purpose) func(Model) (Model, tea.Cmd) {
 	return func(m Model) (Model, tea.Cmd) { return m.promptFor(p, ""), nil }
 }
 
-func startMove(m Model) (Model, tea.Cmd) {
-	return m.promptFor(editor.Move, "").carrySubject(), m.loadCandidates()
-}
-
-func promptNode(m Model) (Model, tea.Cmd)    { return m.promptForNode() }
+func startMove(m Model) (Model, tea.Cmd)     { return m.startMoving() }
 func toggleCustody(m Model) (Model, tea.Cmd) { return m.toggleCustody() }
 func retire(m Model) (Model, tea.Cmd)        { return m.retire() }
 func openRename(m Model) (Model, tea.Cmd)    { return m.openEditor(), nil }

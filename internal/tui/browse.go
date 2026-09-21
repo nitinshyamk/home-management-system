@@ -112,20 +112,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.view == viewHistory || m.view == viewHelp {
 			return m, m.load(m.fromView)
 		}
-		// Putting down what is being carried, LAST in this chain.
-		//
-		// Filtering and selecting are things you do while hunting for the
-		// destination, so esc has to undo the most recent of those first --
-		// otherwise looking for somewhere to put a thing would make you drop
-		// it. Dropping a carry with a filter on takes two escapes, which is
-		// the same shape as every other nested mode here.
-		if m.copied != nil {
-			name := m.copied.Name
-			m = m.drop()
-			m.say = m.say.Report(fmt.Sprintf("put %q down", name))
-			return m, nil
-		}
-
 	case keys.ViewAttention:
 		m.fromView = viewShell
 		return m, m.load(viewIntegrity)
@@ -272,35 +258,12 @@ func (m Model) crossing(to lens) (key int64, said string, ok bool) {
 func (m Model) handleAction(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	action := keys.Lookup(keys.Browse, msg)
 
-	// Paste puts wherever the cursor is, which is usually somewhere else.
-	if action == keys.Paste {
-		next, cmd := m.put()
+	// Move, from anywhere, on anything. A jar, a kind of thing and the shelf
+	// itself are one idea -- this goes somewhere else -- so they are one key
+	// and one screen.
+	if action == keys.MoveTo {
+		next, cmd := m.startMoving()
 		return next, cmd, true
-	}
-	// Copy picks up from wherever the cursor is too. The two halves of one
-	// gesture have to have the same reach, and a tree is where the second half
-	// usually lands.
-	if action == keys.Copy {
-		return m.copy(), nil, true
-	}
-	// The rail is renamed with `e` and created into with `o`. Re-parenting a
-	// place is still the typed command until the move gesture is one thing.
-	if m.onRail() {
-		if action == keys.MoveTo {
-			return m.refuse("a place is moved with %s reparent location",
-				keys.Show(keys.Browse, keys.CommandLine)), nil, true
-		}
-		return m, nil, false
-	}
-	// In the kind lens the contents are Items, and the one thing you do to an
-	// Item from here is file it somewhere else. Consuming would have to ask
-	// which pile.
-	if m.lens == lensKind {
-		if action == keys.MoveTo {
-			next, cmd := m.promptForNode()
-			return next, cmd, true
-		}
-		return m, nil, false
 	}
 	// Everything below acts on a Holding, and only the place lens has them:
 	// the kind lens's rows are Items, which are a definition rather than a
@@ -314,10 +277,6 @@ func (m Model) handleAction(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 		return m.promptFor(editor.Consume, ""), nil, true
 	case keys.Count:
 		return m.promptFor(editor.Count, ""), nil, true
-	case keys.MoveTo:
-		// The vocabulary is loaded alongside the prompt, so the first
-		// keystroke into it already has something to complete against.
-		return m.promptFor(editor.Move, "").carrySubject(), m.loadCandidates(), true
 	case keys.ToggleCustody:
 		next, cmd := m.toggleCustody()
 		return next, cmd, true
@@ -353,18 +312,6 @@ func (m Model) refuse(format string, args ...any) Model {
 // from. What changed is that the answer is no longer the name of a tab.
 func (m Model) onHoldings() bool {
 	return m.view == viewShell && m.lens == lensPlace && !m.onRail()
-}
-
-// currentHolding is the row under the cursor, where that is a Holding.
-func (m Model) currentHolding() (app.HoldingRow, bool) {
-	if !m.onHoldings() {
-		return app.HoldingRow{}, false
-	}
-	sel, ok := m.current.Current()
-	if !ok {
-		return app.HoldingRow{}, false
-	}
-	return m.holding(sel.Key)
 }
 
 // selectedHoldings is what an action should act on: the explicit selection, or

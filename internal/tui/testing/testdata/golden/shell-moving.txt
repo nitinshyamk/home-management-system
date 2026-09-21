@@ -1,0 +1,20 @@
+BY PLACE  the house                                                       4 holdings
+------------------------------------------------------------------------------------
+  NAME                           │  ITEM ^                     QTY  WHERE           
+  ▾ the house                   4│  Ancho Chile              100 g  Left Pantry     
+    ▾ Garage                    3│  Ancho Chile              100 g  Garage          
+      ▾ Metal Shelving Unit     2│  Ancho Chile              100 g  Small Parts Tray
+        ▾ Bay 3                 2│  Thunderbolt 4 to Dua…  at rest  Small Parts Tray
+          ▾ Blue Crate          2│
+              Small Parts Tray  2│
+------------------------------------------------------------------------------------
+MOVE  Ancho Chile   goes in a place   from Left Pantry
+> Garage                                                                            
+  Garage > Metal Shelving Unit                                                      
+  Garage > Metal Shelving Unit > Bay 3                                              
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate                                 
+  Garage > Metal Shelving Unit > Bay 3 > Blue Crate > Small Parts Tray              
+  Left Pantry                                                                       
+------------------------------------------------------------------------------------
+Ancho Chile - Spices - 100 g here, 300 g in the house - Left Pantry
+            enter put it there - esc put it down - type to narrow

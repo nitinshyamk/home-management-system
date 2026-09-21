@@ -62,18 +62,8 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 		// as confirmed. Leaving the row index behind meant "row 3 is being
 		// settled" with nothing on screen agreeing.
 		m.flow = m.flow.settled()
-		// "unchanged" is true and, while something is in hand, beside the
-		// point: esc there is not abandoning the move, it is choosing the other
-		// half of it. The banner says what is happening; a second message
-		// alongside it would be a second thing to read.
-		m.say = m.say.Clear()
-		if m.copied == nil {
-			m.say = m.say.Report("unchanged")
-		}
-		// And if it is still in hand, the tree becomes a list of destinations
-		// now rather than a list of everything: esc here is choosing to point
-		// at the place instead of naming it.
-		return m.aiming(), nil
+		m.say = m.say.Clear().Report("unchanged")
+		return m, nil
 	case keys.Confirm:
 		// A field opened for an ACTION answers to that action; only a rename
 		// goes back through the command line, because only a rename is text.
@@ -124,38 +114,6 @@ func (m Model) promptFor(purpose editor.Purpose, initial string) Model {
 	return m
 }
 
-// promptForNode opens the destination prompt for a thing a tree is showing.
-//
-// The purpose is the thing's own, not the tree's: a Holding MOVES to a place, an
-// Item is RECLASSIFIED under a classification. Two commands, and the difference
-// is not a detail of wording -- moving stock and re-filing a kind of thing are
-// different events in the ledger, and calling both "move" here would leave the
-// interface with one word for two answers.
-func (m Model) promptForNode() (Model, tea.Cmd) {
-	sel, ok := m.current.Current()
-	if !ok || (sel.Kind != kindItem && sel.Kind != kindHolding) {
-		return m.refuse("move one of the things inside -- a place is moved with %s",
-			keys.Show(keys.Browse, keys.CommandLine)+" reparent location"), nil
-	}
-	purpose := editor.Move
-	if sel.Kind == kindItem {
-		purpose = editor.Reclassify
-	}
-	m.say = m.say.Clear()
-	spec := prompt(purpose)
-	m.editor = m.editor.
-		OpenFor(purpose, sel.Kind, sel.ID, spec.label, "").
-		WithVerb(spec.verb).SetWidth(m.width)
-	// Picked up as well as prompted for. The two are the same act -- "this
-	// goes somewhere else" -- and which way you finish it is a preference
-	// about the destination: name it, or go and point at it. esc closes the
-	// prompt and leaves the thing in hand, which is what the banner says.
-	m = m.carry(carried{Kind: sel.Kind, ID: sel.ID, Name: sel.Name})
-	// The vocabulary is loaded alongside the prompt, so the first keystroke
-	// into it already has something to complete against.
-	return m, m.loadCandidates()
-}
-
 // refuses says why an action does not apply, in terms of the THING rather than
 // the keystroke. "you cannot consume a cable" beats "invalid operation".
 func refuses(purpose editor.Purpose, rows []app.HoldingRow) (string, bool) {
@@ -187,10 +145,6 @@ func (m Model) actOnPrompt() (Model, tea.Cmd) {
 	// one.
 	forNode := len(rows) == 0
 	m.editor = m.editor.Close()
-	// Answering the prompt finishes the move, so whatever `m` picked up is put
-	// down with it. Without this, naming the destination would relocate the
-	// thing and leave the line insisting it was still in hand.
-	m = m.drop()
 
 	if answer == "" {
 		m.say = m.say.Report("nothing entered")

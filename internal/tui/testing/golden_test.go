@@ -169,24 +169,20 @@ func TestGoldenTheRetirementConfirmation(t *testing.T) {
 	s.AssertFrame("shell-retire-confirmation")
 }
 
-// The carry banner, which is a LAYOUT claim: it sits in the status block
-// below the house, and the rows give up a line rather than the screen
-// overflowing.
+// The move drawer, which is a LAYOUT claim: the destinations sit below the
+// house, the house stays visible and gives up rows to make room, and it
+// stops drawing a cursor because the drawer has one.
 //
-// Kept as a frame because that claim is exactly the kind a plain-text capture
-// can hold still, and because the banner is drawn under every screen -- so a
-// change to where it goes changes all of them at once.
-func TestGoldenSomethingInHand(t *testing.T) {
+// Kept as a frame because that is exactly the kind of claim a plain-text
+// capture can hold still.
+func TestGoldenMovingSomething(t *testing.T) {
 	s := sim.New(t)
 	awkwardHouse(t, s)
 	s.Resize(84, 22)
 	s.ByPlace()
 	s.OnContents()
-	s.Send(sim.AltW)
-	// And across the pane switch that is the middle of the gesture, which is
-	// where it used to vanish.
-	s.OnRail()
-	s.AssertFrame("shell-carrying")
+	s.Send(sim.Press("m"))
+	s.AssertFrame("shell-moving")
 }
 
 // The import plan, and the same plan having refused to apply.
