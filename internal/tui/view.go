@@ -28,10 +28,11 @@ func (m Model) View() string {
 	// is in the drawer, so every open and close would otherwise have to
 	// remember to resize the house -- and the one that forgot would draw a
 	// screen taller than the terminal, which wraps and shifts every row.
-	body := m.current.
-		SetSize(m.width, m.bodyHeight()).
-		SetOverlay(m.field().Lines()).
-		View()
+	house := m.current.SetSize(m.width, m.bodyHeight()).SetOverlay(m.field().Lines())
+	if blurrable, ok := house.(interface{ Blur() surface }); ok && m.drawerHasTheKeyboard() {
+		house = blurrable.Blur()
+	}
+	body := house.View()
 	if m.confirm != nil {
 		body = m.confirmView()
 	}
@@ -75,6 +76,9 @@ func (m Model) View() string {
 	// transient goes here, so there is one place to look rather than one per
 	// kind of thing.
 	switch {
+	case m.moving != nil:
+		parts = append(parts, m.rule())
+		parts = append(parts, m.moving.view(m.width)...)
 	case m.acting != nil:
 		parts = append(parts, m.rule())
 		parts = append(parts, m.paletteView()...)
@@ -115,19 +119,22 @@ func (m Model) chrome(facts string) []string {
 	return append(parts, m.box.SetWidth(m.width).Offers(m.offered()).View())
 }
 
+// drawerHasTheKeyboard reports a drawer below the house that has a cursor of
+// its own, so the house should stop drawing one.
+//
+// Not every layer: the inline field is ON a row and the filter line narrows
+// the list live, so in both of those the house's cursor is still the subject.
+// These four have their own list to point at.
+func (m Model) drawerHasTheKeyboard() bool {
+	return m.moving != nil || m.acting != nil || m.picking != nil || m.flow.reviewing()
+}
+
 // rule is the line between what you are reading and what the screen is saying
 // about itself.
 func (m Model) rule() string { return style.Dim.Render(strings.Repeat("-", max(10, m.width))) }
 
-// field is the inline editor, told the one thing it cannot know: whether esc
-// will throw the answer away or leave the thing it was opened over in hand.
-func (m Model) field() editor.Model {
-	f := m.editor.SetWidth(m.width)
-	if m.copied != nil {
-		return f.WithCancel("go and point at it instead")
-	}
-	return f
-}
+// field is the inline editor, sized to the screen.
+func (m Model) field() editor.Model { return m.editor.SetWidth(m.width) }
 
 // bodyHeight is the room left once the chrome, and anything in the drawer,
 // have taken their lines.
@@ -143,6 +150,8 @@ func (m Model) bodyHeight() int {
 	switch {
 	case m.flow.reviewing():
 		room -= m.drawerHeight() + 1 // and the rule above it
+	case m.moving != nil:
+		room -= m.moving.height + 2
 	case m.acting != nil:
 		room -= m.paletteHeight() + 1
 	case m.picking != nil:

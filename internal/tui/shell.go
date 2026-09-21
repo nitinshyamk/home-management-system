@@ -168,6 +168,20 @@ func (s shellSurface) focus() shellSurface {
 	return s
 }
 
+// Blur draws no cursor at all, for when a drawer below the house owns the
+// keyboard and has a cursor of its own.
+//
+// The same argument as between the two panes, one level up: a mark means "a
+// keystroke lands here", and two of them on one screen is two claims about
+// that. The house keeps its cursor -- coming back returns to the row you
+// left -- it just stops drawing it.
+func (s shellSurface) Blur() surface {
+	return s.with(func(n *shellSurface) {
+		n.rail = n.rail.Focused(false)
+		n.body = n.body.Focused(false)
+	})
+}
+
 func (s shellSurface) SetSize(width, height int) surface {
 	return s.with(func(n *shellSurface) {
 		n.width, n.height = width, height

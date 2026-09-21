@@ -98,8 +98,6 @@ type Model struct {
 	itemRows map[domain.ItemID]app.ItemRow
 	// total is what the rail's root rolls up, for the header.
 	total int64
-	// copied is a thing waiting for a put.
-	copied *carried
 
 	// The import flow: a plan in the drawer below the house, reviewed against
 	// it. settling is the row a creation panel was opened for, or -1.
@@ -108,7 +106,9 @@ type Model struct {
 	// Nil the rest of the time, which is nearly always.
 	picking *pickImport
 	// acting is the act palette, while it is open.
-	acting   *palette
+	acting *palette
+	// moving is a move in progress: what is in hand, and where it could go.
+	moving   *moving
 	fromView view
 
 	// say is everything the interface has to say about itself: the view's

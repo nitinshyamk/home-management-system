@@ -233,40 +233,37 @@ func TestTheRailHoldsOnlyStructure(t *testing.T) {
 	}
 }
 
-// Every row of the rail is somewhere a thing can go.
+// Every destination offered is somewhere a thing can actually go.
 //
-// Four tests used to live here, and all four were about one decision: the
-// tree showed what its nodes contained, so half its rows were places and half
-// were not. Each verb needed its own guard. The put was the dangerous one --
-// destination() reads a row's identifier as a LocationID, so a holding row
-// taken for a place was a silent write to whatever shelf shared that number.
-// Rename needed a refusal of its own, folding needed kind-tagged keys, and
-// while something was in hand the cursor had to skip the jars, because a
-// shelf with nine jars on it was nine rows the put was going to refuse.
+// Five tests used to live around here, all about one decision: the tree
+// showed what its nodes contained, so half its rows were places and half were
+// not, and every verb needed its own guard. The dangerous one was the put --
+// it read a row's identifier as a LocationID, so a holding row taken for a
+// place was a silent write to whatever shelf shared that number.
 //
-// The contents pane took the contents, so the question dissolved rather than
-// being answered better. What is left to assert is that it cannot come back.
-func TestEveryRailRowIsSomewhereAThingCanGo(t *testing.T) {
+// The contents pane took the contents and the move drawer took the
+// destinations, so the question dissolved twice over rather than being
+// answered better. What is left to assert is that it cannot come back.
+func TestEveryDestinationIsAPlace(t *testing.T) {
 	s := sim.New(t)
 	rice, _ := stockedTree(t, s)
 
+	before := s.CountHoldings()
 	s.ByPlace()
 	s.OnContents()
-	s.Send(sim.AltW)
-	s.ShowsText("carrying")
+	s.Send(sim.Press("m"))
+	s.ShowsText("MOVE")
 
-	// Walk the whole rail with something in hand. Every row it stops on is a
-	// place, so none of them is a row the put would have to refuse.
-	s.OnRail()
-	before := s.CountHoldings()
-	for range 6 {
-		s.Send(sim.CtrlN)
-		if line := cursorLine(s); strings.Contains(line, "Basmati Rice") {
-			t.Fatalf("the rail stopped on a holding: %q", line)
+	// Nothing in the list is a thing rather than a place.
+	for _, thing := range []string{"Basmati Rice", "500 g"} {
+		if strings.Contains(destinations(s), thing) {
+			t.Errorf("%q was offered as a destination:\n%s", thing, s.PlainView())
 		}
 	}
+	// And walking it writes nothing.
+	s.Send(sim.CtrlN, sim.CtrlN, sim.Esc)
 	if after := s.CountHoldings(); after != before {
-		t.Errorf("walking the rail changed the holdings from %d to %d", before, after)
+		t.Errorf("walking the destinations changed the holdings from %d to %d", before, after)
 	}
 	s.OnHand(rice, 500*domain.Scale)
 }
@@ -360,125 +357,212 @@ func TestFoldsDoNotCrossBetweenTrees(t *testing.T) {
 	s.HidesText("Metal Shelving Unit") // and the Locations tree kept its own
 }
 
-// The trees show what they hold, so the thing you most want to do to something
-// you can see in the wrong place is put it in the right one.
+// ---------------------------------------------------------------------------
+// Moving a thing
+// ---------------------------------------------------------------------------
+
+// One key, one screen, whatever the thing is.
 //
-// Two commands behind one gesture, because they are two events: a Holding MOVES
-// to a place, an Item is RECLASSIFIED under a classification. The tree decides
-// which by what the row IS, not by which tree it is in -- reading the view would
-// be reading it twice and getting the answer from the wrong one the day a tree
-// shows something else.
-func TestCopyAndPutMovesAHoldingInTheLocationsTree(t *testing.T) {
-	s := sim.New(t)
-	rice, pantry := stockedTree(t, s)
+// It used to be two gestures and neither was good. Pointing meant M-w here, a
+// tab switch, a walk down a tree, C-y there -- with the thing you were moving
+// off screen for the middle of it. Naming meant knowing the name. And a PLACE
+// could be moved by neither: re-parenting a shelf was a typed command, for
+// the same idea.
+//
+// Three subtests rather than three tests, because the claim is that they are
+// ONE gesture: if they need different setup or different keys, they are not.
+func TestMoveIsOneGestureForEveryKind(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		lens  func(*sim.Simulator)
+		where string
+		check func(*testing.T, *sim.Simulator, domain.ItemID, domain.LocationID)
+	}{
+		{
+			name:  "a holding goes to a place",
+			lens:  func(s *sim.Simulator) { s.ByPlace(); s.OnContents() },
+			where: "Kitchen",
+			check: func(t *testing.T, s *sim.Simulator, rice domain.ItemID, pantry domain.LocationID) {
+				s.OnHand(rice, 500*domain.Scale) // moved, not consumed
+				if held := holdingsIn(t, s, pantry); held != 0 {
+					t.Errorf("%d holdings left in the pantry, want 0", held)
+				}
+			},
+		},
+		{
+			name:  "an item is filed under a classification",
+			lens:  func(s *sim.Simulator) { s.ByKind(); s.OnContents() },
+			where: "Grains",
+			check: func(t *testing.T, s *sim.Simulator, rice domain.ItemID, _ domain.LocationID) {
+				if got, want := categoryOf(t, s, rice), s.HasCategory("Grains"); got != want {
+					t.Errorf("the rice is filed under %d, want Grains (%d)", got, want)
+				}
+			},
+		},
+		{
+			name:  "a place goes inside another place",
+			lens:  func(s *sim.Simulator) { s.ByPlace(); s.GoTo("Left Pantry") },
+			where: "Attic",
+			check: func(t *testing.T, s *sim.Simulator, _ domain.ItemID, pantry domain.LocationID) {
+				parent := placeUnder(t, s, pantry)
+				if parent == nil || *parent != s.HasLocation("Attic") {
+					t.Errorf("the pantry did not move into the Attic")
+				}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := sim.New(t)
+			rice, pantry := stockedTree(t, s)
+			p, ctx := s.Planner(), s.Context()
+			s.Apply(p.NewCategory(ctx, ops.NewCategoryRequest{Name: "Grains"}))
+			s.Apply(p.NewLocation(ctx, ops.NewLocationRequest{Name: "Attic"}))
 
-	// Pick up in the contents pane, put down on the rail: the gesture spans
-	// the two halves now rather than two tabs.
-	s.ByPlace()
-	s.OnContents()
-	s.Send(sim.AltW)
-	s.ShowsText("carrying")
+			tc.lens(s)
+			s.Send(sim.Press("m"))
+			s.ShowsText("MOVE")
+			s.Send(sim.Type(tc.where))
+			s.Send(sim.Enter)
 
-	s.GoTo("Kitchen")
-	s.Send(sim.CtrlY)
-
-	s.OnHand(rice, 500*domain.Scale) // moved, not consumed
-	if held := holdingsIn(t, s, pantry); held != 0 {
-		t.Errorf("%d holdings left in the pantry, want 0", held)
+			tc.check(t, s, rice, pantry)
+		})
 	}
 }
 
-func TestCopyAndPutReclassifiesAnItemInTheCategoriesTree(t *testing.T) {
-	s := sim.New(t)
-	rice, _ := stockedTree(t, s)
-	s.Apply(s.Planner().NewCategory(s.Context(), ops.NewCategoryRequest{Name: "Grains"}))
-	grains := s.HasCategory("Grains")
-
-	s.ByKind()
-	s.OnContents()
-	s.ShowsText("Basmati Rice")
-	s.Send(sim.AltW)
-	s.ShowsText("carrying")
-
-	s.GoTo("Grains")
-	s.Send(sim.CtrlY)
-
-	if got := categoryOf(t, s, rice); got != grains {
-		t.Errorf("the rice is filed under %d, want Grains (%d)", got, grains)
-	}
-}
-
-// The prompt is the other half: for when you already know where it goes.
-func TestThePromptMovesAThing(t *testing.T) {
-	s := sim.New(t)
-	rice, pantry := stockedTree(t, s)
-	s.ByPlace()
-	s.OnContents()
-
-	s.Send(sim.Press("m"))
-	s.ShowsText("where to")
-	s.Send(sim.Type("Kitchen"))
-	s.Send(sim.Enter)
-
-	s.OnHand(rice, 500*domain.Scale)
-	if held := holdingsIn(t, s, pantry); held != 0 {
-		t.Errorf("%d holdings left in the pantry, want 0", held)
-	}
-}
-
-// And it says what it is doing in the thing's own words: stock moves, a kind of
-// thing is filed.
-func TestThePromptAsksTheRightQuestionForTheKind(t *testing.T) {
+// Typing narrows the destinations by their whole path, which is the naming
+// half of the gesture -- without being a different screen from the pointing
+// half, which is what the old prompt was.
+func TestMovingNarrowsByTyping(t *testing.T) {
 	s := sim.New(t)
 	stockedTree(t, s)
-
-	s.ByKind()
+	s.ByPlace()
 	s.OnContents()
+
 	s.Send(sim.Press("m"))
-	s.ShowsText("file it under")
-	s.HidesText("where to")
+	s.ShowsText("Kitchen")
+	s.ShowsText("Kitchen > Left Pantry")
+
+	s.Send(sim.Type("pantry"))
+	s.ShowsText("Kitchen > Left Pantry")
+	// The parent no longer matches on its own.
+	if strings.Contains(s.PlainView(), "\n> Kitchen \n") {
+		t.Errorf("the filter left a row it does not match:\n%s", s.PlainView())
+	}
 }
 
-// The two mismatches are refused in terms of the things. Putting stock into a
-// classification is not a near miss to be coerced: a classification is not
-// anywhere.
-func TestPuttingAThingWhereItCannotGoIsRefused(t *testing.T) {
+// A place cannot go inside itself or anything under it.
+//
+// Ruled out of the list rather than refused after the fact: the tree would
+// stop being a tree, and a person should not be able to aim at an answer the
+// cycle guard is going to reject.
+func TestAPlaceCannotBeMovedIntoItself(t *testing.T) {
 	s := sim.New(t)
-	rice, pantry := stockedTree(t, s)
+	awkwardHouse(t, s)
+	s.ByPlace()
+	s.GoTo("Garage")
+
+	s.Send(sim.Press("m"))
+	s.ShowsText("MOVE")
+	for _, own := range []string{"Metal Shelving Unit", "Bay 3", "Blue Crate", "Small Parts Tray"} {
+		if strings.Contains(destinations(s), own) {
+			t.Errorf("the Garage was offered %q, which is inside it:\n%s", own, s.PlainView())
+		}
+	}
+	// And somewhere it CAN go is still there.
+	if !strings.Contains(destinations(s), "Left Pantry") {
+		t.Errorf("no destination outside the Garage was offered:\n%s", s.PlainView())
+	}
+}
+
+// A selection moves together, in one transaction.
+//
+// Two DIFFERENT items, because two holdings of one item arriving in one place
+// would merge -- which the planner refuses, correctly, and which would make
+// this a test of that refusal rather than of the gesture.
+func TestMovingManyRowsIsOneGesture(t *testing.T) {
+	s := sim.New(t)
+	_, pantry := stockedTree(t, s)
+	p, ctx := s.Planner(), s.Context()
+	s.Apply(p.NewItem(ctx, ops.NewItemRequest{
+		Name: "Cumin", Category: s.HasCategory("Pantry"),
+		Counting: ops.CountingMeasured, ContentUnit: "g",
+	}))
+	s.Apply(p.Receive(ctx, ops.ReceiveRequest{
+		Item: s.HasItem("Cumin"), Location: pantry, Basis: domain.BasisContent,
+		Amount: domain.FromMilli(50 * domain.Scale),
+	}))
+	s.Apply(p.NewLocation(ctx, ops.NewLocationRequest{Name: "Attic"}))
+	attic := s.HasLocation("Attic")
 
 	s.ByPlace()
 	s.OnContents()
-	s.Send(sim.AltW)
+	s.Send(sim.CtrlSpace)
+	s.Send(sim.CtrlN)
+	s.Send(sim.CtrlSpace)
+	s.ShowsText("2 selected")
 
-	s.ByKind()
-	s.OnRail()
-	s.Send(sim.CtrlY)
-	s.ShowsText("is stock")
+	s.Send(sim.Press("m"))
+	s.ShowsText("2 holdings")
+	s.Send(sim.Type("Attic"))
+	s.Send(sim.Enter)
 
-	// And nothing happened.
+	if held := holdingsIn(t, s, attic); held != 2 {
+		t.Errorf("the attic holds %d, want both of the moved rows", held)
+	}
+	if held := holdingsIn(t, s, pantry); held != 0 {
+		t.Errorf("%d holdings left in the pantry, want none", held)
+	}
+}
+
+func TestEscapingAMoveChangesNothing(t *testing.T) {
+	s := sim.New(t)
+	rice, pantry := stockedTree(t, s)
+	s.ByPlace()
+	s.OnContents()
+
+	s.Send(sim.Press("m"))
+	s.Send(sim.Type("Kitchen"))
+	s.Send(sim.Esc)
+
+	s.HidesText("MOVE")
 	s.OnHand(rice, 500*domain.Scale)
 	if held := holdingsIn(t, s, pantry); held != 1 {
 		t.Errorf("%d holdings in the pantry, want the 1 that was never moved", held)
 	}
 }
 
-// A container is not a thing to pick up. Moving a PLACE is a different command
-// with different consequences -- everything inside it goes too -- so it is not
-// something to reach by the same gesture as moving one jar.
-func TestCopyingAContainerIsRefused(t *testing.T) {
-	s := sim.New(t)
-	stockedTree(t, s)
-	s.ByPlace()
-	s.OnRail()
-	s.Send(sim.Press("v"))
-
-	s.Send(sim.AltW)
-	s.ShowsText("reparent location")
-	s.HidesText("carrying")
+// destinations is the move drawer's own rows: everything between its heading
+// and the rule that ends it.
+//
+// Bounded at both ends on purpose. Taking everything after the heading swept
+// up the inspector line below the drawer, which names the row being moved --
+// so the test read "Basmati Rice was offered as a destination" about a line
+// that was describing what was in hand.
+func destinations(s *sim.Simulator) string {
+	_, after, found := strings.Cut(s.PlainView(), "MOVE  ")
+	if !found {
+		return ""
+	}
+	// Past the heading's own line, which names the thing being carried, and
+	// stopping at the rule below the rows.
+	_, rows, found := strings.Cut(after, "\n")
+	if !found {
+		return ""
+	}
+	rows, _, _ = strings.Cut(rows, "\n---")
+	return rows
 }
 
-// Both read through the query path rather than the screen, which is the point
-// of the harness: keys go in the front and the assertion is on the far side.
+// placeUnder is where a location sits. Named apart from parentOf, which is
+// the categories' one.
+func placeUnder(t *testing.T, s *sim.Simulator, id domain.LocationID) *domain.LocationID {
+	t.Helper()
+	loc, err := s.Reader().Location(s.Context(), id)
+	if err != nil {
+		t.Fatalf("location %d: %v", id, err)
+	}
+	return loc.Parent
+}
 
 func holdingsIn(t *testing.T, s *sim.Simulator, location domain.LocationID) int {
 	t.Helper()
@@ -508,158 +592,6 @@ func categoryOf(t *testing.T, s *sim.Simulator, item domain.ItemID) domain.Categ
 	}
 	t.Fatalf("no item %d", item)
 	return 0
-}
-
-// ---------------------------------------------------------------------------
-// Carrying a thing to where it goes.
-//
-// The gesture already worked. What it did not do is SAY anything: carry() spoke
-// through the status line, and every view change overwrites the status line --
-// so the one keystroke the gesture needs in the middle destroyed the only
-// evidence that anything was in hand. You picked a thing up, went to the tree,
-// and the screen said nothing at all.
-
-// The banner is the fix, and this is the case that was broken.
-func TestWhatIsCarriedIsSaidInEveryView(t *testing.T) {
-	s := sim.New(t)
-	rice, _ := stockedTree(t, s)
-	_ = rice
-
-	s.ByPlace()
-	s.OnContents()
-	s.Send(sim.AltW)
-	s.ShowsText("carrying")
-
-	// The view switch is the middle of the gesture, and it used to be where the
-	// screen went quiet.
-	for _, view := range []string{"2", "1", "3", "4"} {
-		s.Send(sim.Press(view))
-		if !s.Contains("carrying") {
-			t.Fatalf("view %s forgot what was in hand:\n%s", view, s.PlainView())
-		}
-	}
-}
-
-// It says where the thing can go, which is the half worth reading: a Holding
-// goes in a place and an Item is filed under a classification, and being told
-// which by a refusal is being told too late.
-func TestTheBannerSaysWhereTheThingCanGo(t *testing.T) {
-	s := sim.New(t)
-	stockedTree(t, s)
-
-	s.ByPlace()
-	s.OnContents()
-	s.Send(sim.AltW)
-	s.ShowsText("puts it in a place")
-
-	s.Send(sim.Esc)
-	// An Item, picked up in the kind lens, where the contents are Items.
-	s.ByKind()
-	s.OnContents()
-	s.Send(sim.AltW)
-	s.ShowsText("files it under a classification")
-}
-
-// esc puts it down. It was the only mode in this interface with no way out.
-func TestEscPutsDownWhatIsBeingCarried(t *testing.T) {
-	s := sim.New(t)
-	rice, _ := stockedTree(t, s)
-
-	s.ByPlace()
-	s.OnContents()
-	s.Send(sim.AltW)
-	s.ShowsText("carrying")
-	s.Send(sim.Esc)
-	s.HidesText("carrying")
-
-	// And it really is down: a put afterwards has nothing to put.
-	s.ByPlace()
-	s.OnRail()
-	s.Send(sim.CtrlY)
-	s.ShowsText("nothing in hand")
-	s.OnHand(rice, 500*domain.Scale)
-}
-
-// `m` picks the thing up as well as asking where it goes, so one key starts a
-// move and either half can finish it -- name the destination, or go and point
-// at it.
-func TestTheMoveKeyPicksItUpAsWell(t *testing.T) {
-	s := sim.New(t)
-	rice, pantry := stockedTree(t, s)
-
-	s.ByPlace()
-	s.OnContents()
-	s.Send(sim.Press("m"))
-	s.ShowsText("carrying")
-
-	// Out of the dropdown, then out of the prompt. Each esc leaves exactly one
-	// mode, and neither of them is the carry.
-	s.Send(sim.Esc, sim.Esc)
-	s.HidesText("where to")
-	s.ShowsText("carrying")
-
-	s.GoTo("Kitchen")
-	s.Send(sim.CtrlY)
-
-	s.HidesText("carrying")
-	s.OnHand(rice, 500*domain.Scale)
-	if at := locationOf(t, s, rice); at == pantry {
-		t.Error("the rice never left the pantry")
-	}
-}
-
-// Answering the prompt finishes the same move, and puts down what it picked up.
-// Otherwise the banner would insist a thing was still in hand after it had been
-// relocated.
-func TestATypedAnswerPutsDownWhatMPickedUp(t *testing.T) {
-	s := sim.New(t)
-	rice, pantry := stockedTree(t, s)
-
-	s.ByPlace()
-	s.OnContents()
-	s.Send(sim.Press("m"))
-	s.Send(sim.Type("Kitchen"))
-	s.Send(sim.Enter)
-	s.Send(sim.Enter) // the first took the completion, the second confirms
-
-	s.HidesText("carrying")
-	s.OnHand(rice, 500*domain.Scale)
-	if at := locationOf(t, s, rice); at == pantry {
-		t.Errorf("the typed move did not happen:\n%s", s.PlainView())
-	}
-}
-
-// The seam between the two kinds of list.
-//
-// While the prompt is open every keystroke is the prompt's, so C-n walks the
-// DROPDOWN and the cursor underneath does not move. Close the prompt and the
-// same key walks the house. One key, two meanings, and which one is in force
-// is exactly what the prompt being open decides.
-func TestCNWalksTheDropdownThenTheHouse(t *testing.T) {
-	s := sim.New(t)
-	stockedTree(t, s)
-	s.ByPlace()
-	s.GoTo("Kitchen")
-
-	under := s.Model().RailName()
-	s.OnContents()
-	s.Send(sim.Press("m"))
-	s.Send(sim.Type("k")) // enough to offer the Kitchen and its pantry
-	s.Send(sim.CtrlN)
-	if got := s.Model().RailName(); got != under {
-		t.Errorf("C-n moved the rail from %q to %q while a prompt was open", under, got)
-	}
-	s.ShowsText("TAB to take it")
-
-	// Out of the dropdown, then out of the prompt, then the same key walks
-	// the contents pane it was opened over.
-	s.Send(sim.Esc, sim.Esc)
-	s.HidesText("TAB to take it")
-	s.OnRail()
-	s.Send(sim.CtrlN)
-	if got := s.Model().RailName(); got == under {
-		t.Errorf("C-n did not move the rail once the prompt was closed: %q", got)
-	}
 }
 
 // locationOf is where a holding of an item is stowed.

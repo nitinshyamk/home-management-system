@@ -1,7 +1,7 @@
 BY PLACE  the house > Shelf 1                                                             2 holdings
 ----------------------------------------------------------------------------------------------------
   NAME                              │  ITEM ^                                                    QTY
-  ▾ the house                      2│> Basmati Rice                                            500 g
+  ▾ the house                      2│  Basmati Rice                                            500 g
       Shelf 1                      2│  Cumin                                                   500 g
 ----------------------------------------------------------------------------------------------------
 IMPORT  receipt.csv   5 rows

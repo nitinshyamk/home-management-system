@@ -103,7 +103,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.current = m.shellFor(msg)
-		m = m.aiming()
 		m = m.applyFilter()
 		if wasOn >= 0 {
 			m = m.focusKey(wasOn)
@@ -152,11 +151,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.folds[sh.lens] = sh.Folds()
 		}
 		m.current = newSectionedText(msg.rows, msg.headings, m.width, m.bodyHeight())
-		// A fresh surface knows nothing about what is in hand, and a carry
-		// outlives every load it takes to go and find the destination.
-		m = m.aiming()
-
-		// And the filter, which lives on the omnibox rather than on the
+		// The filter, which lives on the omnibox rather than on the
 		// surface -- so a fresh surface arrives unfiltered while the line still
 		// says it is filtered. Re-applying is what keeps the two agreeing.
 		m = m.applyFilter()
@@ -257,6 +252,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case candidatesMsg:
 		m.candidates, m.units = msg.candidates, msg.units
+		// A move waiting on them: it asked for the index so its list of
+		// destinations would be the tree as it is now.
+		if m.moving != nil && m.moving.all == nil {
+			mv := m.moving.withDestinations(msg.candidates)
+			if len(mv.all) == 0 {
+				m.moving = nil
+				return m.refuse("nowhere to put %q", mv.name), nil
+			}
+			m.moving = &mv
+			m.say = m.say.Clear()
+			return m, nil
+		}
 		m.index = resolve.NewIndex(msg.candidates)
 		m.creator = m.creator.WithUnits(msg.units)
 		m = m.refreshJump()
