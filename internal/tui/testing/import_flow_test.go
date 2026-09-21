@@ -114,6 +114,50 @@ acquire,Cumin,20,Cellar,,,,,
 	}
 }
 
+// A plan waiting in a folder is reached from inside the house.
+//
+// Quitting the house to review a file, and coming back afterwards to see what
+// it did, was the "unlinked from the import" complaint in its plainest form.
+// The folder walk that MAKES a plan is still `hms import`, where a
+// conversation with a pause measured in hours belongs; what moved inside is
+// the half that happens once a plan exists.
+func TestAWaitingPlanIsReachedFromInsideTheHouse(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HMS_HOME", home)
+
+	ready := filepath.Join(home, "imports", "march-receipt", "plan")
+	if err := os.MkdirAll(ready, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ready, "plan.jsonl"),
+		[]byte(`{"op":"acquire","item":"Basmati Rice","qty":"100g","at":"Shelf 1"}`+"\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A folder somebody is still filling has no plan in it, and is not an
+	// error -- it simply has nothing to review.
+	if err := os.MkdirAll(filepath.Join(home, "imports", "half-done", "input"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	s := sim.New(t)
+	kitchen(t, s)
+	s.ByPlace()
+
+	s.Send(sim.Press("i"))
+	s.ShowsText("1 waiting to review")
+	s.ShowsText("march-receipt")
+	s.HidesText("half-done")
+
+	s.Send(sim.Enter)
+	s.ShowsText("add 100 of Spices > Basmati Rice to Shelf 1")
+	// And the house came with it, steered to what the row would touch.
+	if got := s.Model().RailName(); got != "Shelf 1" {
+		t.Errorf("the house is on %q, want the shelf the plan lands on", got)
+	}
+	s.ContentsShow("500 g")
+}
+
 // A is refused with a reason rather than being a key that does nothing.
 func TestApplyIsRefusedWithAReason(t *testing.T) {
 	s := sim.New(t)

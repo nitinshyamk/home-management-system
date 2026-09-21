@@ -91,6 +91,9 @@ const (
 	// ViewAttention is what needs answering: the ledger's disagreements, and
 	// the nudges.
 	ViewAttention
+	// OpenImport lists the plans waiting to be reviewed, so a review happens
+	// against the house rather than after quitting it.
+	OpenImport
 
 	// Folding.
 	FoldToggle
@@ -225,6 +228,7 @@ var contexts = map[Context][]binding{
 		// a character anything in this house is called.
 		{LensFlip, []string{"\\"}, "lens"},
 		{ViewAttention, []string{"!"}, "attention"},
+		{OpenImport, []string{"i"}, "import"},
 	}...),
 
 	Line: lineBindings(),

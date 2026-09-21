@@ -101,11 +101,12 @@ type Model struct {
 	// copied is a thing waiting for a put.
 	copied *carried
 
-	// The import flow. importing swaps the whole screen for the plan review,
-	// because a file proposing a batch of changes is not something to look at
-	// alongside the house -- it is the only thing worth looking at until it is
-	// settled. settling is the row a creation panel was opened for, or -1.
-	flow     flow
+	// The import flow: a plan in the drawer below the house, reviewed against
+	// it. settling is the row a creation panel was opened for, or -1.
+	flow flow
+	// picking is the list of plans waiting to be reviewed, while it is up.
+	// Nil the rest of the time, which is nearly always.
+	picking  *pickImport
 	fromView view
 
 	// say is everything the interface has to say about itself: the view's
