@@ -186,10 +186,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.say = m.say.Refuse(humanise(msg.err.Error()))
 			return m, nil
 		}
-		m.say = m.say.Clear()
-		picker := newPickImport(msg.found, m.width, m.drawerHeight())
-		m.picking = &picker
-		return m, nil
+		// Sized to what is waiting: the picker never scrolls, because a list
+		// of the imports on disk is a handful of rows and a scrollbar on it
+		// would be chrome around nothing.
+		picker := newPickImport(msg.found, m.width, len(msg.found)+1)
+		return m.open(&picker), nil
 
 	case issuesMsg:
 		// Humanised HERE, where an error crosses from the controller into
@@ -212,7 +213,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.staged(msg), nil
 
 	case importedMsg:
-		m.flow = m.flow.done()
+		m = m.withFlow(m.flow().done())
 		// Said before the load, and it survives it: a load replaces the view's
 		// hint and nothing else. This used to need reloadKeepingStatus, which
 		// re-ran the load and then put the old string back over the fresh one.
@@ -237,9 +238,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.creator = m.creator.Close()
 		// And when it was opened FOR a row of an import, that row is re-bound
 		// now that the thing it named exists.
-		if at, ok := m.flow.settlingRow(); ok {
-			m.flow = m.flow.settled()
-			entry, _, _ := m.flow.plan.Current()
+		if at, ok := m.flow().settlingRow(); ok {
+			m = m.settled()
+			entry, _, _ := m.flow().plan.Current()
 			return m, m.rebindRow(at, entry)
 		}
 		// Reload, because something changed. The list a person is looking at
@@ -254,13 +255,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.candidates, m.units = msg.candidates, msg.units
 		// A move waiting on them: it asked for the index so its list of
 		// destinations would be the tree as it is now.
-		if m.moving != nil && m.moving.all == nil {
-			mv := m.moving.withDestinations(msg.candidates)
+		if mv, ok := m.drawer.(*moving); ok && mv.all == nil {
+			*mv = mv.withDestinations(msg.candidates)
 			if len(mv.all) == 0 {
-				m.moving = nil
-				return m.refuse("nowhere to put %q", mv.name), nil
+				return m.close().refuse("nowhere to put %q", mv.what), nil
 			}
-			m.moving = &mv
 			m.say = m.say.Clear()
 			return m, nil
 		}

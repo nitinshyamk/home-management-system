@@ -125,10 +125,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if len(offers) == 0 {
 			return m.refuse("nothing to do to this"), nil
 		}
-		m.say = m.say.Clear()
 		p := newPalette(offers, m.width, len(offers)+3)
-		m.acting = &p
-		return m, nil
+		return m.open(&p), nil
 	case keys.Refresh:
 		return m, m.load(m.view)
 

@@ -3,7 +3,6 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/omnibox"
 )
 
@@ -49,59 +48,33 @@ type layer struct {
 // confirmation, and a field that let ctrl+u reach the plan screen underneath
 // was the bug that put this order in the code to begin with.
 func (m Model) layers() []layer {
-	return []layer{
+	inner := []layer{
 		{name: "confirmation", active: m.confirm != nil, handle: Model.handleConfirm},
 		{name: "field", active: m.editor.IsOpen(), handle: Model.handleEditor},
 		{name: "panel", active: m.creator.IsOpen(), handle: Model.handleCreator},
-		// After the field and the panel, because they open INSIDE it. Putting
-		// the plan first meant its table ate ctrl+u while someone was clearing
-		// a field, and enter settled the row instead of saving what they had
-		// typed into it.
-		// Before the plan, because choosing WHICH plan comes first and the two
-		// are never up together.
-		{
-			name: "import picker", active: m.picking != nil, handle: Model.handlePick,
-			offers: keys.Hint(keys.Browse, []keys.Action{keys.Confirm}, []keys.Action{keys.Cancel}),
-		},
-		{
-			name: "act palette", active: m.acting != nil, handle: Model.handlePalette,
-			// It draws its own keys, one per row, which is the whole idea.
-			offers: keys.Hint(keys.Browse, []keys.Action{keys.Cancel}),
-		},
-		{
-			name: "destinations", active: m.moving != nil, handle: Model.handleMoving,
-			// Worded here rather than taken from the keymap: enter is
-			// "history" everywhere else, and a line that said so under a list
-			// of shelves would be naming the wrong thing entirely.
-			offers: keys.Show(keys.Browse, keys.Confirm) + " put it there - " +
-				keys.Show(keys.Browse, keys.Cancel) + " put it down - type to narrow",
-		},
-		{
-			name: "import plan", active: m.flow.reviewing(), handle: Model.handleImport,
-			offers: m.planKeys(),
-		},
-		{
-			name: "input line", active: m.box.Mode() != omnibox.Closed, handle: Model.handleOmnibox,
-			// The line is the mode, and it draws its own accept and cancel.
-			offers: "",
-		},
 	}
-}
-
-// planKeys is what the plan screen takes, which depends on which stage it is.
-//
-// Skipping is offered only where it is possible. A key named under a screen
-// that ignores it is worse than a key named nowhere: the line at the bottom is
-// permanent, so the only thing that makes it worth the row is that it can be
-// believed.
-func (m Model) planKeys() string {
-	groups := [][]keys.Action{
-		{keys.Confirm}, {keys.Drop}, {keys.Undrop}, {keys.ApplyAll},
+	// The region below the house is ONE entry, whatever is in it, and it is
+	// an entry only while something is. Each occupant says its own name and
+	// its own keys, so adding one is implementing an interface rather than
+	// editing this list -- and a closed region is not a nameless mode sitting
+	// in the order, it is the absence of one.
+	//
+	// After the field and the panel, because they open INSIDE it. Putting the
+	// plan first meant its table ate ctrl+u while someone was clearing a
+	// field, and enter settled the row instead of saving what they had typed.
+	if m.drawer != nil {
+		inner = append(inner, layer{
+			name: m.drawer.name(), active: true, offers: m.drawer.keys(m),
+			handle: func(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+				return m.drawer.update(m, msg)
+			},
+		})
 	}
-	if m.flow.plan.Stage().Skippable {
-		groups = append(groups, []keys.Action{keys.SkipStage})
-	}
-	return keys.Hint(keys.Plan, append(groups, []keys.Action{keys.Quit})...)
+	return append(inner, layer{
+		name: "input line", active: m.box.Mode() != omnibox.Closed, handle: Model.handleOmnibox,
+		// The line is the mode, and it draws its own accept and cancel.
+		offers: "",
+	})
 }
 
 // mode names what has the keystroke, or "browsing" when nothing is over the

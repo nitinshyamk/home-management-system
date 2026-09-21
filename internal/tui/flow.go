@@ -1,7 +1,10 @@
 package tui
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
+
 	"home-management-system/internal/importer"
+	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/planview"
 )
 
@@ -109,3 +112,60 @@ func (f flow) again(plan planview.Model, applied int) flow {
 
 // done ends the import.
 func (f flow) done() flow { return flow{settling: noRow} }
+
+// ---------------------------------------------------------------------------
+// The flow as a drawer
+// ---------------------------------------------------------------------------
+
+// The plan is one occupant of the region below the house, like the others.
+// It was the last to become one: it predated the drawer and kept its own
+// return path in View, which is why it alone did not shrink the house behind
+// it until somebody noticed.
+
+func (f flow) name() string { return "import plan" }
+
+// height is what the plan would like, bounded so the house keeps a few rows
+// whatever the file proposes. A drawer that squeezed the house to nothing
+// would be the full-screen takeover again with a rule drawn across it.
+func (f flow) height(m Model) int {
+	const (
+		leastHouse  = 6
+		leastDrawer = 6 // the chrome, and one row to look at
+		theRule     = 1
+	)
+	return max(leastDrawer, min(f.plan.Wants(), m.room()-leastHouse-theRule))
+}
+
+func (f flow) update(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	return m.handleImport(msg)
+}
+
+// keys is what the plan screen takes, which depends on which stage it is.
+//
+// Skipping is offered only where it is possible. A key named under a screen
+// that ignores it is worse than a key named nowhere: the line at the bottom
+// is permanent, so the only thing that makes it worth the row is that it can
+// be believed.
+func (f flow) keys(Model) string {
+	groups := [][]keys.Action{
+		{keys.Confirm}, {keys.Drop}, {keys.Undrop}, {keys.ApplyAll},
+	}
+	if f.plan.Stage().Skippable {
+		groups = append(groups, []keys.Action{keys.SkipStage})
+	}
+	return keys.Hint(keys.Plan, append(groups, []keys.Action{keys.Quit})...)
+}
+
+func (f flow) lines(m Model) []string {
+	// The field goes INTO the plan, spliced after its row. The creation panel
+	// does not: it is about a thing that does not exist yet rather than about
+	// the row's text, and it is tall enough that splicing it would push the
+	// plan off the screen it is confirming.
+	return lines(f.plan.
+		SetSize(m.width, f.height(m)).
+		SetOverlay(m.editor.SetWidth(m.width).Lines()).
+		View())
+}
+
+// facts is what the plan says about itself, for the line the chrome keeps.
+func (f flow) facts(m Model) []string { return f.plan.Facts() }

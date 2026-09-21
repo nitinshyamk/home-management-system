@@ -99,16 +99,15 @@ type Model struct {
 	// total is what the rail's root rolls up, for the header.
 	total int64
 
-	// The import flow: a plan in the drawer below the house, reviewed against
-	// it. settling is the row a creation panel was opened for, or -1.
-	flow flow
-	// picking is the list of plans waiting to be reviewed, while it is up.
-	// Nil the rest of the time, which is nearly always.
-	picking *pickImport
-	// acting is the act palette, while it is open.
-	acting *palette
-	// moving is a move in progress: what is in hand, and where it could go.
-	moving   *moving
+	// drawer is whatever is open below the house -- the destinations a move
+	// offers, the verbs a row takes, the plans waiting, the plan being
+	// reviewed. Nil the rest of the time, which is nearly always.
+	//
+	// ONE field, because the region is one region. It was four, and each new
+	// one had to be wired into the model, the layer list, the renderer and
+	// the height arithmetic before it worked; the plan never got the fourth
+	// and so never shrank the house behind it.
+	drawer   drawer
 	fromView view
 
 	// say is everything the interface has to say about itself: the view's
@@ -141,7 +140,6 @@ func New(ctx context.Context, ctrl app.Controller) Model {
 		box:     omnibox.New(),
 		editor:  editor.New(),
 		creator: creator.New(),
-		flow:    newFlow(),
 		say:     status.New(),
 		railKey: map[lens]int64{},
 		folds:   map[lens]map[int64]bool{},

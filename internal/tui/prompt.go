@@ -61,7 +61,7 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 		// Whatever settle this field was opened for is over, cancelled as much
 		// as confirmed. Leaving the row index behind meant "row 3 is being
 		// settled" with nothing on screen agreeing.
-		m.flow = m.flow.settled()
+		m = m.settled()
 		m.say = m.say.Clear().Report("unchanged")
 		return m, nil
 	case keys.Confirm:

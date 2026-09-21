@@ -58,7 +58,7 @@ func (m Model) handleCreator(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case keys.Cancel:
 		m.creator = m.creator.Close()
 		// As with the field: a cancelled settle is a finished settle.
-		m.flow = m.flow.settled()
+		m = m.settled()
 		m.say = m.say.Report("nothing was created")
 		return m, nil
 	case keys.Confirm:

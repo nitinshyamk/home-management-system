@@ -33,7 +33,7 @@ type moving struct {
 	// what is being carried, and what kind of destination it takes.
 	kind  string
 	ids   []int64
-	name  string
+	what  string
 	from  string
 	wants resolve.Kind
 
@@ -46,7 +46,9 @@ type moving struct {
 	// arriving later do not carry.
 	excluded map[int64]bool
 
-	width, height int
+	width int
+	// shown is how many lines the list of destinations takes.
+	shown int
 }
 
 // startMoving picks up whatever the cursor is on and asks where it goes.
@@ -56,7 +58,7 @@ func (m Model) startMoving() (Model, tea.Cmd) {
 		return m.refuse("nothing here to move"), nil
 	}
 
-	mv := moving{name: sel.Name, kind: sel.Kind}
+	mv := moving{what: sel.Name, kind: sel.Kind}
 	switch sel.Kind {
 	case kindHolding:
 		mv.wants = resolve.KindLocation
@@ -68,7 +70,7 @@ func (m Model) startMoving() (Model, tea.Cmd) {
 			mv.ids = append(mv.ids, int64(r.ID))
 		}
 		if len(rows) > 1 {
-			mv.name = fmt.Sprintf("%d holdings", len(rows))
+			mv.what = fmt.Sprintf("%d holdings", len(rows))
 		}
 		mv.from = rows[0].LocationPath
 
@@ -106,8 +108,8 @@ func (m Model) startMoving() (Model, tea.Cmd) {
 	// they have to be, because the tree they describe is what the move is
 	// about, and a stale one would offer a shelf that is no longer there.
 	mv.width = m.width
-	m.moving = &mv
-	m.say = m.say.Working(fmt.Sprintf("where does %q go?", mv.name))
+	m = m.open(&mv)
+	m.say = m.say.Working(fmt.Sprintf("where does %q go?", mv.what))
 	return m, m.loadCandidates()
 }
 
@@ -172,10 +174,9 @@ func (mv moving) refresh() moving {
 		}
 		rows = append(rows, table.Row{Key: c.ID, Cells: []string{c.Path}})
 	}
-	height := min(len(rows)+1, 9)
+	mv.shown = min(len(rows)+1, 9)
 	mv.tbl = table.New([]table.Column{{Title: "", Min: 12, Grow: true}}).
-		Fixed().Headerless().SetRows(rows).SetSize(mv.width, height)
-	mv.height = height
+		Fixed().Headerless().SetRows(rows).SetSize(mv.width, mv.shown)
 	return mv
 }
 
@@ -189,41 +190,35 @@ func (mv moving) chosen() (int64, bool) {
 }
 
 // handleMoving takes the keystroke while the destinations are up.
-func (m Model) handleMoving(msg tea.KeyMsg) (Model, tea.Cmd) {
+func (m Model) handleMoving(mv *moving, msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Browse, msg) {
 	case keys.Cancel:
-		m.moving = nil
+		m = m.close()
 		m.say = m.say.Report("put it down; nothing moved")
 		return m, nil
 	case keys.Confirm:
-		return m.commitMove()
+		return m.commitMove(mv)
 	}
 	switch msg.Type {
 	case tea.KeyBackspace:
-		mv := *m.moving
 		mv.filter = trimRune(mv.filter)
-		mv = mv.refresh()
-		m.moving = &mv
+		*mv = mv.refresh()
 		return m, nil
 	case tea.KeyRunes, tea.KeySpace:
 		// Typing filters by path, which is the naming half of the gesture.
 		// It is the same field the old prompt was, without being a different
 		// screen from the pointing half.
 		if !msg.Alt {
-			mv := *m.moving
 			mv.filter += string(msg.Runes)
 			if msg.Type == tea.KeySpace {
 				mv.filter += " "
 			}
-			mv = mv.refresh()
-			m.moving = &mv
+			*mv = mv.refresh()
 			return m, nil
 		}
 	}
-	next, _ := m.moving.tbl.Update(msg)
-	mv := *m.moving
+	next, _ := mv.tbl.Update(msg)
 	mv.tbl = next
-	m.moving = &mv
 	return m, nil
 }
 
@@ -237,13 +232,12 @@ func trimRune(s string) string {
 
 // commitMove turns the carried thing and the chosen destination into
 // Commands -- one per thing, so a multi-row move is one transaction.
-func (m Model) commitMove() (Model, tea.Cmd) {
-	mv := *m.moving
+func (m Model) commitMove(mv *moving) (Model, tea.Cmd) {
 	to, ok := mv.chosen()
 	if !ok {
 		return m.refuse("no destination chosen"), nil
 	}
-	m.moving = nil
+	m = m.close()
 
 	var cmds []command.Command
 	switch mv.kind {
@@ -273,14 +267,30 @@ func (m Model) commitMove() (Model, tea.Cmd) {
 	return m, m.runCommands(cmds)
 }
 
-// movingView draws the destinations, headed by what is in hand.
+func (mv *moving) name() string           { return "destinations" }
+func (mv *moving) height(Model) int       { return mv.shown + 1 } // and its heading
+func (mv *moving) lines(m Model) []string { return mv.view(m.width) }
+
+func (mv *moving) update(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	return m.handleMoving(mv, msg)
+}
+
+func (mv *moving) keys(Model) string {
+	// Worded here rather than taken from the keymap: enter is "history"
+	// everywhere else, and a line that said so under a list of shelves would
+	// be naming the wrong thing entirely.
+	return keys.Show(keys.Browse, keys.Confirm) + " put it there - " +
+		keys.Show(keys.Browse, keys.Cancel) + " put it down - type to narrow"
+}
+
+// view draws the destinations, headed by what is in hand.
 func (mv moving) view(width int) []string {
 	goes := "goes in a place"
 	switch mv.wants {
 	case resolve.KindCategory:
 		goes = "is filed under a classification"
 	}
-	head := style.Dim.Render("MOVE  ") + style.Strong.Render(mv.name) +
+	head := style.Dim.Render("MOVE  ") + style.Strong.Render(mv.what) +
 		style.Dim.Render("   "+goes)
 	if mv.from != "" {
 		head += style.Dim.Render("   from " + mv.from)

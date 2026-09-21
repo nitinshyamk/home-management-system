@@ -77,14 +77,18 @@ func (p palette) byPress(pressed string) (offer, bool) {
 }
 
 // handlePalette takes the keystroke while the palette is open.
-func (m Model) handlePalette(msg tea.KeyMsg) (Model, tea.Cmd) {
+//
+// The palette is handed to it rather than read back off the model. A drawer
+// taking its own keystroke already has itself in hand, and fishing it out of
+// the interface again would be a type assertion that cannot fail written at
+// every one of these.
+func (m Model) handlePalette(p *palette, msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Browse, msg) {
 	case keys.Cancel, keys.Act:
-		m.acting = nil
-		return m, nil
+		return m.close(), nil
 	case keys.Confirm:
-		chosen, ok := m.acting.chosen()
-		m.acting = nil
+		chosen, ok := p.chosen()
+		m = m.close()
 		if !ok {
 			return m, nil
 		}
@@ -93,26 +97,35 @@ func (m Model) handlePalette(msg tea.KeyMsg) (Model, tea.Cmd) {
 	// A letter takes its offer outright. The list is sorted by how often a
 	// verb is wanted rather than alphabetically, so walking to the one you
 	// meant would be slower than the key it is labelled with.
-	if chosen, ok := m.acting.byPress(keys.Display(msg.String())); ok {
-		m.acting = nil
-		return m.take(chosen)
+	if chosen, ok := p.byPress(keys.Display(msg.String())); ok {
+		return m.close().take(chosen)
 	}
-	next, _ := m.acting.tbl.Update(msg)
-	m.acting.tbl = next
+	next, _ := p.tbl.Update(msg)
+	p.tbl = next
 	return m, nil
 }
 
-// paletteView draws the palette in the drawer, headed by what it is about.
-func (m Model) paletteView() []string {
+func (p *palette) name() string { return "act palette" }
+
+// keys is only the way out. Every other key it takes is drawn beside the row
+// it belongs to, which is the whole idea.
+func (p *palette) keys(Model) string {
+	return keys.Hint(keys.Browse, []keys.Action{keys.Cancel})
+}
+
+// height is a line per offer, the heading, and the line the table keeps.
+// Small enough that it never scrolls, which is what makes a letter beside
+// every row worth having.
+func (p *palette) height(Model) int { return len(p.offers) + 2 }
+
+func (p *palette) update(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	return m.handlePalette(p, msg)
+}
+
+// lines draws the palette, headed by what it is about.
+func (p *palette) lines(m Model) []string {
 	sel, _ := m.current.Current()
 	head := style.Dim.Render("ACT ON  ") + style.Strong.Render(sel.Name) +
 		style.Dim.Render(fmt.Sprintf("   %s", strings.ToLower(sel.Kind)))
-	return append([]string{head}, lines(m.acting.tbl.View())...)
-}
-
-// paletteHeight is the palette's share of the screen: a line per offer, the
-// heading, and the line the table keeps. Small enough that it never scrolls,
-// which is what makes a letter beside every row worth having.
-func (m Model) paletteHeight() int {
-	return len(m.acting.offers) + 2
+	return append([]string{head}, lines(p.tbl.View())...)
 }
