@@ -2,8 +2,6 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-
-	"home-management-system/internal/tui/planview"
 )
 
 // The drawer: one region below the house, and one interface into it.
@@ -91,17 +89,6 @@ func (m Model) withFlow(f flow) Model {
 	}
 	m.drawer = f
 	return m
-}
-
-// withPlan puts a changed plan screen back into the open import.
-//
-// The common case by a wide margin -- every keystroke the plan handles for
-// itself ends here -- so it is one call rather than the read, the field
-// assignment and the put-back written out at each of them.
-func (m Model) withPlan(p planview.Model) Model {
-	f := m.flow()
-	f.plan = p
-	return m.withFlow(f)
 }
 
 // settled ends whatever settle a field or panel was opened for.

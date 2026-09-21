@@ -14,7 +14,7 @@ import (
 	"home-management-system/internal/tui/creator"
 	"home-management-system/internal/tui/editor"
 	"home-management-system/internal/tui/keys"
-	"home-management-system/internal/tui/planview"
+	"home-management-system/internal/tui/review"
 	"home-management-system/internal/tui/tree"
 )
 
@@ -74,8 +74,8 @@ func (m Model) flowFor(path string) (flow, error) {
 	stages := importer.Bind(m.ctx, vocabulary, path, rows).Stages()
 	first := stages[0]
 	return newFlow().staged(
-		planview.New(first.Plan, summariser{names: names}).
-			WithStage(stageScreen(first.Stage, 1, len(stages))),
+		first.Plan, names,
+		stageScreen(first.Stage, 1, len(stages)),
 		stages[1:]), nil
 }
 
@@ -87,8 +87,8 @@ func (m Model) flowFor(path string) (flow, error) {
 // is something to go on TO. Skipping the last stage of an import would be a
 // longer way of pressing q, and a key offered under a screen that ignores it is
 // worse than a key offered nowhere.
-func stageScreen(stage importer.Stage, number, of int) planview.Stage {
-	return planview.Stage{
+func stageScreen(stage importer.Stage, number, of int) review.Stage {
+	return review.Stage{
 		Name: stage.String(), Number: number, Of: of,
 		Skippable: stage.Structural() && number < of,
 		InPasses:  stage.Structural(),
@@ -99,28 +99,6 @@ func stageScreen(stage importer.Stage, number, of int) planview.Stage {
 // where the choice between the two transports lives now that three callers
 // were making it.
 func ReadRows(path string) ([]importer.Row, error) { return importer.ReadFile(path) }
-
-// summariser renders a bound row in the terms of the receipt.
-//
-// It holds the names rather than the Controller. Asking the Controller meant
-// asking it PER ROW, and app.Controller.Describe builds a whole search index to
-// answer -- every category, location, item and holding, read from the database,
-// once for each row of the plan, every time the plan redrew. A five-row receipt
-// cost five whole-vocabulary reads per drop keystroke; a two-hundred-row one
-// cost two hundred.
-type summariser struct {
-	names command.Namer
-}
-
-func (s summariser) Describe(entry importer.Entry) string {
-	if entry.Command != nil {
-		return command.Summary(entry.Command, s.names)
-	}
-	// Not bound yet, so there are no identifiers to render names from. The raw
-	// text is what the person wrote, which is the next best thing to show and
-	// is in fact what they will be correcting.
-	return entry.AsWritten()
-}
 
 // handleImport takes the keystroke while a plan is on screen.
 func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -137,10 +115,22 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.settleRow()
 	case keys.EditInPlace:
 		return m.editRow()
+	case keys.Drop:
+		// Dropping is how a row gets settled without being fixed. It is
+		// reversible right up until the stage is applied, which is why it
+		// does not ask.
+		//
+		// Taken HERE rather than by the review screen, with the other keys
+		// that change the file. Undropping is BINDING a row again, and a
+		// screen that could bind would be a screen that had to hold the
+		// vocabulary -- which is how it came to hold the whole importer.
+		return m.withFlow(m.flow().drop(m.flow().screen.At())), nil
+	case keys.Undrop:
+		return m.withFlow(m.flow().undrop(m.flow().screen.At())), nil
 	}
-	was, _, _ := m.flow().plan.Current()
-	next, handled := m.flow().plan.Update(msg)
-	m = m.withPlan(next)
+	was, _, _ := m.flow().current()
+	next, handled := m.flow().screen.Update(msg)
+	m = m.withFlow(m.flow().withScreen(next))
 	if handled {
 		return m.follow(was)
 	}
@@ -165,7 +155,7 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 // nowhere leaves the house where it was rather than moving it somewhere
 // arbitrary.
 func (m Model) follow(was importer.Entry) (Model, tea.Cmd) {
-	entry, _, ok := m.flow().plan.Current()
+	entry, _, ok := m.flow().current()
 	if !ok || sameRow(was, entry) {
 		return m, nil
 	}
@@ -181,7 +171,7 @@ func (m Model) follow(was importer.Entry) (Model, tea.Cmd) {
 // question as the cursor moving within it, and a drawer that only steered on
 // the second would open showing the wrong shelf.
 func (m Model) steer() (Model, bool) {
-	entry, _, ok := m.flow().plan.Current()
+	entry, _, ok := m.flow().current()
 	if !ok || entry.Command == nil {
 		return m, false
 	}
@@ -209,9 +199,9 @@ func sameRow(a, b importer.Entry) bool { return a.Row.Line == b.Row.Line }
 // a whole screen, reviewed and applied as one unit of work, and the person is
 // told before they apply the first one that a second follows.
 func (m Model) applyImport() (Model, tea.Cmd) {
-	plan := m.flow().plan.Plan()
-	if !m.flow().plan.Applicable() {
-		return m.refuse("%s", m.flow().plan.WhyNot()), nil
+	plan := m.flow().bound
+	if !m.flow().applicable() {
+		return m.refuse("%s", m.flow().whyNot()), nil
 	}
 	commands := plan.Commands()
 	_, more := m.flow().waiting()
@@ -220,7 +210,7 @@ func (m Model) applyImport() (Model, tea.Cmd) {
 	// than after the fact because the answer decides whether the import is
 	// over, and an import that ended with rows still on the screen would be an
 	// import that dropped rows nobody dropped.
-	again := m.flow().plan.Stage().InPasses && len(plan.Unapplied().Entries) > 0
+	again := m.flow().screen.Stage().InPasses && len(plan.Unapplied().Entries) > 0
 	earlier := m.flow().applied
 	return m, func() tea.Msg {
 		// Planned as one unit BEFORE anything is applied, so a row that cannot
@@ -252,12 +242,12 @@ func (m Model) applyImport() (Model, tea.Cmd) {
 // whose places are right costs one keystroke, and the places are still there to
 // review afterwards. That is the whole reason the two trees are two stages.
 func (m Model) skipStage() (Model, tea.Cmd) {
-	stage := m.flow().plan.Stage()
+	stage := m.flow().screen.Stage()
 	if !stage.Skippable {
 		return m, nil
 	}
 	return m, m.nextStage(stage.Lead()+fmt.Sprintf("skipped -- %s not applied, and the house is as it was",
-		rowsPhrase(len(m.flow().plan.Plan().Entries))), 0)
+		rowsPhrase(len(m.flow().bound.Entries))), 0)
 }
 
 // stageApplied moves on from a stage that has just been committed -- to the
@@ -269,14 +259,14 @@ func (m Model) skipStage() (Model, tea.Cmd) {
 // stage instead would be handing over a row that stage is not about, and going
 // on without it would be dropping a row nobody dropped.
 func (m Model) stageApplied(rows int) tea.Cmd {
-	stage := m.flow().plan.Stage()
+	stage := m.flow().screen.Stage()
 	// What the STAGE has applied, not what this pass did. A pass is an
 	// implementation detail of building a tree; what was written to the house
 	// is not.
 	note := stage.Lead() + fmt.Sprintf("applied %s in %s",
 		rowsPhrase(m.flow().inStage+rows), transactions(m.flow().passes+1))
 
-	if left := m.flow().plan.Plan().Unapplied(); stage.InPasses && len(left.Entries) > 0 {
+	if left := m.flow().bound.Unapplied(); stage.InPasses && len(left.Entries) > 0 {
 		return m.samePass(left, note+fmt.Sprintf(" -- %s left, bound again against it",
 			rowsPhrase(len(left.Entries))), rows)
 	}
@@ -286,7 +276,7 @@ func (m Model) stageApplied(rows int) tea.Cmd {
 // samePass brings the rows a pass left behind back to the same stage, bound
 // against the vocabulary that pass created.
 func (m Model) samePass(left importer.Plan, note string, applied int) tea.Cmd {
-	stage := m.flow().plan.Stage()
+	stage := m.flow().screen.Stage()
 	return m.staging(left, stage, note, applied, true)
 }
 
@@ -301,7 +291,7 @@ func (m Model) nextStage(note string, applied int) tea.Cmd {
 	if !ok {
 		return nil
 	}
-	was := m.flow().plan.Stage()
+	was := m.flow().screen.Stage()
 	// One further along a sequence whose length was settled when the file was
 	// read. A stage that is skipped is still a stage that happened, so the
 	// numbering counts it: "stage 3 of 3" after skipping stage 1 is the truth
@@ -317,7 +307,7 @@ func (m Model) nextStage(note string, applied int) tea.Cmd {
 // every time: whatever was just applied may be exactly what the rows being
 // shown are waiting for, and binding them against the older vocabulary would
 // leave a row blocked by something that is sitting in the database.
-func (m Model) staging(plan importer.Plan, stage planview.Stage, note string, applied int, same bool) tea.Cmd {
+func (m Model) staging(plan importer.Plan, stage review.Stage, note string, applied int, same bool) tea.Cmd {
 	return func() tea.Msg {
 		vocabulary, err := m.ctrl.Vocabulary(m.ctx)
 		if err != nil {
@@ -338,7 +328,7 @@ func (m Model) staging(plan importer.Plan, stage planview.Stage, note string, ap
 // against.
 type stagedMsg struct {
 	plan       importer.Plan
-	stage      planview.Stage
+	stage      review.Stage
 	vocabulary *command.Vocabulary
 	names      command.Namer
 	// same says this is another pass over the stage already on screen rather
@@ -357,19 +347,16 @@ func (m Model) staged(msg stagedMsg) Model {
 	// A fresh stage answers whatever the last one refused: the rows it refused
 	// over are behind us, and the new screen says for itself what it can do.
 	m.say = m.say.Clear()
-	plan := planview.New(msg.plan, summariser{names: msg.names}).
-		WithStage(msg.stage).
-		WithNote(msg.note).
-		// Every row that is not settled, against what the house holds NOW. A
-		// row that named a category the pass before it created is an ordinary
-		// row from here, and nobody had to retype anything for it.
-		RebindUnsettled(msg.vocabulary)
+	f := m.flow()
 	if msg.same {
-		m = m.withFlow(m.flow().again(plan, msg.applied))
-		return m
+		f = f.again(msg.plan, msg.names, msg.stage, msg.note, msg.applied)
+	} else {
+		f = f.onward(msg.plan, msg.names, msg.stage, msg.note, msg.applied)
 	}
-	m = m.withFlow(m.flow().onward(plan, msg.applied))
-	return m
+	// Every row that is not settled, against what the house holds NOW. A row
+	// that named a category the pass before it created is an ordinary row
+	// from here, and nobody had to retype anything for it.
+	return m.withFlow(f.rebindUnsettled(msg.vocabulary))
 }
 
 // stageAppliedMsg reports that a stage was committed and another one follows.
@@ -411,7 +398,7 @@ func rowOf(plan importer.Plan, at int) int {
 
 // settleRow is what enter does to whatever the cursor is on.
 func (m Model) settleRow() (Model, tea.Cmd) {
-	entry, at, ok := m.flow().plan.Current()
+	entry, at, ok := m.flow().current()
 	if !ok {
 		return m, nil
 	}
@@ -428,25 +415,25 @@ func (m Model) settleRow() (Model, tea.Cmd) {
 		// upload impossible: the panel created the category immediately, in a
 		// transaction of its own, and the row still said it would create one --
 		// so the stage could never be applied and pressing enter twice made two.
-		if other, clash := m.flow().plan.Plan().AlreadyCreatedBy(at); clash {
+		if other, clash := m.flow().bound.AlreadyCreatedBy(at); clash {
 			return m.refuse("row %d already creates that -- drop this row, or edit it to name something else",
-				m.flow().plan.Plan().Entries[other].Row.Line), nil
+				m.flow().bound.Entries[other].Row.Line), nil
 		}
 		settled, ok := importer.ConfirmCreation(entry)
 		if !ok {
 			return m, nil
 		}
-		m = m.withPlan(m.flow().plan.Settle(at, settled))
+		m = m.withFlow(m.flow().settle(at, settled))
 		return m, nil
 
-	case m.flow().plan.Stage().InPasses && waitsFor(m.flow().plan.Plan(), at):
+	case m.flow().screen.Stage().InPasses && waitsFor(m.flow().bound, at):
 		// Another row of this file is already making the thing this one is
 		// missing. Offering to make it here would make a second one --
 		// immediately, in its own transaction -- and leave both rows still
 		// proposing one.
-		other, _ := m.flow().plan.Plan().WillBeCreatedBy(at)
+		other, _ := m.flow().bound.WillBeCreatedBy(at)
 		return m.refuse("row %d creates that -- %s applies this stage, and this row is bound again against it",
-			m.flow().plan.Plan().Entries[other].Row.Line, keys.Show(keys.Plan, keys.ApplyAll)), nil
+			m.flow().bound.Entries[other].Row.Line, keys.Show(keys.Plan, keys.ApplyAll)), nil
 
 	case len(entry.Creates) > 0:
 		// The SAME panel `o` opens, with the same confirmation behind it. A
@@ -474,7 +461,7 @@ func (m Model) settleRow() (Model, tea.Cmd) {
 //
 // At the row, like every other field in this interface.
 func (m Model) editRow() (Model, tea.Cmd) {
-	entry, at, ok := m.flow().plan.Current()
+	entry, at, ok := m.flow().current()
 	if !ok {
 		return m, nil
 	}
@@ -493,7 +480,7 @@ func (m Model) applyRowEdit() (Model, tea.Cmd) {
 	m.editor = m.editor.Close()
 	m = m.settled()
 
-	entry, _, ok := m.flow().plan.Current()
+	entry, _, ok := m.flow().current()
 	if !ok || at < 0 {
 		return m, nil
 	}
@@ -578,8 +565,8 @@ type reboundMsg struct {
 
 // rebound applies what the read came back with.
 func (m Model) rebound(msg reboundMsg) Model {
-	m = m.withPlan(m.flow().plan.WithNames(summariser{names: msg.names}))
-	m = m.withPlan(m.flow().plan.Settle(msg.at, importer.Settle(msg.vocabulary, msg.entry)))
+	m = m.withFlow(m.flow().withNames(msg.names))
+	m = m.withFlow(m.flow().settle(msg.at, importer.Settle(msg.vocabulary, msg.entry)))
 
 	// And every OTHER row that is not settled yet, because settling this one
 	// may have created something. Two rows naming one new item must create it
@@ -588,6 +575,6 @@ func (m Model) rebound(msg reboundMsg) Model {
 	//
 	// Ready rows are left alone -- they already hold identifiers, and
 	// re-resolving them could quietly move one onto something created since.
-	m = m.withPlan(m.flow().plan.RebindUnsettled(msg.vocabulary))
+	m = m.withFlow(m.flow().rebindUnsettled(msg.vocabulary))
 	return m
 }

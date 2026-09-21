@@ -240,7 +240,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// now that the thing it named exists.
 		if at, ok := m.flow().settlingRow(); ok {
 			m = m.settled()
-			entry, _, _ := m.flow().plan.Current()
+			entry, _, _ := m.flow().current()
 			return m, m.rebindRow(at, entry)
 		}
 		// Reload, because something changed. The list a person is looking at
