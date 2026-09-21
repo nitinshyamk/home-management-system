@@ -129,6 +129,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case keys.ViewAttention:
 		m.fromView = viewShell
 		return m, m.load(viewIntegrity)
+
+	case keys.OpenImport:
+		m.say = m.say.Working("looking for plans to review ...")
+		return m, m.openImports()
 	case keys.Refresh:
 		return m, m.load(m.view)
 

@@ -32,38 +32,51 @@ import (
 // again afterwards. A stage is a transaction, which is the one thing about this
 // the screen has to be honest about, and it says so on every one of them.
 
-// Import opens a file for review.
+// Import opens a file for review, on a Model that does not exist yet.
+//
+// This is the command line's way in: the plan is bound before the terminal is
+// touched, so a file that cannot be read fails as a message rather than as a
+// blank screen. From inside a running house it is reviewFile instead, which
+// replaces the flow and keeps everything else -- see imports.go.
 func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error) {
+	m := New(ctx, ctrl)
+	flow, err := m.flowFor(path)
+	if err != nil {
+		return Model{}, err
+	}
+	m.flow = flow
+	// Pointed at the first row before the terminal is touched, so the house
+	// arrives showing the shelf that row is about rather than the top of the
+	// tree.
+	m, _ = m.steer()
+	return m, nil
+}
+
+// flowFor binds a plan file into the review flow it will be shown as.
+func (m Model) flowFor(path string) (flow, error) {
 	rows, err := ReadRows(path)
 	if err != nil {
-		return Model{}, err
+		return flow{}, err
 	}
-	vocabulary, err := ctrl.Vocabulary(ctx)
+	vocabulary, err := m.ctrl.Vocabulary(m.ctx)
 	if err != nil {
-		return Model{}, err
+		return flow{}, err
 	}
-	names, err := ctrl.SearchIndex(ctx)
+	names, err := m.ctrl.SearchIndex(m.ctx)
 	if err != nil {
-		return Model{}, err
+		return flow{}, err
 	}
 
 	// Only the stages the file actually has, so the counts the screen shows are
 	// about the file rather than about the vocabulary. Most files propose no
 	// shape at all and are one stage, which is why a screen that announced
 	// "stage 1 of 1" would be describing itself rather than the file.
-	stages := importer.Bind(ctx, vocabulary, path, rows).Stages()
-	describe := summariser{names: names}
-
-	m := New(ctx, ctrl)
+	stages := importer.Bind(m.ctx, vocabulary, path, rows).Stages()
 	first := stages[0]
-	m.flow = m.flow.staged(
-		planview.New(first.Plan, describe).WithStage(stageScreen(first.Stage, 1, len(stages))),
-		stages[1:])
-	// Pointed at the first row before the terminal is touched, so the house
-	// arrives showing the shelf that row is about rather than the top of the
-	// tree.
-	m, _ = m.steer()
-	return m, nil
+	return newFlow().staged(
+		planview.New(first.Plan, summariser{names: names}).
+			WithStage(stageScreen(first.Stage, 1, len(stages))),
+		stages[1:]), nil
 }
 
 // stageScreen describes a stage to the screen that shows it.

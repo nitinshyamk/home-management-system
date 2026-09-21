@@ -64,6 +64,12 @@ func (m Model) View() string {
 	}
 
 	parts := []string{m.header(), body}
+	if m.picking != nil {
+		// The same place the plan will take, so choosing one and reviewing it
+		// happen in one region of the screen rather than two.
+		parts = append(parts, m.rule())
+		parts = append(parts, m.pickerView()...)
+	}
 	if m.creator.IsOpen() {
 		parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
 	}

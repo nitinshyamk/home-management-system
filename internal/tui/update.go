@@ -186,6 +186,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.apply(msg.plan, msg.summary)
 
+	case importsMsg:
+		if msg.err != nil {
+			m.say = m.say.Refuse(humanise(msg.err.Error()))
+			return m, nil
+		}
+		m.say = m.say.Clear()
+		picker := newPickImport(msg.found, m.width, m.drawerHeight())
+		m.picking = &picker
+		return m, nil
+
 	case issuesMsg:
 		// Humanised HERE, where an error crosses from the controller into
 		// something a person reads. It used to happen in the renderer, which

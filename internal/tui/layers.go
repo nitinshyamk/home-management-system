@@ -57,6 +57,12 @@ func (m Model) layers() []layer {
 		// the plan first meant its table ate ctrl+u while someone was clearing
 		// a field, and enter settled the row instead of saving what they had
 		// typed into it.
+		// Before the plan, because choosing WHICH plan comes first and the two
+		// are never up together.
+		{
+			name: "import picker", active: m.picking != nil, handle: Model.handlePick,
+			offers: keys.Hint(keys.Browse, []keys.Action{keys.Confirm}, []keys.Action{keys.Cancel}),
+		},
 		{
 			name: "import plan", active: m.flow.reviewing(), handle: Model.handleImport,
 			offers: m.planKeys(),
