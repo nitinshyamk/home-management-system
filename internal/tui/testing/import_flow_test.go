@@ -70,6 +70,50 @@ func TestThePlanScreenCountsTheWholeFile(t *testing.T) {
 	s.ShowsText("1 blocked")
 }
 
+// The plan is reviewed AGAINST the house, which is the whole reason it
+// stopped taking the screen.
+//
+// "add 100 of Basmati Rice to Shelf 1" is not a reviewable sentence on its
+// own -- to what, and how much is there already? So the rail points at the
+// place the row lands and the contents pane shows what is in it now.
+func TestTheHouseIsVisibleBehindThePlan(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Import(receipt(t, messy))
+
+	// Both halves, at once: the rows proposed, and the shelf they land on.
+	s.ShowsText("add 100 of Spices > Basmati Rice to Shelf 1")
+	s.ShowsText("Shelf 1")
+	s.ContentsShow("Basmati Rice")
+	s.ContentsShow("500 g")
+}
+
+// And the house follows the cursor, so each row is read against what it
+// would touch rather than against wherever the house happened to be.
+func TestTheCursorInThePlanSteersTheHouse(t *testing.T) {
+	s := sim.New(t)
+	kitchen(t, s)
+	p, ctx := s.Planner(), s.Context()
+
+	// A second place, with nothing in it, so "which shelf is the house
+	// showing" has a visible answer.
+	s.Apply(p.NewLocation(ctx, ops.NewLocationRequest{Name: "Cellar"}))
+
+	s.Import(receipt(t, `op,item,qty,at,reason,name,counting,unit,category
+acquire,Basmati Rice,100,Shelf 1,,,,,
+acquire,Cumin,20,Cellar,,,,,
+`))
+
+	if got := s.Model().RailName(); got != "Shelf 1" {
+		t.Errorf("the house opened on %q, want the shelf the first row lands on", got)
+	}
+
+	s.Send(sim.CtrlN)
+	if got := s.Model().RailName(); got != "Cellar" {
+		t.Errorf("moving to the second row left the house on %q, want the Cellar", got)
+	}
+}
+
 // A is refused with a reason rather than being a key that does nothing.
 func TestApplyIsRefusedWithAReason(t *testing.T) {
 	s := sim.New(t)
