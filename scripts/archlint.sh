@@ -456,8 +456,29 @@ fi
 # row of a file, and making it pretend to be one would mean rendering a
 # Command back to text and re-binding it, which is the round trip every other
 # rule here exists to prevent.
-rule "the review drawer does not know where a change came from" \
-  internal/tui/review '*.go' 'internal/importer'
+#
+# Stated as the strongest thing that is true, rather than as a ban on the one
+# producer that exists: the package imports nothing of this application but
+# other interface widgets. "Not the importer" would have been satisfied by
+# reaching for internal/command to render a Command into a sentence, which is
+# the same mistake wearing a different import.
+#
+# What crosses instead is a review.Change: a state, a label, and two strings
+# already in words. Everything that needs a vocabulary, or needs to see the
+# other changes in the set, happens on the producer's side -- for a file,
+# that is internal/tui/fromfile.go.
+if [ -d internal/tui/review ]; then
+  hits="$(grep -rn --include='*.go' 'home-management-system/internal/' internal/tui/review \
+          | grep -v 'home-management-system/internal/tui/' || true)"
+  if [ -n "$hits" ]; then
+    report "the review drawer does not know where a change came from"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "the review drawer does not know where a change came from"
+  fi
+else
+  skip "the review drawer does not know where a change came from" internal/tui/review
+fi
 
 # Staged structural edits are COMMANDS, not a tree.
 #
