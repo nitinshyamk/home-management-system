@@ -99,22 +99,19 @@ func (p pickImport) chosen() (waiting, bool) {
 }
 
 // handlePick takes the keystroke while the picker is up.
-func (m Model) handlePick(msg tea.KeyMsg) (Model, tea.Cmd) {
+func (m Model) handlePick(p *pickImport, msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch keys.Lookup(keys.Browse, msg) {
 	case keys.Cancel, keys.Quit:
-		m.picking = nil
-		return m, nil
+		return m.close(), nil
 	case keys.Confirm:
-		chosen, ok := m.picking.chosen()
+		chosen, ok := p.chosen()
 		if !ok {
-			m.picking = nil
-			return m, nil
+			return m.close(), nil
 		}
-		m.picking = nil
-		return m.reviewFile(chosen.plan)
+		return m.close().reviewFile(chosen.plan)
 	}
-	next, _ := m.picking.tbl.Update(msg)
-	m.picking.tbl = next
+	next, _ := p.tbl.Update(msg)
+	p.tbl = next
 	return m, nil
 }
 
@@ -129,20 +126,37 @@ func (m Model) reviewFile(path string) (Model, tea.Cmd) {
 	if err != nil {
 		return m.refuse("%v", err), nil
 	}
-	m.flow = flow
+	m = m.withFlow(flow)
 	m, _ = m.steer()
 	return m, m.load(viewShell)
 }
 
-// pickerView draws the picker as a drawer, in the place the plan will take.
-func (m Model) pickerView() []string {
-	head := fmt.Sprintf("IMPORT  %d waiting to review", len(m.picking.found))
-	if len(m.picking.found) == 0 {
+func (p *pickImport) name() string { return "import picker" }
+
+func (p *pickImport) keys(Model) string {
+	return keys.Hint(keys.Browse, []keys.Action{keys.Confirm}, []keys.Action{keys.Cancel})
+}
+
+func (p *pickImport) height(Model) int {
+	if len(p.found) == 0 {
+		return 2
+	}
+	return len(p.found) + 2
+}
+
+func (p *pickImport) update(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	return m.handlePick(p, msg)
+}
+
+// lines draws the picker in the place the plan it chooses will take.
+func (p *pickImport) lines(Model) []string {
+	head := fmt.Sprintf("IMPORT  %d waiting to review", len(p.found))
+	if len(p.found) == 0 {
 		return []string{
 			head,
 			"  nothing in ~/hms/imports has a plan in it yet -- " +
 				"`hms import NAME` starts one",
 		}
 	}
-	return append([]string{head}, lines(m.picking.tbl.View())...)
+	return append([]string{head}, lines(p.tbl.View())...)
 }

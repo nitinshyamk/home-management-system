@@ -390,6 +390,88 @@ if command -v go >/dev/null 2>&1; then
   done
 fi
 
+echo "archlint: the interface's own boundaries"
+
+# Everything transient is drawn in ONE region below the house, and every
+# occupant of it reaches the screen through one interface.
+#
+# The region had grown a special case per occupant -- the import plan, the
+# move destinations, the act palette, the import picker -- each wired into the
+# model, the layer list, the renderer and the height arithmetic. Four edits
+# per occupant, and the one nobody made was the bug: the plan kept its own
+# return path in View long after the drawer existed, so it alone did not
+# shrink the house.
+#
+# The rule is stated as an absence because that is what is checkable: the
+# files that COMPOSE the screen name no individual drawer.
+#
+# Two ways to name one: a field per occupant, which is what it was, and a type
+# assertion back out of the interface, which is what it becomes if nobody
+# says otherwise. Both are checked, because the second reintroduces the first
+# without looking like it.
+if [ -f internal/tui/view.go ]; then
+  hits="$(grep -nE 'm\.(moving|acting|picking|flow)\b|m\.drawer\.\(' \
+            internal/tui/view.go internal/tui/layers.go 2>/dev/null \
+          | sed 's|//.*||' \
+          | grep -E 'm\.(moving|acting|picking|flow)\b|m\.drawer\.\(' || true)"
+  if [ -n "$hits" ]; then
+    report "the screen is composed without naming a particular drawer"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "the screen is composed without naming a particular drawer"
+  fi
+else
+  skip "the screen is composed without naming a particular drawer" "internal/tui/view.go"
+fi
+
+# The chrome's height is counted ONCE.
+#
+# The house is sized against what the chrome leaves, and so is every drawer,
+# which bounds itself so the house stays visible behind it. Two copies of that
+# subtraction drift the moment a line is added to the chrome, and the screen
+# that results is a line too tall for the terminal -- which wraps, and shifts
+# every row on it. That is how the plan came to be bounded against a chrome
+# height that View had stopped using.
+#
+# Stated as: the literal count of fixed chrome lines appears in one function.
+if [ -f internal/tui/view.go ]; then
+  hits="$(grep -rnE 'm\.height *- *[0-9]' internal/tui --include='*.go' 2>/dev/null \
+          | grep -v '^internal/tui/view.go:' || true)"
+  if [ -n "$hits" ]; then
+    report "the chrome's height is counted in one place"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "the chrome's height is counted in one place"
+  fi
+else
+  skip "the chrome's height is counted in one place" "internal/tui/view.go"
+fi
+
+# The review drawer shows a set of proposed changes against the house. Three
+# things produce one: a file, a batch of staged structural edits, and a walk
+# that counted. It must not know which.
+#
+# It began welded to internal/importer -- its rows were rows of a FILE, with a
+# line number and the raw text they were written in. A staged rename is not a
+# row of a file, and making it pretend to be one would mean rendering a
+# Command back to text and re-binding it, which is the round trip every other
+# rule here exists to prevent.
+rule "the review drawer does not know where a change came from" \
+  internal/tui/review '*.go' 'internal/importer'
+
+# Staged structural edits are COMMANDS, not a tree.
+#
+# The tempting shape is a proposed tree the database has not seen, mutated as
+# you go. That is a second source of truth: it goes stale against every
+# reload, and there is then no answer to which of the two is the house.
+#
+# So organise mode holds the diff -- a list of changes to compile into
+# Commands -- and the rail projects it over the nodes it was given at draw
+# time. One tree, plus a pending changelist. Naming tree.Node here is the
+# first step of getting that wrong.
+rule "staged structural edits are commands, not a tree" \
+  internal/tui/organise '*.go' 'tree\.Node'
+
 echo
 if [ "$fail" -ne 0 ]; then
   printf '\033[31marchlint: %d violation(s)\033[0m\n' "$violations" >&2

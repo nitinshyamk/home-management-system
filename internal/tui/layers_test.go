@@ -38,20 +38,20 @@ func TestTheTopLayerIsTheInnermostOpenOne(t *testing.T) {
 			return m
 		}, "input line"},
 		{"import plan", func(m Model) Model {
-			m.flow.active = true
+			m = m.withImport()
 			return m
 		}, "import plan"},
 		// The panel opens INSIDE the import, and outranks it: while a field is
 		// open a keystroke is a character, not a plan command.
 		{"panel over import", func(m Model) Model {
-			m.flow.active = true
+			m = m.withImport()
 			m.creator = m.creator.Open("item", "")
 			return m
 		}, "panel"},
 		// And a confirmation outranks everything, including the panel that
 		// raised it -- a plan-row creation confirms while its panel is still up.
 		{"confirmation over panel", func(m Model) Model {
-			m.flow.active = true
+			m = m.withImport()
 			m.creator = m.creator.Open("item", "")
 			m.confirm = &pendingPlan{}
 			return m

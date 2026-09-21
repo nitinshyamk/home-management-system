@@ -44,7 +44,7 @@ func Import(ctx context.Context, ctrl app.Controller, path string) (Model, error
 	if err != nil {
 		return Model{}, err
 	}
-	m.flow = flow
+	m = m.withFlow(flow)
 	// Pointed at the first row before the terminal is touched, so the house
 	// arrives showing the shelf that row is about rather than the top of the
 	// tree.
@@ -138,9 +138,9 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case keys.EditInPlace:
 		return m.editRow()
 	}
-	was, _, _ := m.flow.plan.Current()
-	next, handled := m.flow.plan.Update(msg)
-	m.flow.plan = next
+	was, _, _ := m.flow().plan.Current()
+	next, handled := m.flow().plan.Update(msg)
+	m = m.withPlan(next)
 	if handled {
 		return m.follow(was)
 	}
@@ -165,7 +165,7 @@ func (m Model) handleImport(msg tea.KeyMsg) (Model, tea.Cmd) {
 // nowhere leaves the house where it was rather than moving it somewhere
 // arbitrary.
 func (m Model) follow(was importer.Entry) (Model, tea.Cmd) {
-	entry, _, ok := m.flow.plan.Current()
+	entry, _, ok := m.flow().plan.Current()
 	if !ok || sameRow(was, entry) {
 		return m, nil
 	}
@@ -181,7 +181,7 @@ func (m Model) follow(was importer.Entry) (Model, tea.Cmd) {
 // question as the cursor moving within it, and a drawer that only steered on
 // the second would open showing the wrong shelf.
 func (m Model) steer() (Model, bool) {
-	entry, _, ok := m.flow.plan.Current()
+	entry, _, ok := m.flow().plan.Current()
 	if !ok || entry.Command == nil {
 		return m, false
 	}
@@ -209,19 +209,19 @@ func sameRow(a, b importer.Entry) bool { return a.Row.Line == b.Row.Line }
 // a whole screen, reviewed and applied as one unit of work, and the person is
 // told before they apply the first one that a second follows.
 func (m Model) applyImport() (Model, tea.Cmd) {
-	plan := m.flow.plan.Plan()
-	if !m.flow.plan.Applicable() {
-		return m.refuse("%s", m.flow.plan.WhyNot()), nil
+	plan := m.flow().plan.Plan()
+	if !m.flow().plan.Applicable() {
+		return m.refuse("%s", m.flow().plan.WhyNot()), nil
 	}
 	commands := plan.Commands()
-	_, more := m.flow.waiting()
+	_, more := m.flow().waiting()
 	// Another pass over this stage, when it applies in passes and rows are
 	// waiting for what this one is about to create. It is asked HERE rather
 	// than after the fact because the answer decides whether the import is
 	// over, and an import that ended with rows still on the screen would be an
 	// import that dropped rows nobody dropped.
-	again := m.flow.plan.Stage().InPasses && len(plan.Unapplied().Entries) > 0
-	earlier := m.flow.applied
+	again := m.flow().plan.Stage().InPasses && len(plan.Unapplied().Entries) > 0
+	earlier := m.flow().applied
 	return m, func() tea.Msg {
 		// Planned as one unit BEFORE anything is applied, so a row that cannot
 		// work is named here rather than rolling back a transaction and naming
@@ -252,12 +252,12 @@ func (m Model) applyImport() (Model, tea.Cmd) {
 // whose places are right costs one keystroke, and the places are still there to
 // review afterwards. That is the whole reason the two trees are two stages.
 func (m Model) skipStage() (Model, tea.Cmd) {
-	stage := m.flow.plan.Stage()
+	stage := m.flow().plan.Stage()
 	if !stage.Skippable {
 		return m, nil
 	}
 	return m, m.nextStage(stage.Lead()+fmt.Sprintf("skipped -- %s not applied, and the house is as it was",
-		rowsPhrase(len(m.flow.plan.Plan().Entries))), 0)
+		rowsPhrase(len(m.flow().plan.Plan().Entries))), 0)
 }
 
 // stageApplied moves on from a stage that has just been committed -- to the
@@ -269,14 +269,14 @@ func (m Model) skipStage() (Model, tea.Cmd) {
 // stage instead would be handing over a row that stage is not about, and going
 // on without it would be dropping a row nobody dropped.
 func (m Model) stageApplied(rows int) tea.Cmd {
-	stage := m.flow.plan.Stage()
+	stage := m.flow().plan.Stage()
 	// What the STAGE has applied, not what this pass did. A pass is an
 	// implementation detail of building a tree; what was written to the house
 	// is not.
 	note := stage.Lead() + fmt.Sprintf("applied %s in %s",
-		rowsPhrase(m.flow.inStage+rows), transactions(m.flow.passes+1))
+		rowsPhrase(m.flow().inStage+rows), transactions(m.flow().passes+1))
 
-	if left := m.flow.plan.Plan().Unapplied(); stage.InPasses && len(left.Entries) > 0 {
+	if left := m.flow().plan.Plan().Unapplied(); stage.InPasses && len(left.Entries) > 0 {
 		return m.samePass(left, note+fmt.Sprintf(" -- %s left, bound again against it",
 			rowsPhrase(len(left.Entries))), rows)
 	}
@@ -286,7 +286,7 @@ func (m Model) stageApplied(rows int) tea.Cmd {
 // samePass brings the rows a pass left behind back to the same stage, bound
 // against the vocabulary that pass created.
 func (m Model) samePass(left importer.Plan, note string, applied int) tea.Cmd {
-	stage := m.flow.plan.Stage()
+	stage := m.flow().plan.Stage()
 	return m.staging(left, stage, note, applied, true)
 }
 
@@ -297,11 +297,11 @@ func (m Model) samePass(left importer.Plan, note string, applied int) tea.Cmd {
 // against the older vocabulary would leave a row blocked by something that is
 // sitting in the database.
 func (m Model) nextStage(note string, applied int) tea.Cmd {
-	waiting, ok := m.flow.waiting()
+	waiting, ok := m.flow().waiting()
 	if !ok {
 		return nil
 	}
-	was := m.flow.plan.Stage()
+	was := m.flow().plan.Stage()
 	// One further along a sequence whose length was settled when the file was
 	// read. A stage that is skipped is still a stage that happened, so the
 	// numbering counts it: "stage 3 of 3" after skipping stage 1 is the truth
@@ -365,10 +365,10 @@ func (m Model) staged(msg stagedMsg) Model {
 		// row from here, and nobody had to retype anything for it.
 		RebindUnsettled(msg.vocabulary)
 	if msg.same {
-		m.flow = m.flow.again(plan, msg.applied)
+		m = m.withFlow(m.flow().again(plan, msg.applied))
 		return m
 	}
-	m.flow = m.flow.onward(plan, msg.applied)
+	m = m.withFlow(m.flow().onward(plan, msg.applied))
 	return m
 }
 
@@ -411,7 +411,7 @@ func rowOf(plan importer.Plan, at int) int {
 
 // settleRow is what enter does to whatever the cursor is on.
 func (m Model) settleRow() (Model, tea.Cmd) {
-	entry, at, ok := m.flow.plan.Current()
+	entry, at, ok := m.flow().plan.Current()
 	if !ok {
 		return m, nil
 	}
@@ -428,31 +428,31 @@ func (m Model) settleRow() (Model, tea.Cmd) {
 		// upload impossible: the panel created the category immediately, in a
 		// transaction of its own, and the row still said it would create one --
 		// so the stage could never be applied and pressing enter twice made two.
-		if other, clash := m.flow.plan.Plan().AlreadyCreatedBy(at); clash {
+		if other, clash := m.flow().plan.Plan().AlreadyCreatedBy(at); clash {
 			return m.refuse("row %d already creates that -- drop this row, or edit it to name something else",
-				m.flow.plan.Plan().Entries[other].Row.Line), nil
+				m.flow().plan.Plan().Entries[other].Row.Line), nil
 		}
 		settled, ok := importer.ConfirmCreation(entry)
 		if !ok {
 			return m, nil
 		}
-		m.flow.plan = m.flow.plan.Settle(at, settled)
+		m = m.withPlan(m.flow().plan.Settle(at, settled))
 		return m, nil
 
-	case m.flow.plan.Stage().InPasses && waitsFor(m.flow.plan.Plan(), at):
+	case m.flow().plan.Stage().InPasses && waitsFor(m.flow().plan.Plan(), at):
 		// Another row of this file is already making the thing this one is
 		// missing. Offering to make it here would make a second one --
 		// immediately, in its own transaction -- and leave both rows still
 		// proposing one.
-		other, _ := m.flow.plan.Plan().WillBeCreatedBy(at)
+		other, _ := m.flow().plan.Plan().WillBeCreatedBy(at)
 		return m.refuse("row %d creates that -- %s applies this stage, and this row is bound again against it",
-			m.flow.plan.Plan().Entries[other].Row.Line, keys.Show(keys.Plan, keys.ApplyAll)), nil
+			m.flow().plan.Plan().Entries[other].Row.Line, keys.Show(keys.Plan, keys.ApplyAll)), nil
 
 	case len(entry.Creates) > 0:
 		// The SAME panel `o` opens, with the same confirmation behind it. A
 		// second one would mean two ideas of what is permanent.
 		creation := entry.Creates[0]
-		m.flow = m.flow.opened(at)
+		m = m.withFlow(m.flow().opened(at))
 		m.creator = m.creator.Open(creatorKindFor(creation.Kind), "").
 			WithName(creation.Name).SetWidth(m.width)
 		return m, m.loadCandidates()
@@ -474,11 +474,11 @@ func (m Model) settleRow() (Model, tea.Cmd) {
 //
 // At the row, like every other field in this interface.
 func (m Model) editRow() (Model, tea.Cmd) {
-	entry, at, ok := m.flow.plan.Current()
+	entry, at, ok := m.flow().plan.Current()
 	if !ok {
 		return m, nil
 	}
-	m.flow = m.flow.opened(at)
+	m = m.withFlow(m.flow().opened(at))
 	m.editor = m.editor.
 		OpenFor(editor.Row, "", int64(at), prompt(editor.Row).label, entry.AsLine()).
 		WithVerb(prompt(editor.Row).verb).
@@ -489,11 +489,11 @@ func (m Model) editRow() (Model, tea.Cmd) {
 // applyRowEdit re-parses the edited line and binds the row again.
 func (m Model) applyRowEdit() (Model, tea.Cmd) {
 	line := strings.TrimSpace(m.editor.Value())
-	at, _ := m.flow.settlingRow()
+	at, _ := m.flow().settlingRow()
 	m.editor = m.editor.Close()
-	m.flow = m.flow.settled()
+	m = m.settled()
 
-	entry, _, ok := m.flow.plan.Current()
+	entry, _, ok := m.flow().plan.Current()
 	if !ok || at < 0 {
 		return m, nil
 	}
@@ -578,8 +578,8 @@ type reboundMsg struct {
 
 // rebound applies what the read came back with.
 func (m Model) rebound(msg reboundMsg) Model {
-	m.flow.plan = m.flow.plan.WithNames(summariser{names: msg.names})
-	m.flow.plan = m.flow.plan.Settle(msg.at, importer.Settle(msg.vocabulary, msg.entry))
+	m = m.withPlan(m.flow().plan.WithNames(summariser{names: msg.names}))
+	m = m.withPlan(m.flow().plan.Settle(msg.at, importer.Settle(msg.vocabulary, msg.entry)))
 
 	// And every OTHER row that is not settled yet, because settling this one
 	// may have created something. Two rows naming one new item must create it
@@ -588,6 +588,6 @@ func (m Model) rebound(msg reboundMsg) Model {
 	//
 	// Ready rows are left alone -- they already hold identifiers, and
 	// re-resolving them could quietly move one onto something created since.
-	m.flow.plan = m.flow.plan.RebindUnsettled(msg.vocabulary)
+	m = m.withPlan(m.flow().plan.RebindUnsettled(msg.vocabulary))
 	return m
 }

@@ -72,23 +72,27 @@ func TestCancellingAPromptEndsItsSettle(t *testing.T) {
 	} {
 		t.Run(c.what, func(t *testing.T) {
 			m := New(context.Background(), &fakeController{})
-			m.flow.active = true
+			m = m.withImport()
 			m = c.open(m).withSettling(3)
 
-			if _, settling := m.flow.settlingRow(); !settling {
+			if _, settling := m.flow().settlingRow(); !settling {
 				t.Fatal("opening for a row did not record the row")
 			}
 
 			next, _ := m.Update(keyMsg("esc"))
 			m = next.(Model)
 
-			if at, settling := m.flow.settlingRow(); settling {
+			if at, settling := m.flow().settlingRow(); settling {
 				t.Errorf("escaping the %s left row %d claiming to be settling", c.what, at)
 			}
 		})
 	}
 }
 
+// withImport is the test's stand-in for a plan on screen, which otherwise
+// needs a file on disk to reach.
+func (m Model) withImport() Model { return m.open(flow{active: true, settling: noRow}) }
+
 // withSettling is the test's stand-in for the keystroke that opens a panel FOR
 // a plan row, which needs a real import to reach.
-func (m Model) withSettling(at int) Model { m.flow = m.flow.opened(at); return m }
+func (m Model) withSettling(at int) Model { return m.withFlow(m.flow().opened(at)) }

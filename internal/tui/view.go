@@ -29,7 +29,9 @@ func (m Model) View() string {
 	// remember to resize the house -- and the one that forgot would draw a
 	// screen taller than the terminal, which wraps and shifts every row.
 	house := m.current.SetSize(m.width, m.bodyHeight()).SetOverlay(m.field().Lines())
-	if blurrable, ok := house.(interface{ Blur() surface }); ok && m.drawerHasTheKeyboard() {
+	if blurrable, ok := house.(interface{ Blur() surface }); ok && m.drawer != nil {
+		// A drawer with a cursor of its own is the only cursor on screen. The
+		// same argument the two panes settled between themselves, one level up.
 		house = blurrable.Blur()
 	}
 	body := house.View()
@@ -44,48 +46,7 @@ func (m Model) View() string {
 		body = m.box.Results()
 	}
 
-	if m.flow.reviewing() && m.confirm == nil {
-		// The plan sits BELOW the house rather than instead of it.
-		//
-		// A row saying "add 100 g to Shelf 1" is unreadable without the thing
-		// it is proposed against -- to what, and how much was there? Taking
-		// the screen made that the one question the review screen could not
-		// answer, and moving the cursor through the rows now points the house
-		// at what each one would touch.
-		//
-		// The field goes INTO the plan, spliced after its row. The creation
-		// panel does not: it is about a thing that does not exist yet rather
-		// than about the row's text, and it is tall enough that splicing it
-		// would push the plan off the screen it is confirming.
-		plan := m.flow.plan.
-			SetSize(m.width, m.drawerHeight()).
-			SetOverlay(m.editor.SetWidth(m.width).Lines())
-
-		parts := []string{m.header(), body, m.rule(), plan.View()}
-		if m.creator.IsOpen() {
-			parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
-		}
-		// The plan's own counts ARE its facts, which is why they moved out of
-		// planview and are handed in here.
-		return strings.Join(append(parts,
-			m.chrome(joinQuietly(m.width, m.flow.plan.Facts()))...), "\n")
-	}
-
-	parts := []string{m.header(), body}
-	// The drawer: one region below the house, whatever is in it. Everything
-	// transient goes here, so there is one place to look rather than one per
-	// kind of thing.
-	switch {
-	case m.moving != nil:
-		parts = append(parts, m.rule())
-		parts = append(parts, m.moving.view(m.width)...)
-	case m.acting != nil:
-		parts = append(parts, m.rule())
-		parts = append(parts, m.paletteView()...)
-	case m.picking != nil:
-		parts = append(parts, m.rule())
-		parts = append(parts, m.pickerView()...)
-	}
+	parts := append([]string{m.header(), body}, m.drawerLines()...)
 	if m.creator.IsOpen() {
 		parts = append(parts, m.creator.SetWidth(m.width).Lines()...)
 	}
@@ -119,16 +80,6 @@ func (m Model) chrome(facts string) []string {
 	return append(parts, m.box.SetWidth(m.width).Offers(m.offered()).View())
 }
 
-// drawerHasTheKeyboard reports a drawer below the house that has a cursor of
-// its own, so the house should stop drawing one.
-//
-// Not every layer: the inline field is ON a row and the filter line narrows
-// the list live, so in both of those the house's cursor is still the subject.
-// These four have their own list to point at.
-func (m Model) drawerHasTheKeyboard() bool {
-	return m.moving != nil || m.acting != nil || m.picking != nil || m.flow.reviewing()
-}
-
 // rule is the line between what you are reading and what the screen is saying
 // about itself.
 func (m Model) rule() string { return style.Dim.Render(strings.Repeat("-", max(10, m.width))) }
@@ -136,46 +87,25 @@ func (m Model) rule() string { return style.Dim.Render(strings.Repeat("-", max(1
 // field is the inline editor, sized to the screen.
 func (m Model) field() editor.Model { return m.editor.SetWidth(m.width) }
 
-// bodyHeight is the room left once the chrome, and anything in the drawer,
-// have taken their lines.
+// room is the terminal less the chrome: five fixed lines -- the header and
+// its rule, the rule below the body, the facts, the line -- with the status
+// block and the creation panel taking what they need on top of those.
 //
-// Five are fixed -- the header and its rule, the rule below the body, the
-// facts, the line -- and the status block takes what it needs on top.
+// ONE place, because the drawer sizes itself against the same number the
+// house is sized against. Written out twice, the two copies drift, and what
+// that produces is a screen a line too tall -- which wraps, and shifts every
+// row on it.
 //
 // The one-line editor is NOT subtracted: it takes its lines from inside the
-// surface. The creation panel and the review drawer are, because they sit
-// below the house rather than in it.
-func (m Model) bodyHeight() int {
-	room := m.height - 5 - m.say.Height(m.width) - m.creator.Height()
-	switch {
-	case m.flow.reviewing():
-		room -= m.drawerHeight() + 1 // and the rule above it
-	case m.moving != nil:
-		room -= m.moving.height + 2
-	case m.acting != nil:
-		room -= m.paletteHeight() + 1
-	case m.picking != nil:
-		room -= m.drawerHeight() + 1
-	}
-	if room > 3 {
-		return room
-	}
-	return 3
+// surface. The creation panel is, because it sits below the house.
+func (m Model) room() int {
+	return m.height - 5 - m.say.Height(m.width) - m.creator.Height()
 }
 
-// drawerHeight is what the review drawer gets: as much as it needs for its
-// rows, and never so much that the house stops being visible behind it.
-//
-// The house keeps at least a few rows, because a drawer that squeezed it to
-// nothing would be the full-screen takeover again with an extra rule drawn
-// across it.
-func (m Model) drawerHeight() int {
-	const (
-		leastHouse  = 6
-		leastDrawer = 6 // the chrome, and one row to look at
-	)
-	room := m.height - 5 - m.say.Height(m.width) - m.creator.Height() - leastHouse - 1
-	return max(leastDrawer, min(m.flow.plan.Wants(), room))
+// bodyHeight is what is left for the house once the drawer has taken its
+// share, and never less than a few rows.
+func (m Model) bodyHeight() int {
+	return max(3, m.room()-m.drawerRoom())
 }
 
 // countPhrase says how many, and how many of how many when a filter is on.
@@ -216,6 +146,11 @@ func (m Model) counts() (shown, total int, filtered bool) {
 // person is looking at; counting the list underneath would be describing a
 // screen nobody is reading.
 func (m Model) facts() string {
+	// A drawer that describes itself outranks everything below it. What a
+	// person is working on is in the region, not in the house behind it.
+	if said, ok := m.drawerFacts(); ok {
+		return joinQuietly(m.width, said)
+	}
 	if m.box.Mode() == omnibox.Jump {
 		return style.Dim.Render(fmt.Sprintf("%d matches across every kind", m.box.Matches()))
 	}
