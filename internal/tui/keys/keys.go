@@ -66,6 +66,13 @@ const (
 	// The leaders.
 	Jump
 	CommandLine
+	// Act lists what can be done to the thing under the cursor.
+	//
+	// It takes the space bar from ToggleSelect, which keeps C-space and gains
+	// x. That is the one binding in this keymap most likely to annoy on the
+	// first day, and it is worth it: selecting is something you do before a
+	// verb, and the verb is the thing that had no key at all.
+	Act
 
 	// Acting on what the cursor is on.
 	Consume
@@ -189,7 +196,7 @@ var contexts = map[Context][]binding{
 	Table: append(append([]binding{}, motion...), []binding{
 		{MoveLeft, []string{"ctrl+b", "left"}, "column"},
 		{MoveRight, []string{"ctrl+f", "right"}, "column"},
-		{ToggleSelect, []string{"ctrl+@", " "}, "select"},
+		{ToggleSelect, []string{"ctrl+@", "x"}, "select"},
 		{SelectVisible, []string{"alt+h"}, "select all"},
 		{NextMatch, []string{"alt+n"}, "next match"},
 		{PrevMatch, []string{"alt+p"}, "previous match"},
@@ -213,6 +220,7 @@ var contexts = map[Context][]binding{
 		{Search, []string{"ctrl+s"}, "search"},
 		{Jump, []string{"alt+g"}, "jump"},
 		{CommandLine, []string{"alt+x"}, "command"},
+		{Act, []string{" "}, "act"},
 		{EditInPlace, []string{"e"}, "rename"},
 		{Create, []string{"o"}, "new"},
 		{Refresh, []string{"g"}, "refresh"},

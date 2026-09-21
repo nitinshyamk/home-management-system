@@ -133,6 +133,16 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case keys.OpenImport:
 		m.say = m.say.Working("looking for plans to review ...")
 		return m, m.openImports()
+
+	case keys.Act:
+		offers := m.offersFor()
+		if len(offers) == 0 {
+			return m.refuse("nothing to do to this"), nil
+		}
+		m.say = m.say.Clear()
+		p := newPalette(offers, m.width, len(offers)+3)
+		m.acting = &p
+		return m, nil
 	case keys.Refresh:
 		return m, m.load(m.view)
 

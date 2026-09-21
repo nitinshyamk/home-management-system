@@ -60,7 +60,7 @@ func TestGoldenHoldingsWithASelection(t *testing.T) {
 	s.Resize(100, 22)
 	s.ByPlace()
 	s.OnContents()
-	s.Send(sim.Space, sim.Space, sim.Space)
+	s.Send(sim.CtrlSpace, sim.CtrlSpace, sim.CtrlSpace)
 	s.AssertFrame("shell-selection")
 }
 

@@ -64,6 +64,11 @@ func (m Model) layers() []layer {
 			offers: keys.Hint(keys.Browse, []keys.Action{keys.Confirm}, []keys.Action{keys.Cancel}),
 		},
 		{
+			name: "act palette", active: m.acting != nil, handle: Model.handlePalette,
+			// It draws its own keys, one per row, which is the whole idea.
+			offers: keys.Hint(keys.Browse, []keys.Action{keys.Cancel}),
+		},
+		{
 			name: "import plan", active: m.flow.reviewing(), handle: Model.handleImport,
 			offers: m.planKeys(),
 		},

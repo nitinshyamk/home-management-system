@@ -171,6 +171,20 @@ func (m Model) Open(mode Mode) Model {
 	return m
 }
 
+// OpenWith starts a mode with the line already begun.
+//
+// It is how the act palette hands a verb over: the palette knows which of the
+// thirty-five ops a row can take, the line knows how to complete and refuse
+// one, and prefilling is the seam between them. What arrives is an ordinary
+// half-typed line -- it completes, it refuses, and backspace undoes it -- so
+// nothing here is a second way to run a command.
+func (m Model) OpenWith(mode Mode, text string) Model {
+	m = m.Open(mode)
+	m.input = text
+	m.cursor = len([]rune(text))
+	return m
+}
+
 // Input is what has been typed.
 func (m Model) Input() string { return m.input }
 

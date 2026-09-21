@@ -9,4 +9,4 @@ BY PLACE  the house                                   4 holdings
   not enough on hand: only 100 g of "Ancho Chile" here, and 5000
   g was asked for -- it does not come in packages to open
 Ancho Chile - Spices - 100 g here, 300 g in the house
-            c consume - # count - m move - t custody - \ lens
+            space act - c consume - # count - m move - e rename

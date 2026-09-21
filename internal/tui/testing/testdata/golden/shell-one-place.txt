@@ -10,4 +10,4 @@ BY PLACE  the house > Left Pantry                                               
 >     Left Pantry                  1│
 ----------------------------------------------------------------------------------------------------
 the house > Left Pantry - 1 holding below here
-            TAB fold - o new - e rename - m move - \ lens - M-g jump
+            space act - TAB fold - o new - e rename - \ lens - M-g jump

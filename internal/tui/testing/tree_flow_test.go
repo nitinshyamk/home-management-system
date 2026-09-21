@@ -63,7 +63,7 @@ func TestBrowsingTheTreesWritesNothing(t *testing.T) {
 		s.Send(sim.ShiftTab)
 		s.Send(sim.ShiftTab)
 		s.Send(sim.Tab)
-		s.Send(sim.Press("s"), sim.Space, sim.Esc, sim.AltGreat)
+		s.Send(sim.Press("s"), sim.CtrlSpace, sim.Esc, sim.AltGreat)
 	}
 	if after := s.CountHoldings(); after != before {
 		t.Errorf("browsing the trees changed the holdings from %d to %d", before, after)

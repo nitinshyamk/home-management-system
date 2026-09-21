@@ -104,7 +104,7 @@ func TestSortingAndSelectingWriteNothing(t *testing.T) {
 	s.ByPlace()
 	s.OnContents()
 	s.Send(sim.Press("s"), sim.Press("s"), sim.CtrlF, sim.Press("s"))
-	s.Send(sim.Space, sim.Space, sim.AltH, sim.Esc)
+	s.Send(sim.CtrlSpace, sim.CtrlSpace, sim.AltH, sim.Esc)
 	s.Send(sim.AltGreat, sim.AltLess)
 
 	if after := s.CountHoldings(); after != before {

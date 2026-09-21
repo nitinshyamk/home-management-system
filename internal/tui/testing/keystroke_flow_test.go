@@ -142,6 +142,68 @@ func TestToggleCustodyIsOneKey(t *testing.T) {
 	}
 }
 
+// space lists what can be done to the row, and what each would change.
+//
+// Thirty-five commands behind six keymap contexts is a vocabulary, not an
+// interface. This is how the whole of it stays reachable without thirty-five
+// keys.
+func TestSpaceListsWhatCanBeDoneHere(t *testing.T) {
+	s := sim.New(t)
+	stocked(t, s)
+	s.ByPlace()
+	s.OnContents()
+
+	s.Send(sim.Space)
+	s.ShowsText("ACT ON")
+	s.ShowsText("use some")
+	// Annotated with the state it would act on, which is the difference
+	// between a key and an offer.
+	s.ShowsText("500 g here")
+	// And verbs with no key of their own are reachable from here.
+	s.ShowsText("discard some")
+
+	s.Send(sim.Esc)
+	s.HidesText("ACT ON")
+}
+
+// What is NOT offered is as much the point: a cable has no amount, so
+// consuming it is absent rather than present and then refused.
+func TestThePaletteLeavesOutWhatCannotBeDone(t *testing.T) {
+	s := sim.New(t)
+	stocked(t, s)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.CtrlS)
+	s.Send(sim.Type("cable"))
+	s.Send(sim.Enter)
+
+	s.Send(sim.Space)
+	s.ShowsText("ACT ON")
+	s.ShowsText("take it out")
+	s.HidesText("use some")
+	s.HidesText("count what is there")
+}
+
+// space acts and x selects. The space bar was the selection key, and this is
+// the one binding most likely to annoy on the first day -- so C-space still
+// selects too.
+func TestSpaceActsAndXSelects(t *testing.T) {
+	s := sim.New(t)
+	stocked(t, s)
+	s.ByPlace()
+	s.OnContents()
+
+	s.Send(sim.Press("x"))
+	s.ShowsText("1 selected")
+	s.HidesText("ACT ON")
+
+	s.Send(sim.Press("x")) // and off again
+	s.HidesText("1 selected")
+
+	s.Send(sim.CtrlSpace)
+	s.ShowsText("1 selected")
+}
+
 // A write reloads the view, and the cursor has to come back to the row it was
 // on -- or acting twice on one thing is impossible, and the second t lands on
 // whatever sorted first.
@@ -267,7 +329,7 @@ func TestAKeystrokeActsOnEverySelectedRow(t *testing.T) {
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltLess)
-	s.Send(sim.Space, sim.Space)
+	s.Send(sim.CtrlSpace, sim.CtrlSpace)
 	s.ShowsText("2 selected")
 
 	s.Send(sim.Press("c"))
@@ -661,7 +723,7 @@ func TestTheMoveKeyDoesNotCarryASelection(t *testing.T) {
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltLess)
-	s.Send(sim.Space, sim.Space)
+	s.Send(sim.CtrlSpace, sim.CtrlSpace)
 	s.ShowsText("2 selected")
 
 	s.Send(sim.Press("m"))
@@ -703,7 +765,7 @@ func TestABatchThatWouldMergeIsRefused(t *testing.T) {
 	s.Send(sim.Type("rice"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltLess)
-	s.Send(sim.Space, sim.Space)
+	s.Send(sim.CtrlSpace, sim.CtrlSpace)
 	s.ShowsText("2 selected")
 
 	s.Send(sim.Press("m"))

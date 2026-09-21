@@ -7,4 +7,4 @@ BY PLACE  the house                               4 holdings
   Thunderbolt 4 to Dual DisplayP…  at rest  Small Parts Tray
 ------------------------------------------------------------
 Ancho Chile - Spices - 100 g here, 300 g in the house
-            c consume - # count - m move - t custody
+            space act - c consume - # count - m move

@@ -249,7 +249,7 @@ func TestEscapeLeavesExactlyOneMode(t *testing.T) {
 	s.Send(sim.CtrlS)
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
-	s.Send(sim.Space, sim.Space)
+	s.Send(sim.CtrlSpace, sim.CtrlSpace)
 	s.Send(sim.AltX)
 	s.Send(sim.Type("consume 1"))
 
@@ -328,7 +328,7 @@ func TestBrowsingStillWritesNothing(t *testing.T) {
 	for _, view := range []string{"1", "2", "3", "4"} {
 		s.Send(sim.Press(view))
 		s.Send(sim.CtrlN, sim.CtrlP, sim.AltGreat, sim.Press("s"))
-		s.Send(sim.Space, sim.Esc, sim.CtrlS, sim.AltN)
+		s.Send(sim.CtrlSpace, sim.Esc, sim.CtrlS, sim.AltN)
 		s.Send(sim.Press("e"), sim.Esc)
 		s.Send(sim.AltX, sim.Esc)
 	}
@@ -361,7 +361,7 @@ func TestACommandActsOnEverySelectedRow(t *testing.T) {
 	// deliberately, so you do not lose your place while typing -- so where it
 	// ends up is not something a test should assume.
 	s.Send(sim.AltLess)
-	s.Send(sim.Space, sim.Space, sim.Space) // all three
+	s.Send(sim.CtrlSpace, sim.CtrlSpace, sim.CtrlSpace) // all three
 	s.ShowsText("3 selected")
 
 	s.Send(sim.AltX)
@@ -387,7 +387,7 @@ func TestASelectionIsOneUnitOfWork(t *testing.T) {
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltLess)
-	s.Send(sim.Space, sim.Space, sim.Space)
+	s.Send(sim.CtrlSpace, sim.CtrlSpace, sim.CtrlSpace)
 
 	// More than one of them holds: two have 100, one has 100 -- ask for 150 and
 	// every row refuses, but the point is that the FIRST would have succeeded
@@ -411,7 +411,7 @@ func TestABatchSummaryDoesNotRepeatItself(t *testing.T) {
 	s.Send(sim.Type("ancho"))
 	s.Send(sim.Enter)
 	s.Send(sim.AltLess)
-	s.Send(sim.Space, sim.Space, sim.Space)
+	s.Send(sim.CtrlSpace, sim.CtrlSpace, sim.CtrlSpace)
 	s.Send(sim.AltX)
 	s.Send(sim.Type("consume 10"))
 	s.Send(sim.Enter)

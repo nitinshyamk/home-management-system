@@ -134,10 +134,16 @@ func (m Model) inspectHolding(sel selection) []string {
 
 	if item, ok := m.item(row.ItemID); ok {
 		parts = append(parts, item.Category)
-		// The house total only where there is more of it elsewhere.
-		if item.OnHand != "" && item.OnHand != row.State {
+		// Both framings, but only for a measured thing: "800 g here, 6.8 kg
+		// in the house" is the pair domain-model.md 4.1 asks for. A cable's
+		// state is "out at Office", and "out at Office here, 1 held in the
+		// house" is that sentence forced through a template meant for
+		// quantities.
+		measured := row.Custody == ""
+		switch {
+		case measured && item.OnHand != "" && item.OnHand != row.State:
 			parts = append(parts, fmt.Sprintf("%s here, %s in the house", row.State, item.OnHand))
-		} else {
+		default:
 			parts = append(parts, row.State)
 		}
 		// The measure only where it adds to the quantity: the bare unit is
@@ -216,17 +222,18 @@ func (m Model) verbs() string {
 			[]keys.Action{keys.CommandLine})
 	}
 
-	var lead string
-	var groups [][]keys.Action
-	switch {
-	case m.onRail():
-		lead = keys.Hint(keys.Tree, []keys.Action{keys.FoldToggle}) + " - "
-		groups = [][]keys.Action{{keys.Create}, {keys.EditInPlace}, {keys.MoveTo}}
-	case m.onHoldings():
-		groups = [][]keys.Action{{keys.Consume}, {keys.Count}, {keys.MoveTo}, {keys.ToggleCustody}}
-	default:
-		groups = [][]keys.Action{{keys.Create}, {keys.EditInPlace}}
+	// The verbs come from the same table the palette lists, so the bar cannot
+	// name a key the palette does not have or the other way round. Only the
+	// ones with a key of their own: the rest are behind `space`, which is
+	// what makes it worth pressing.
+	parts := []string{keys.Hint(keys.Browse, []keys.Action{keys.Act})}
+	if m.onRail() {
+		parts = append(parts, keys.Hint(keys.Tree, []keys.Action{keys.FoldToggle}))
 	}
-	groups = append(groups, []keys.Action{keys.LensFlip}, []keys.Action{keys.Jump})
-	return lead + keys.Hint(keys.Browse, groups...)
+	if verbs := m.verbLine(); verbs != "" {
+		parts = append(parts, verbs)
+	}
+	parts = append(parts, keys.Hint(keys.Browse,
+		[]keys.Action{keys.LensFlip}, []keys.Action{keys.Jump}))
+	return strings.Join(parts, " - ")
 }

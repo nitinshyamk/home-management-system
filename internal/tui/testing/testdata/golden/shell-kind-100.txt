@@ -6,4 +6,4 @@ BY KIND  everything                                                             
 ----------------------------------------------------------------------------------------------------
   BY KIND - everything
 Ancho Chile - Spices - measured in g - 300 g on hand
-            o new - e rename - \ lens - M-g jump
+            space act - m move - e rename - \ lens - M-g jump

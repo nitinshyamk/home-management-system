@@ -28,8 +28,10 @@ func (m Model) View() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(m.header(widths, visible))
-	b.WriteByte('\n')
+	if !m.headerless {
+		b.WriteString(m.header(widths, visible))
+		b.WriteByte('\n')
+	}
 
 	if len(m.visible) == 0 {
 		b.WriteString(style.Dim.Render(m.emptyMessage()))
