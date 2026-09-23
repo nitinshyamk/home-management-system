@@ -212,6 +212,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stagedMsg:
 		return m.staged(msg), nil
 
+	case stagedEditsMsg:
+		// A verb produced commands while organise mode was open, and they
+		// have come back described. If the mode was left in the meantime the
+		// batch is gone, and so is the reason to have them.
+		s, ok := m.organising()
+		if !ok {
+			return m, nil
+		}
+		return m.stage(s, msg.edits), nil
+
+	case arrangedMsg:
+		// The batch is written, so the mode is over: what it was staging no
+		// longer exists as a proposal, it exists as the house.
+		m = m.closeAll()
+		m.say = m.say.Report(fmt.Sprintf("arranged %s, in one transaction",
+			rowsPhrase(msg.edits)))
+		return m, m.load(m.view)
+
 	case importedMsg:
 		m = m.withFlow(m.flow().done())
 		// Said before the load, and it survives it: a load replaces the view's
@@ -255,7 +273,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.candidates, m.units = msg.candidates, msg.units
 		// A move waiting on them: it asked for the index so its list of
 		// destinations would be the tree as it is now.
-		if mv, ok := m.drawer.(*moving); ok && mv.all == nil {
+		if mv, ok := m.top().(*moving); ok && mv.all == nil {
 			*mv = mv.withDestinations(msg.candidates)
 			if len(mv.all) == 0 {
 				return m.close().refuse("nowhere to put %q", mv.what), nil

@@ -1,0 +1,17 @@
+BY PLACE  the house                                                       4 holdings
+------------------------------------------------------------------------------------
+  NAME                           │  ITEM ^                     QTY  WHERE           
+  ▾ the house                   4│> Ancho Chile              100 g  Left Pantry     
+    ▾ Garage                    3│  Ancho Chile              100 g  Garage          
+      ▾ Metal Shelving Unit     2│  Ancho Chile              100 g  Small Parts Tray
+        ▾ Bay 3                 2│  Thunderbolt 4 to Dua…  at rest  Small Parts Tray
+          ▾ Blue Crate          2│
+              Small Parts Tray  2│
+      Left Pantry               1│
+------------------------------------------------------------------------------------
+ORGANISE  staged, nothing written yet   1 row
+      #  WHAT IT WOULD DO                                                    WHY NOT
+  OK  1  move all of Ancho Chile > Left Pantry (loose) to Garage                    
+------------------------------------------------------------------------------------
+1 ready - 0 need confirming - 0 blocked - A applies all of it, in one transaction
+            A apply the lot - u take back - q abandon - the verbs stage

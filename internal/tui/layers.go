@@ -62,11 +62,11 @@ func (m Model) layers() []layer {
 	// After the field and the panel, because they open INSIDE it. Putting the
 	// plan first meant its table ate ctrl+u while someone was clearing a
 	// field, and enter settled the row instead of saving what they had typed.
-	if m.drawer != nil {
+	if d := m.top(); d != nil {
 		inner = append(inner, layer{
-			name: m.drawer.name(), active: true, offers: m.drawer.keys(m),
+			name: d.name(), active: true, offers: d.keys(m),
 			handle: func(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
-				return m.drawer.update(m, msg)
+				return d.update(m, msg)
 			},
 		})
 	}

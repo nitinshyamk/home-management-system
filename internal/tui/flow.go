@@ -101,7 +101,7 @@ func (f flow) settled() flow { f.settling = noRow; return f }
 // show builds the screen over a freshly bound file.
 func (f flow) show(plan importer.Plan, names command.Namer, stage review.Stage, note string) flow {
 	f.bound, f.names = plan, names
-	f.screen = review.New("IMPORT", fileHeading(plan.Source), nil).
+	f.screen = review.New("IMPORT", fileHeading(plan.Source), "ROW", nil).
 		WithStage(stage).
 		WithNote(note)
 	return f.rebuild()

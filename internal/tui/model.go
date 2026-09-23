@@ -99,15 +99,20 @@ type Model struct {
 	// total is what the rail's root rolls up, for the header.
 	total int64
 
-	// drawer is whatever is open below the house -- the destinations a move
+	// drawers is what is open below the house -- the destinations a move
 	// offers, the verbs a row takes, the plans waiting, the plan being
-	// reviewed. Nil the rest of the time, which is nearly always.
+	// reviewed, the arrangement being staged. Empty the rest of the time,
+	// which is nearly always.
 	//
 	// ONE field, because the region is one region. It was four, and each new
 	// one had to be wired into the model, the layer list, the renderer and
 	// the height arithmetic before it worked; the plan never got the fourth
 	// and so never shrank the house behind it.
-	drawer   drawer
+	//
+	// A stack, because the modes in the region nest: organise mode stays open
+	// while the destination picker opens inside it for one move. See
+	// Model.top.
+	drawers  []drawer
 	fromView view
 
 	// say is everything the interface has to say about itself: the view's

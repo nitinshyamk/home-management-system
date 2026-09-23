@@ -131,11 +131,18 @@ func (s Stage) more() bool { return s.Of > 1 && s.Number < s.Of }
 // columns are the review's. The state comes FIRST and is never dropped: if
 // you have to read the issue text to know a change is blocked, the screen has
 // failed at the only thing it is for.
-var columns = []table.Column{
-	{Title: "", Min: 2},
-	{Title: "ROW", Min: 3, Align: table.Right, Drop: 4},
-	{Title: "WHAT IT WOULD DO", Min: 20, Grow: true},
-	{Title: "WHY NOT", Min: 12, Drop: 2},
+//
+// The second is titled by the producer, because what a change can be found
+// again by depends on what proposed it: a file's row has a line number, and
+// an edit staged against the rail has only the order it was made in. It drops
+// early either way -- it is how you find the thing, not what the thing is.
+func columns(at string) []table.Column {
+	return []table.Column{
+		{Title: "", Min: 2},
+		{Title: at, Min: 3, Align: table.Right, Drop: 4},
+		{Title: "WHAT IT WOULD DO", Min: 20, Grow: true},
+		{Title: "WHY NOT", Min: 12, Drop: 2},
+	}
 }
 
 // Model is the review screen.
@@ -168,9 +175,14 @@ type Model struct {
 }
 
 // New builds a screen over a set of changes.
-func New(lead, source string, changes []Change) Model {
+//
+// lead is the word the heading opens with and at is what the second column
+// holds -- "IMPORT"/"ROW" for a file, "ORGANISE"/"#" for a staged batch.
+// Both are the producer's, because both name what it proposed rather than
+// what this screen does with it.
+func New(lead, source, at string, changes []Change) Model {
 	m := Model{lead: lead, source: source, width: 100}
-	m.tbl = table.New(columns).Fixed()
+	m.tbl = table.New(columns(at)).Fixed()
 	return m.WithChanges(changes)
 }
 
@@ -202,6 +214,15 @@ func (m Model) WithNote(note string) Model { m.note = note; return m }
 // WithVerdict records what stands in the way of applying the whole set, or
 // clears it with the empty string.
 func (m Model) WithVerdict(why string) Model { m.why = why; return m }
+
+// Focused says whether this screen has the keyboard.
+//
+// A blurred one draws no cursor. Not every review is walked: organise mode
+// leaves the keyboard in the house, because the tree in the rail is what it
+// is editing -- and a cursor drawn here as well would be two cursors on one
+// screen, which is the question "which of these am I about to act on?" with
+// no answer.
+func (m Model) Focused(on bool) Model { m.tbl = m.tbl.Focused(on); return m }
 
 // Stage is which stage is on screen, so the caller that has to decide what
 // applying it means does not have to remember.
