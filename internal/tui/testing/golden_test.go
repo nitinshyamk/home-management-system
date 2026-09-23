@@ -219,3 +219,23 @@ func TestTheImportPlanFitsANarrowTerminal(t *testing.T) {
 		s.FitsWidth(width)
 	}
 }
+
+// Organise mode, with a batch in it.
+//
+// Two claims a plain-text capture holds still that prose cannot. The house is
+// still legible behind the batch -- the rail, the contents, and the cursor,
+// which this is the one drawer that leaves where it is. And the batch says
+// plainly that it has not happened: the heading, the counts and the key that
+// would make it happen are all on screen at once.
+func TestGoldenOrganising(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(84, 24)
+	s.ByPlace()
+	s.OnContents()
+	s.Send(sim.Press("O"))
+	s.Send(sim.Press("m"))
+	s.Send(sim.Enter)
+	s.FitsWidth(84)
+	s.AssertFrame("shell-organising")
+}

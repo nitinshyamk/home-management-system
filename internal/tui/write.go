@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"home-management-system/internal/tui/organise"
+
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
 
@@ -32,9 +34,7 @@ func (m Model) runLine(line string) tea.Cmd {
 		subjects = []command.Subject{{}}
 	}
 	return func() tea.Msg {
-		var combined app.Plan
-		var summaries []string
-
+		commands := make([]command.Command, 0, len(subjects))
 		for _, subject := range subjects {
 			result, err := m.ctrl.BindLine(m.ctx, line, subject)
 			if err != nil {
@@ -43,16 +43,15 @@ func (m Model) runLine(line string) tea.Cmd {
 			if !result.Ready() {
 				return issuesMsg{issues: app.Issues(result)}
 			}
-			plan, err := m.ctrl.PlanCommand(m.ctx, result.Command)
-			if err != nil {
-				return issuesMsg{issues: []string{err.Error()}}
-			}
-			if combined, err = combined.Merge(plan); err != nil {
-				return issuesMsg{issues: []string{err.Error()}}
-			}
-			summaries = append(summaries, m.ctrl.Describe(m.ctx, result.Command))
+			commands = append(commands, result.Command)
 		}
-		return planMsg{plan: combined, summary: summarise(summaries)}
+		// Binding is where the two paths meet: a keystroke arrives holding
+		// Commands already, and a line arrives here. Everything after -- the
+		// diversion into a staged batch, the planning, the confirmation, the
+		// transaction -- is one function, which is what makes "a keystroke
+		// and the equivalent line do the same thing" a property of the code
+		// rather than a promise.
+		return m.written(commands)
 	}
 }
 
@@ -121,21 +120,65 @@ func (m Model) apply(plan app.Plan, summary string) tea.Cmd {
 // feedback -- is shared, which is what makes "a keystroke and the equivalent
 // line do the same thing" a property of the code rather than a promise.
 func (m Model) runCommands(commands []command.Command) tea.Cmd {
-	return func() tea.Msg {
-		var combined app.Plan
-		var summaries []string
-		for _, cmd := range commands {
-			plan, err := m.ctrl.PlanCommand(m.ctx, cmd)
-			if err != nil {
-				return issuesMsg{issues: []string{err.Error()}}
-			}
-			if combined, err = combined.Merge(plan); err != nil {
-				return issuesMsg{issues: []string{err.Error()}}
-			}
-			summaries = append(summaries, m.ctrl.Describe(m.ctx, cmd))
+	return func() tea.Msg { return m.written(commands) }
+}
+
+// written is what happens to Commands once they exist, whichever path built
+// them: staged if a batch is open, planned if not.
+//
+// ONE function, and the reason is organise mode. A verb that had to check for
+// itself whether the mode was open would be a verb that could forget to, and
+// the one that forgot would write in the middle of a batch nobody had
+// applied -- which is the mode failing at its only promise, silently, in the
+// one place a person is trusting it.
+func (m Model) written(commands []command.Command) tea.Msg {
+	if _, organising := m.organising(); organising {
+		staged, rest := splitArranging(commands)
+		switch {
+		case len(staged) > 0 && len(rest) > 0:
+			// Mixed, which only the command line can produce. Staging half of
+			// it and writing the other half would be the worst of both, so
+			// neither happens.
+			return issuesMsg{issues: []string{"organising stages the arrangement; " +
+				"this also changes what is on hand -- do them separately"}}
+		case len(staged) > 0:
+			return m.describedForStaging(staged)
 		}
-		return planMsg{plan: combined, summary: summarise(summaries)}
+		// Everything else writes now, in organise mode as everywhere else.
+		// See splitArranging.
 	}
+
+	var combined app.Plan
+	var summaries []string
+	for _, cmd := range commands {
+		plan, err := m.ctrl.PlanCommand(m.ctx, cmd)
+		if err != nil {
+			return issuesMsg{issues: []string{err.Error()}}
+		}
+		if combined, err = combined.Merge(plan); err != nil {
+			return issuesMsg{issues: []string{err.Error()}}
+		}
+		summaries = append(summaries, m.ctrl.Describe(m.ctx, cmd))
+	}
+	return planMsg{plan: combined, summary: summarise(summaries)}
+}
+
+// splitArranging separates what organise mode stages from what it does not.
+//
+// Quantity and custody are never staged. Arranging is free and reversible --
+// the domain model guarantees it -- which is what makes holding a batch of it
+// honest; consuming a jar is neither, so a batch that promised to defer it
+// would be promising a safety the system cannot provide. See
+// internal/tui/organise.Arranges.
+func splitArranging(commands []command.Command) (staged, rest []command.Command) {
+	for _, cmd := range commands {
+		if organise.Arranges(cmd.Op()) {
+			staged = append(staged, cmd)
+		} else {
+			rest = append(rest, cmd)
+		}
+	}
+	return staged, rest
 }
 
 // asSubject is how a row on screen names itself to a command.

@@ -29,9 +29,12 @@ func (m Model) View() string {
 	// remember to resize the house -- and the one that forgot would draw a
 	// screen taller than the terminal, which wraps and shifts every row.
 	house := m.current.SetSize(m.width, m.bodyHeight()).SetOverlay(m.field().Lines())
-	if blurrable, ok := house.(interface{ Blur() surface }); ok && m.drawer != nil {
+	if blurrable, ok := house.(interface{ Blur() surface }); ok && m.top() != nil && !m.drawerShares() {
 		// A drawer with a cursor of its own is the only cursor on screen. The
-		// same argument the two panes settled between themselves, one level up.
+		// same argument the two panes settled between themselves, one level
+		// up. The exception is a drawer that shares the keyboard: organise
+		// mode edits the tree in the rail, so blurring it would hide the one
+		// cursor the mode is about.
 		house = blurrable.Blur()
 	}
 	body := house.View()

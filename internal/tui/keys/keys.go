@@ -101,6 +101,13 @@ const (
 	// OpenImport lists the plans waiting to be reviewed, so a review happens
 	// against the house rather than after quitting it.
 	OpenImport
+	// Organise stages the arrangement rather than committing it, so a shape
+	// can be tried before it is owned.
+	Organise
+	// TakeBack removes the last staged edit. It is undo for something that
+	// has not happened yet, which is why it does not ask and why there is no
+	// redo: nothing was written, so nothing is being recovered.
+	TakeBack
 
 	// Folding.
 	FoldToggle
@@ -164,6 +171,9 @@ const (
 	Creator
 	// Plan is the import review screen.
 	Plan
+	// Staging is the rail while the arrangement is being staged. Consulted
+	// BEFORE Browse, and holding only what acts on the batch.
+	Staging
 )
 
 // binding is one action and the keys that mean it. The first key is the one
@@ -237,7 +247,24 @@ var contexts = map[Context][]binding{
 		{LensFlip, []string{"\\"}, "lens"},
 		{ViewAttention, []string{"!"}, "attention"},
 		{OpenImport, []string{"i"}, "import"},
+		{Organise, []string{"O"}, "organise"},
 	}...),
+
+	// Staging is the rail while the arrangement is being staged. It is
+	// consulted BEFORE Browse and holds only the keys that act on the BATCH;
+	// everything else -- the motion, the folds, and the verbs that stage --
+	// is the browse keymap unchanged, because staging a rename is the same
+	// gesture as renaming and the whole point is that it is.
+	//
+	// A context rather than a handful of special cases inside the drawer,
+	// for the reason Context exists: `A` applies here and means nothing while
+	// browsing, and `q` has to leave the batch rather than the program.
+	Staging: {
+		{ApplyAll, []string{"A"}, "apply the lot"},
+		{TakeBack, []string{"u"}, "take back"},
+		{Quit, []string{"q"}, "abandon"},
+		cancel,
+	},
 
 	Line: lineBindings(),
 
@@ -452,4 +479,6 @@ func Bindings(ctx Context) [][]string {
 }
 
 // Contexts is every surface, so a test can walk the whole keymap.
-func Contexts() []Context { return []Context{Browse, Table, Tree, Line, Creator, Plan} }
+func Contexts() []Context {
+	return []Context{Browse, Table, Tree, Line, Creator, Plan, Staging}
+}

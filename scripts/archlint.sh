@@ -483,15 +483,32 @@ fi
 # Staged structural edits are COMMANDS, not a tree.
 #
 # The tempting shape is a proposed tree the database has not seen, mutated as
-# you go. That is a second source of truth: it goes stale against every
-# reload, and there is then no answer to which of the two is the house.
+# you go and diffed at the end. That is a second source of truth: it goes
+# stale against every reload, there is then no answer to which of the two is
+# the house, and the diff has to invent the edits back out of two shapes --
+# guessing which rename was which.
 #
-# So organise mode holds the diff -- a list of changes to compile into
-# Commands -- and the rail projects it over the nodes it was given at draw
-# time. One tree, plus a pending changelist. Naming tree.Node here is the
-# first step of getting that wrong.
-rule "staged structural edits are commands, not a tree" \
-  internal/tui/organise '*.go' 'tree\.Node'
+# So organise mode holds the Commands themselves, in the order they were
+# made. They are already what will be applied, and they have no opinion about
+# the tree at all, which is why the rail underneath goes on being freshly
+# loaded rows exactly as it was.
+#
+# Stated as the strongest thing that is true: the package imports nothing but
+# internal/command. A ban on tree.Node alone would be satisfied by a shadow
+# node type of its own making, which is the same mistake with different
+# spelling.
+if [ -d internal/tui/organise ]; then
+  hits="$(grep -rn --include='*.go' 'home-management-system/internal/' internal/tui/organise \
+          | grep -v 'home-management-system/internal/command"' || true)"
+  if [ -n "$hits" ]; then
+    report "staged structural edits are commands, not a tree"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "staged structural edits are commands, not a tree"
+  fi
+else
+  skip "staged structural edits are commands, not a tree" internal/tui/organise
+fi
 
 echo
 if [ "$fail" -ne 0 ]; then

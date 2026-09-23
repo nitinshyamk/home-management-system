@@ -14,7 +14,7 @@ func change(at, what string, state review.State) review.Change {
 }
 
 func newScreen(changes ...review.Change) review.Model {
-	return review.New("IMPORT", "receipt.csv", changes).SetSize(120, 20)
+	return review.New("IMPORT", "receipt.csv", "ROW", changes).SetSize(120, 20)
 }
 
 // screen is the review as the application draws it: the rows, and the facts
@@ -145,7 +145,7 @@ func TestAnEmptySetStillDraws(t *testing.T) {
 func TestALongSourceDoesNotOverflow(t *testing.T) {
 	source := "a-very-long-receipt-name-that-goes-on-and-on-and-on-and-on.csv"
 	for _, width := range []int{40, 60, 80, 100} {
-		m := review.New("IMPORT", source, nil).SetSize(width, 20)
+		m := review.New("IMPORT", source, "ROW", nil).SetSize(width, 20)
 		for _, line := range strings.Split(text.StripANSI(m.View()), "\n") {
 			if n := len([]rune(line)); n > width {
 				t.Errorf("a line is %d columns in a %d-column terminal: %q", n, width, line)
