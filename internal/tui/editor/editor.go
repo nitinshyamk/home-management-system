@@ -90,8 +90,11 @@ const (
 
 	// The action prompts. Each collects one answer for a verb the person has
 	// already chosen by pressing a key.
-	Consume    Purpose = "consume"
-	Count      Purpose = "count"
+	Consume Purpose = "consume"
+	Count   Purpose = "count"
+	// WalkCount is the same question asked on a walk, where the answer goes
+	// into the batch the walk is building rather than being written at once.
+	WalkCount  Purpose = "walk count"
 	Move       Purpose = "move"
 	Reclassify Purpose = "reclassify"
 )

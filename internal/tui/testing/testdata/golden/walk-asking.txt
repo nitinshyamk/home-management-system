@@ -1,0 +1,20 @@
+BY PLACE  the house                                                       4 holdings
+------------------------------------------------------------------------------------
+  NAME                           │  ITEM ^                     QTY  WHERE           
+  ▾ the house                   4│  Ancho Chile              100 g  Left Pantry     
+    ▾ Garage                    3│  Ancho Chile              100 g  Garage          
+      ▾ Metal Shelving Unit     2│  Ancho Chile              100 g  Small Parts Tray
+        ▾ Bay 3                 2│  Thunderbolt 4 to Dua…  at rest  Small Parts Tray
+          ▾ Blue Crate          2│
+              Small Parts Tray  2│
+      Left Pantry               1│
+------------------------------------------------------------------------------------
+WALK  the house   1 of 4   0 answered
+  Ancho Chile
+  in Left Pantry
+  the ledger says 100 g
+
+------------------------------------------------------------------------------------
+  walking the house -- 4 rows to check
+0 of 4 checked - nothing is written until you file it
+            y it is right - # this much instead - n not there

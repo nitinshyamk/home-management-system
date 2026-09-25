@@ -144,7 +144,28 @@ type HoldingRow struct {
 	// Retired marks a Holding that is done with, so an action can refuse it
 	// before the ledger has to.
 	Retired bool
+
+	// OnHand is what the ledger says is there, for a Bulk Holding, and zero
+	// for a Unique one -- which has a custody instead of an amount.
+	//
+	// Alongside State rather than instead of it. State SAYS the amount, in
+	// the item's own unit and in words a person reads; this is the number.
+	// The walk needs the number: confirming a count means sending the figure
+	// the ledger holds back to it, and parsing that figure out of the
+	// sentence the ledger wrote about itself would be a round trip through
+	// prose for something nobody had to render in the first place.
+	OnHand domain.Quantity
+	// Unit is what OnHand is counted in, for the one place that has to write
+	// the number and the unit itself rather than taking State whole.
+	Unit domain.UnitCode
 }
+
+// Bulk reports the Holding having an amount rather than a custody.
+//
+// Named here, once, because it was spelled `Custody == ""` at four call
+// sites -- a test of one field to answer a question about a different one,
+// which reads as a bug every time somebody meets it.
+func (h HoldingRow) Bulk() bool { return h.Kind == string(domain.KindBulk) }
 
 // Attention is how urgently a row reads. Ordered, so the loudest flag on a
 // row wins without the caller comparing strings.
@@ -377,6 +398,9 @@ func (c *controller) Holdings(ctx context.Context) ([]HoldingRow, error) {
 		}
 		if u, ok := d.Holding.(domain.UniqueHolding); ok {
 			row.Custody = string(u.Custody)
+		}
+		if b, ok := d.Holding.(domain.BulkHolding); ok {
+			row.OnHand, row.Unit = b.Quantity, d.ContentUnit
 		}
 		out = append(out, row)
 	}

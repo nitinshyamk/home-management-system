@@ -70,6 +70,19 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.editor.Purpose() == editor.Row {
 			return m.applyRowEdit()
 		}
+		// A figure given on a walk goes into the walk, not into the house. It
+		// is the same question the count prompt asks and deliberately not the
+		// same answer path: everything a walk decides is filed together, in
+		// one transaction, at the end.
+		if m.editor.Purpose() == editor.WalkCount {
+			answer := strings.TrimSpace(m.editor.Value())
+			m.editor = m.editor.Close()
+			wk, ok := m.top().(*walking)
+			if !ok || answer == "" {
+				return m, nil
+			}
+			return m.countedOnWalk(wk, answer)
+		}
 		if m.editor.Purpose() != editor.Rename {
 			return m.actOnPrompt()
 		}

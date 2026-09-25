@@ -212,6 +212,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stagedMsg:
 		return m.staged(msg), nil
 
+	case walkMsg:
+		return m.openWalk(msg)
+
+	case walkedMsg:
+		m = m.closeAll()
+		m.say = m.say.Report(fmt.Sprintf("filed %s of %s checked in %s, in one transaction",
+			rowsPhrase(msg.checked), rowsPhrase(msg.of), msg.where))
+		return m, m.load(m.view)
+
 	case stagedEditsMsg:
 		// A verb produced commands while organise mode was open, and they
 		// have come back described. If the mode was left in the meantime the

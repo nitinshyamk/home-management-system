@@ -108,6 +108,18 @@ const (
 	// has not happened yet, which is why it does not ask and why there is no
 	// redo: nothing was written, so nothing is being recovered.
 	TakeBack
+	// Verify walks a subtree, checking what the ledger claims against what is
+	// actually on the shelf.
+	Verify
+
+	// The three answers a walk takes. They are actions rather than letters
+	// because they are one question asked of every kind of holding, and what
+	// each one MEANS depends on the thing in front of you: "it is not there"
+	// is a count of zero for a sack of rice and a failed sighting for a
+	// cable.
+	Right
+	Amount
+	Missing
 
 	// Folding.
 	FoldToggle
@@ -174,6 +186,8 @@ const (
 	// Staging is the rail while the arrangement is being staged. Consulted
 	// BEFORE Browse, and holding only what acts on the batch.
 	Staging
+	// Walk is the drawer that asks about one holding at a time.
+	Walk
 )
 
 // binding is one action and the keys that mean it. The first key is the one
@@ -248,6 +262,24 @@ var contexts = map[Context][]binding{
 		{ViewAttention, []string{"!"}, "attention"},
 		{OpenImport, []string{"i"}, "import"},
 		{Organise, []string{"O"}, "organise"},
+		{Verify, []string{"V"}, "walk and check"},
+	}...),
+
+	// The walk. Three answers and a way to file them, and the three are
+	// deliberately not the browse letters they resemble: `c` is consume
+	// everywhere else, and a walk is exactly the wrong screen to be a
+	// keystroke away from taking something off a shelf you are standing in
+	// front of counting.
+	//
+	// y and n because the question really is yes-or-no most of the time, and
+	// a walk is done at arm's length with a box in your other hand.
+	Walk: append(append([]binding{}, motion...), []binding{
+		{Right, []string{"y"}, "it is right"},
+		{Amount, []string{"#"}, "this much instead"},
+		{Missing, []string{"n"}, "not there"},
+		{ApplyAll, []string{"A"}, "file what was checked"},
+		{Quit, []string{"q"}, "stop"},
+		cancel,
 	}...),
 
 	// Staging is the rail while the arrangement is being staged. It is
@@ -480,5 +512,5 @@ func Bindings(ctx Context) [][]string {
 
 // Contexts is every surface, so a test can walk the whole keymap.
 func Contexts() []Context {
-	return []Context{Browse, Table, Tree, Line, Creator, Plan, Staging}
+	return []Context{Browse, Table, Tree, Line, Creator, Plan, Staging, Walk}
 }
