@@ -222,6 +222,40 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Browse, "make a new one inside this", keys.Create),
 			pair(keys.Browse, "retire it -- it asks first", keys.Kill),
 		}},
+		{topic: "organising", what: "trying a shape before you own it", title: "ORGANISE MODE", rows: [][2]string{
+			pair(keys.Browse, "start staging instead of writing", keys.Organise),
+			pair(keys.Staging, "apply the whole batch, in one transaction", keys.ApplyAll),
+			pair(keys.Staging, "take back the last thing you staged", keys.TakeBack),
+			pair(keys.Staging, "put the batch down; nothing is written", keys.Quit),
+		}, prose: []string{
+			"While a batch is open the verbs above stage instead of writing, " +
+				"and the region below the house fills up with what they would " +
+				"come to. The verbs are the same verbs -- the only difference " +
+				"is when they take effect.",
+			"Only the ARRANGEMENT is staged: what something is called and " +
+				"where it sits. Using, counting and custody write at once, " +
+				"because those are not free to undo and a batch that promised " +
+				"otherwise would be promising something it cannot do.",
+		}},
+		{topic: "walking", what: "checking the house against the ledger", title: "THE WALK", rows: [][2]string{
+			pair(keys.Browse, "walk everything under this node", keys.Verify),
+			pair(keys.Walk, "the ledger has it right", keys.Right),
+			pair(keys.Walk, "there is this much instead", keys.Amount),
+			pair(keys.Walk, "it is not there", keys.Missing),
+			pair(keys.Walk, "file what was checked, in one transaction", keys.ApplyAll),
+			pair(keys.Walk, "look at one again", keys.MoveUp, keys.MoveDown),
+		}, prose: []string{
+			"Saying a count is right is not nothing: it records that somebody " +
+				"looked. Only a count that DISAGREES also records a correction, " +
+				"which is what lets a shelf nobody has checked be told apart " +
+				"from one that was checked and found correct.",
+			"Something you cannot find is marked lost, not deleted. You have " +
+				"stopped knowing where it is, which is a different claim from " +
+				"it having ceased to exist -- and it is what lets the thing be " +
+				"found again rather than made again.",
+			"Filing a walk part-way writes what was checked and says nothing " +
+				"about the rest.",
+		}},
 		{topic: "fields", what: "readline, as emacs has it", title: "TYPING IN A FIELD", rows: [][2]string{
 			pair(keys.Line, "the start of the line, and the end", keys.LineStart, keys.LineEnd),
 			pair(keys.Line, "a word back, and a word forward", keys.WordLeft, keys.WordRight),

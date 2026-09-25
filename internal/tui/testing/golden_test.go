@@ -239,3 +239,26 @@ func TestGoldenOrganising(t *testing.T) {
 	s.FitsWidth(84)
 	s.AssertFrame("shell-organising")
 }
+
+// The walk, asking, and the same walk having been answered.
+//
+// Two frames because they are two faces of one drawer, and the second is the
+// one that carries the claim: what was SAID, per stop, before any of it is
+// written. A screen that only showed the question would make the walk a
+// thing you do on trust.
+func TestGoldenTheWalk(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	s.Resize(84, 24)
+	s.ByPlace()
+	s.OnRail()
+	s.Send(sim.Press("V"))
+	s.FitsWidth(84)
+	s.AssertFrame("walk-asking")
+
+	for range 4 {
+		s.Send(sim.Press("y"))
+	}
+	s.FitsWidth(84)
+	s.AssertFrame("walk-answered")
+}

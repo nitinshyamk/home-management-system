@@ -116,6 +116,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.fromView = viewShell
 		return m, m.load(viewIntegrity)
 
+	case keys.Verify:
+		return m.startWalk()
+
 	case keys.Organise:
 		return m.startOrganising()
 

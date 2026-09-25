@@ -1,0 +1,20 @@
+BY PLACE  the house                                                       4 holdings
+------------------------------------------------------------------------------------
+  NAME                           │  ITEM ^                     QTY  WHERE           
+  ▾ the house                   4│  Ancho Chile              100 g  Left Pantry     
+    ▾ Garage                    3│  Ancho Chile              100 g  Garage          
+      ▾ Metal Shelving Unit     2│  Ancho Chile              100 g  Small Parts Tray
+        ▾ Bay 3                 2│  Thunderbolt 4 to Dua…  at rest  Small Parts Tray
+          ▾ Blue Crate          2│
+              Small Parts Tray  2│
+------------------------------------------------------------------------------------
+CHECKED  the house   4 rows
+      #  WHAT IT WOULD DO                                                    WHY NOT
+  OK  1  counted Ancho Chile in Left Pantry: still 100 g                            
+  OK  2  counted Ancho Chile in Garage: still 100 g                                 
+  OK  3  counted Ancho Chile in Garage > Metal Shelving Unit > Bay 3 > Blu…         
+  OK  4  saw Thunderbolt 4 to Dual DisplayPort 1.4 Adapter (Space Grey, 0.…         
+------------------------------------------------------------------------------------
+  that is all of the house -- A files it
+4 ready - 0 need confirming - 0 blocked - A applies all of it, in one transaction
+            A file what was checked - C-p/C-n move - q stop

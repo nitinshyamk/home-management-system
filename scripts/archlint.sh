@@ -510,6 +510,52 @@ else
   skip "staged structural edits are commands, not a tree" internal/tui/organise
 fi
 
+
+# A thing you cannot find is LOST, not retired and not deleted.
+#
+# The tempting shortcut on a walk is to treat "it is not there" as the end of
+# the holding: retire it, or drop the row. Both destroy the one fact that
+# makes the thing findable later. Not finding something is an observation
+# about the SEARCH, not about the object -- you have stopped knowing where it
+# is, which is why the ledger records Verified{Present:false} and concludes
+# MarkedLost from it, and why the thing turning up next week is a Found
+# rather than a re-invention.
+#
+# The walk therefore never names Retire or Discard. Stated over the package
+# because that is where the answer is turned into a command.
+if [ -d internal/tui/walk ]; then
+  hits="$(grep -rnE 'Retire|Discard|Archive' --include='*.go' internal/tui/walk || true)"
+  if [ -n "$hits" ]; then
+    report "a thing the walk cannot find is lost, not retired"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "a thing the walk cannot find is lost, not retired"
+  fi
+else
+  skip "a thing the walk cannot find is lost, not retired" internal/tui/walk
+fi
+
+# The walk decides nothing about the house.
+#
+# It records what a person saw and compiles it to Commands; the house's own
+# rules get the last word, in one transaction, exactly as an import stage
+# does. A walk that reached for internal/app or internal/ops would be a
+# screen doing arithmetic the ledger is responsible for -- and the arithmetic
+# it would be doing is "how much should there be", which is the question it
+# exists to stop guessing at.
+if [ -d internal/tui/walk ]; then
+  hits="$(grep -rn --include='*.go' 'home-management-system/internal/' internal/tui/walk \
+          | grep -vE 'home-management-system/internal/(command|domain)"' || true)"
+  if [ -n "$hits" ]; then
+    report "the walk records observations, it does not decide outcomes"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "the walk records observations, it does not decide outcomes"
+  fi
+else
+  skip "the walk records observations, it does not decide outcomes" internal/tui/walk
+fi
+
 echo
 if [ "$fail" -ne 0 ]; then
   printf '\033[31marchlint: %d violation(s)\033[0m\n' "$violations" >&2

@@ -751,18 +751,37 @@ func TestTabStepsThroughTheHelpSections(t *testing.T) {
 		t.Errorf("TAB landed on %q, want the second section", got)
 	}
 
-	// And it keeps going, past the bottom of the first screen.
+	// And it keeps going, past the bottom of the first screen, landing
+	// somewhere new every time.
+	//
+	// By BEHAVIOUR rather than by counting to a named section. This test used
+	// to say "the eighth is TYPING IN A FIELD", which made adding a section to
+	// the help a test failure about a section that had not changed -- and the
+	// claim was never about the eighth one. It is that TAB advances.
+	seen := map[string]bool{cursorLine(s): true}
 	for i := 0; i < 6; i++ {
+		before := cursorLine(s)
 		s.Send(sim.Tab)
-	}
-	if got := cursorLine(s); !strings.Contains(got, "TYPING IN A FIELD") {
-		t.Errorf("seven TABs landed on %q, want the eighth section", got)
+		got := cursorLine(s)
+		if got == before {
+			t.Fatalf("TAB %d did not move: still on %q", i+2, got)
+		}
+		if seen[got] {
+			t.Errorf("TAB %d went back to %q, which it had already reached", i+2, got)
+		}
+		seen[got] = true
 	}
 
-	// S-TAB comes back one.
+	// S-TAB comes back to the one before, whichever that is.
+	was := cursorLine(s)
 	s.Send(sim.ShiftTab)
-	if got := cursorLine(s); !strings.Contains(got, "ACTING ON A ROW") {
-		t.Errorf("S-TAB landed on %q, want the section before", got)
+	back := cursorLine(s)
+	if back == was {
+		t.Errorf("S-TAB did not move: still on %q", back)
+	}
+	s.Send(sim.Tab)
+	if got := cursorLine(s); got != was {
+		t.Errorf("S-TAB then TAB landed on %q, want back on %q", got, was)
 	}
 
 	// The last section is the end of it: TAB there stops rather than wrapping
