@@ -144,6 +144,13 @@ func (f *fakeController) Nudges(context.Context) ([]app.NudgeRow, error) {
 	return []app.NudgeRow{{Item: "Cumin", Category: "Spices", Siblings: 1}}, nil
 }
 
+func (f *fakeController) Attention(context.Context) ([]app.Nagging, error) {
+	return []app.Nagging{
+		{Level: app.AttentionOver, What: "Cumin -- EXPIRED 2024-01-01", Where: "Shelf 1", Kind: "Holding", ID: 1},
+		{Level: app.AttentionSoon, What: `"Cumin" is filed at "Spices", which has 1 subcategories`},
+	}, nil
+}
+
 // SearchIndex returns a small vocabulary so the jump palette has something to
 // find. The widget tests use the fake because they cross no boundary; anything
 // that does uses the Simulator.
@@ -216,12 +223,28 @@ func drive(t *testing.T, ctrl app.Controller, keys ...string) (Model, string) {
 }
 
 // run executes a command and folds the resulting message back in.
+//
+// A tea.BatchMsg is a LIST of commands rather than a message the application
+// has a case for, so it has to be unfolded here -- exactly as the bigger
+// simulator does. This harness did not, and a batch therefore went in and
+// nothing came out: the first command in it was the load, so the house
+// arrived empty and every assertion about its contents failed at once. Which
+// is the useful shape of that bug, at least: silent, and total.
 func run(t *testing.T, m Model, cmd tea.Cmd) Model {
 	t.Helper()
 	if cmd == nil {
 		return m
 	}
 	msg := cmd()
+	if msg == nil {
+		return m
+	}
+	if batch, ok := msg.(tea.BatchMsg); ok {
+		for _, c := range batch {
+			m = run(t, m, c)
+		}
+		return m
+	}
 	if err, ok := msg.(errMsg); ok {
 		t.Fatalf("controller error: %v", err.err)
 	}
@@ -296,12 +319,38 @@ func TestTheLensFlipKeepsTheSubject(t *testing.T) {
 	}
 }
 
-// The attention screen is reached by name rather than by a digit, and it
-// still refuses to imply it repaired anything.
-func TestAttentionIsOneKeyAway(t *testing.T) {
-	_, view := drive(t, &fakeController{}, "!")
-	if !strings.Contains(view, "holdings checked") {
-		t.Errorf("! did not reach the integrity report:\n%s", view)
+// What wants answering says so without being asked, and the list is one key
+// away.
+//
+// The count is the half that changed. It used to be that nothing said
+// anything until you went to a screen you had to know about -- so a system
+// that knew three things needed doing had told you none of them.
+func TestAttentionSaysSoWithoutBeingAsked(t *testing.T) {
+	_, view := drive(t, &fakeController{})
+	// "to see them" rather than the count's wording: the line says "2 want
+	// answering" when nothing is overdue and "1 past it, 2 in all" when
+	// something is, and what this test is about is that it says anything.
+	if !strings.Contains(view, "to see them") {
+		t.Errorf("the banner did not say anything was waiting:\n%s", view)
+	}
+
+	_, opened := drive(t, &fakeController{}, "!")
+	if !strings.Contains(opened, "WHAT WANTS ANSWERING") {
+		t.Errorf("! did not open the queue:\n%s", opened)
+	}
+}
+
+// TestTheBannerCanBeHushed, and says so rather than going quiet.
+//
+// A nag that cannot be silenced is one people learn to stop seeing, which
+// costs more than the one they turned off on purpose.
+func TestTheBannerCanBeHushed(t *testing.T) {
+	_, view := drive(t, &fakeController{}, "alt+!")
+	if strings.Contains(view, "to see them") {
+		t.Errorf("the banner survived being hushed:\n%s", view)
+	}
+	if !strings.Contains(view, "still want answering") {
+		t.Errorf("hushing did not say what it was hiding:\n%s", view)
 	}
 }
 
@@ -334,20 +383,32 @@ func TestBackReturnsFromHistory(t *testing.T) {
 	}
 }
 
-// TestIntegrityViewSaysItDidNotRepair: the report is a defect report, and the
-// UI must not imply anything was fixed.
-func TestIntegrityViewReportsWithoutRepairing(t *testing.T) {
-	_, view := drive(t, &fakeController{}, "!")
+// TestTheQueueReportsWithoutRepairing: a discrepancy is a defect report, and
+// the interface must not imply anything was fixed.
+//
+// Silently correcting one would destroy the only signal that a write skipped
+// its event, so the one place that shows them has to say it does not touch
+// them. The claim outlived the screen it was written for.
+func TestTheQueueReportsWithoutRepairing(t *testing.T) {
+	_, view := drive(t, &fakeControllerWithDiscrepancy{}, "!")
 
-	if !strings.Contains(view, "DISCREPANCY") {
-		t.Errorf("integrity view does not surface the discrepancy:\n%s", view)
+	if !strings.Contains(view, "the ledger disagrees") {
+		t.Errorf("the queue does not surface the discrepancy:\n%s", view)
 	}
 	if !strings.Contains(view, "reported, not repaired") {
-		t.Errorf("integrity view does not say it left the state alone:\n%s", view)
+		t.Errorf("the queue does not say it left the records alone:\n%s", view)
 	}
-	if !strings.Contains(view, "Cumin") {
-		t.Errorf("integrity view is missing the classification nudge:\n%s", view)
-	}
+}
+
+// fakeControllerWithDiscrepancy has the ledger disagreeing with itself,
+// which the ordinary fake does not -- and which is the only condition the
+// reported-not-repaired line is about.
+type fakeControllerWithDiscrepancy struct{ fakeController }
+
+func (f *fakeControllerWithDiscrepancy) Attention(context.Context) ([]app.Nagging, error) {
+	return []app.Nagging{
+		{Level: app.AttentionOver, What: "the ledger disagrees: holding 3 says 200 g, events say 300 g"},
+	}, nil
 }
 
 func TestCursorStaysInBounds(t *testing.T) {

@@ -71,6 +71,12 @@ func (m Model) View() string {
 // on to be.
 func (m Model) chrome(facts string) []string {
 	parts := []string{m.rule()}
+	// What wants answering, above what just happened, because it outlives
+	// it: a jar that expired last week is still expired after the next
+	// keystroke, and the order of this block is the order of lifetimes.
+	if line := m.attentionLine(); line != "" {
+		parts = append(parts, line)
+	}
 	parts = append(parts, m.say.Lines(m.width)...)
 	parts = append(parts, facts)
 	// The line LAST, and always. The bottom row of the screen is the one place
@@ -102,7 +108,21 @@ func (m Model) field() editor.Model { return m.editor.SetWidth(m.width) }
 // The one-line editor is NOT subtracted: it takes its lines from inside the
 // surface. The creation panel is, because it sits below the house.
 func (m Model) room() int {
-	return m.height - 5 - m.say.Height(m.width) - m.creator.Height()
+	return m.height - 5 - m.say.Height(m.width) - m.creator.Height() - m.bannerHeight()
+}
+
+// bannerHeight is the row the attention line takes when it has something to
+// say, and nothing when it does not.
+//
+// Counted HERE, with the rest of the chrome, which is the whole reason room
+// is one function. A line added to the bottom of the screen without being
+// subtracted from the top is a screen one row too tall -- it wraps, and one
+// wrapped line shifts every row above it.
+func (m Model) bannerHeight() int {
+	if m.attentionLine() == "" {
+		return 0
+	}
+	return 1
 }
 
 // bodyHeight is what is left for the house once the drawer has taken its

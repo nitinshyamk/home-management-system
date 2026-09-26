@@ -109,20 +109,23 @@ func (m Model) helpIndex() []helpSection {
 	// Rows rather than prose, because these ARE two columns: a thing to type
 	// against what it gets you. Prose is wrapped by words, which collapses the
 	// gap that was doing the aligning.
+	// ONE section, and the three ways in appended to it after a blank.
+	//
+	// It was two sections, and the second spent a heading, a blank and two
+	// rows of navigation keys on telling you how to read help. Those keys
+	// are on the permanent line at the bottom of the page they apply to,
+	// which is where a person looks for them anyway -- and the four lines
+	// they cost were the four that pushed `help all` off the bottom of the
+	// screen the moment a topic was added. An index that does not fit is not
+	// an index; it is the listing it was written to replace.
 	line := keys.Show(keys.Browse, keys.CommandLine) + " help "
-	return []helpSection{
-		{title: "WHAT THERE IS", rows: rows},
-		{title: "READING MORE OF IT", rows: [][2]string{
-			{line + "<topic>", "one of the above"},
-			{line + "<command>", "one command, and what it will accept"},
-			{line + "all", "the whole listing, as one page"},
-			// The keys that move around whatever you open, said here because
-			// the page they work on is the page you reach from this one.
-			pair(keys.Tree, "step to the next section, and the one before",
-				keys.FoldToggle, keys.FoldCycleAll),
-			pair(keys.Browse, "back to where you were", keys.Cancel),
-		}},
-	}
+	rows = append(rows,
+		[2]string{"", ""},
+		[2]string{line + "<topic>", "one of the above"},
+		[2]string{line + "<command>", "one command, and what it will accept"},
+		[2]string{line + "all", "the whole listing, as one page"},
+	)
+	return []helpSection{{title: "WHAT THERE IS", rows: rows}}
 }
 
 // noSuchCommand says so, and offers the nearest names.
@@ -221,6 +224,27 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Browse, "rename it, in place", keys.EditInPlace),
 			pair(keys.Browse, "make a new one inside this", keys.Create),
 			pair(keys.Browse, "retire it -- it asks first", keys.Kill),
+		}},
+		{topic: "attention", what: "what wants answering, and taking it back", title: "ATTENTION, AND UNDO", rows: [][2]string{
+			pair(keys.Browse, "open what wants answering", keys.ViewAttention),
+			pair(keys.Browse, "hush the line, and bring it back", keys.DismissBanner),
+			pair(keys.Browse, "undo the last thing written, where there is a way back", keys.Undo),
+		}, prose: []string{
+			"The line above the status block says how many things want " +
+				"answering: dates coming up, things out too long, the " +
+				"ledger disagreeing with itself, and items filed one level " +
+				"too shallow. Opening it lists them worst first, and enter " +
+				"goes to the thing rather than telling you about it.",
+			"Undo applies the INVERSE command -- a new entry that puts " +
+				"things back -- because the ledger is append-only and that " +
+				"is what makes the house reconstructable. Both the move and " +
+				"the move back stay in the history, which is honest.",
+			"So it is offered only where an inverse exists: where something " +
+				"is, what it is called, what it is filed under, whether it " +
+				"is out. Consuming has none -- receiving would record an " +
+				"acquisition that never happened -- and retiring has none, " +
+				"because nothing clears it. The key is named only when " +
+				"pressing it would work.",
 		}},
 		{topic: "organising", what: "trying a shape before you own it", title: "ORGANISE MODE", rows: [][2]string{
 			pair(keys.Browse, "start staging instead of writing", keys.Organise),

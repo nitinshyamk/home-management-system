@@ -6,6 +6,7 @@ import (
 	"home-management-system/internal/app"
 	"home-management-system/internal/tui/keys"
 	"home-management-system/internal/tui/style"
+	"home-management-system/internal/tui/undo"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -34,7 +35,13 @@ func (m Model) handleConfirm(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case keys.Confirm:
 		pending := *m.confirm
 		m.confirm = nil
-		return m, m.apply(pending.plan, pending.summary)
+		// No way back is offered from here, and that is not an omission.
+		// Everything that reaches a confirmation either creates something or
+		// ends it, and neither has an inverse: nothing deletes, and nothing
+		// clears RetiredAt. Carrying an empty step through says so rather
+		// than leaving the last reversible action still on offer -- which
+		// would put `z undo` on screen beside the one thing it cannot do.
+		return m, m.apply(pending.plan, pending.summary, undo.Step{})
 	}
 	// Every other key is ignored. A confirmation that could be dismissed by a
 	// stray keystroke is not a confirmation.

@@ -95,9 +95,13 @@ const (
 	// ways, and because a flip KEEPS what you are looking at -- which two
 	// separate destinations could not.
 	LensFlip
-	// ViewAttention is what needs answering: the ledger's disagreements, and
-	// the nudges.
+	// ViewAttention opens the queue of what needs answering: the expiry and
+	// custody flags, the ledger's own disagreements, and the nudges.
 	ViewAttention
+	// DismissBanner silences the one-line count for this run, and brings it
+	// back. A nag that cannot be silenced is one people learn to stop
+	// seeing.
+	DismissBanner
 	// OpenImport lists the plans waiting to be reviewed, so a review happens
 	// against the house rather than after quitting it.
 	OpenImport
@@ -111,6 +115,10 @@ const (
 	// Verify walks a subtree, checking what the ledger claims against what is
 	// actually on the shelf.
 	Verify
+	// Undo applies the INVERSE of the last thing written -- a new entry that
+	// puts things back, never a deletion. It is offered only when there is
+	// one, which is most of what makes it trustworthy.
+	Undo
 
 	// The three answers a walk takes. They are actions rather than letters
 	// because they are one question asked of every kind of holding, and what
@@ -260,9 +268,11 @@ var contexts = map[Context][]binding{
 		// a character anything in this house is called.
 		{LensFlip, []string{"\\"}, "lens"},
 		{ViewAttention, []string{"!"}, "attention"},
+		{DismissBanner, []string{"alt+!"}, "hush the line"},
 		{OpenImport, []string{"i"}, "import"},
 		{Organise, []string{"O"}, "organise"},
 		{Verify, []string{"V"}, "walk and check"},
+		{Undo, []string{"z"}, "undo that"},
 	}...),
 
 	// The walk. Three answers and a way to file them, and the three are

@@ -556,6 +556,31 @@ else
   skip "the walk records observations, it does not decide outcomes" internal/tui/walk
 fi
 
+# Undo is an inverse COMMAND, never a deletion.
+#
+# The ledger is append-only and that is load-bearing: it is why the house can
+# be reconstructed, why a count can be believed, and why a discrepancy is
+# detectable at all. `z` therefore applies a NEW command that happens to put
+# things back, and the history keeps both -- you did move the crate, and then
+# you moved it back.
+#
+# Stated as an absence, because the tempting shortcut is to reach past the
+# command layer for something that removes the event. internal/tui/undo
+# imports only internal/command and internal/domain, so it has nothing to
+# reach for.
+if [ -d internal/tui/undo ]; then
+  hits="$(grep -rn --include='*.go' 'home-management-system/internal/' internal/tui/undo \
+          | grep -vE 'home-management-system/internal/(command|domain|tui/undo)"' || true)"
+  if [ -n "$hits" ]; then
+    report "undo is an inverse command, not a deletion"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "undo is an inverse command, not a deletion"
+  fi
+else
+  skip "undo is an inverse command, not a deletion" internal/tui/undo
+fi
+
 echo
 if [ "$fail" -ne 0 ]; then
   printf '\033[31marchlint: %d violation(s)\033[0m\n' "$violations" >&2

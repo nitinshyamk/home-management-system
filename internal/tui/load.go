@@ -8,7 +8,6 @@ import (
 	"home-management-system/internal/domain"
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/keys"
-	"home-management-system/internal/tui/style"
 	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/tree"
 
@@ -368,46 +367,6 @@ func (m Model) render(v view, subject domain.HoldingID) ([]string, string, error
 			hint = "help " + m.helpTopic
 		}
 		return lines, hint, nil
-
-	case viewIntegrity:
-		report, err := m.ctrl.Integrity(m.ctx)
-		if err != nil {
-			return nil, "", err
-		}
-		var out []string
-		out = append(out, fmt.Sprintf("%d holdings checked against the ledger", report.HoldingsChecked))
-		if report.Clean() {
-			out = append(out, "", "no discrepancies")
-		} else {
-			out = append(out, "")
-			for _, d := range report.Discrepancies {
-				out = append(out, style.Strong.Render("DISCREPANCY ")+d)
-			}
-			for _, o := range report.Orphans {
-				out = append(out, style.Strong.Render("ORPHAN      ")+o)
-			}
-			// Reporting, never repairing: silently correcting would destroy the
-			// only signal that a write skipped its event.
-			out = append(out, "", style.Dim.Render("reported, not repaired"))
-		}
-
-		nudges, err := m.ctrl.Nudges(m.ctx)
-		if err != nil {
-			return nil, "", err
-		}
-		if len(nudges) > 0 {
-			out = append(out, "", style.Strong.Render("Classification"))
-			for _, n := range nudges {
-				out = append(out, fmt.Sprintf("  %s sits at %q, which has %d subcategories",
-					n.Item, n.Category, n.Siblings))
-			}
-		}
-		hint := "clean"
-		if !report.Clean() {
-			hint = style.Strong.Render(fmt.Sprintf("%d discrepancies, %d orphans",
-				len(report.Discrepancies), len(report.Orphans)))
-		}
-		return out, hint, nil
 
 	case viewHistory:
 		rows, err := m.ctrl.HoldingHistory(m.ctx, subject)

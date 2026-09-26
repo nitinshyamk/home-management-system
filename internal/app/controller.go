@@ -65,6 +65,10 @@ type Controller interface {
 	ApplyPlan(ctx context.Context, plan Plan) error
 	Describe(ctx context.Context, cmd command.Command) string
 	Nudges(ctx context.Context) ([]NudgeRow, error)
+	// Attention is everything that wants answering, worst first -- the
+	// expiry and custody flags, the ledger's own disagreements, and the
+	// classification nudges, which were three lists on three screens.
+	Attention(ctx context.Context) ([]Nagging, error)
 }
 
 // ---------------------------------------------------------------------------

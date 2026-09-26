@@ -1,0 +1,18 @@
+BY PLACE  the house                                                       4 holdings
+------------------------------------------------------------------------------------
+  NAME                           │  ITEM ^           QTY  WHERE         FLAGS       
+  ▾ the house                   4│  Ancho Chile    100 g  Left Pantry   EXPIRED 202…
+    ▾ Garage                    3│  Ancho Chile    100 g  Garage                    
+      ▾ Metal Shelving Unit     2│  Ancho Chile    100 g  … Parts Tray              
+        ▾ Bay 3                 2│  Thunderbol…  at rest  … Parts Tray              
+          ▾ Blue Crate          2│
+              Small Parts Tray  2│
+      Left Pantry               1│
+------------------------------------------------------------------------------------
+ATTENTION  1 wants answering
+  WHAT WANTS ANSWERING                                                   WHERE      
+> Ancho Chile -- EXPIRED 2026-08-27                                      Left Pantry
+------------------------------------------------------------------------------------
+! 1 past it, 1 in all -- ! to see them
+1 past it - 0 coming up
+            enter go to it - esc close

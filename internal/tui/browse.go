@@ -113,11 +113,27 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, m.load(m.fromView)
 		}
 	case keys.ViewAttention:
-		m.fromView = viewShell
-		return m, m.load(viewIntegrity)
+		return m.openAttention()
+
+	case keys.DismissBanner:
+		// For this run only, and never a promise that the thing was dealt
+		// with. A nag that could not be silenced is one people learn to stop
+		// seeing, which is worse than one they turned off on purpose.
+		if m.nags == 0 {
+			return m, nil
+		}
+		m.dismissed = !m.dismissed
+		if m.dismissed {
+			m.say = m.say.Report(fmt.Sprintf("%d still want answering; %s brings the line back",
+				m.nags, keys.Show(keys.Browse, keys.DismissBanner)))
+		}
+		return m, nil
 
 	case keys.Verify:
 		return m.startWalk()
+
+	case keys.Undo:
+		return m.undoLast()
 
 	case keys.Organise:
 		return m.startOrganising()
@@ -134,7 +150,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		p := newPalette(offers, m.width, len(offers)+3)
 		return m.open(&p), nil
 	case keys.Refresh:
-		return m, m.load(m.view)
+		// Refresh means "tell me what is true now", so it recounts what wants
+		// answering as well as reloading the rows. Anything can have changed
+		// since the last write THIS interface made -- a date passed at
+		// midnight, another process wrote -- and the count is the one part of
+		// the screen that is otherwise only refreshed by writing.
+		return m, m.reload(m.view)
 
 	case keys.LensFlip:
 		return m.flipLens()
