@@ -8,6 +8,7 @@ import (
 
 	"home-management-system/internal/app"
 	"home-management-system/internal/command"
+	"home-management-system/internal/tui/undo"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -101,13 +102,14 @@ func workingOn(line string) string {
 	return fmt.Sprintf("%s ...", line)
 }
 
-// apply commits a plan and reports what happened.
-func (m Model) apply(plan app.Plan, summary string) tea.Cmd {
+// apply commits a plan and reports what happened, with the way back when
+// there is one.
+func (m Model) apply(plan app.Plan, summary string, back undo.Step) tea.Cmd {
 	return func() tea.Msg {
 		if err := m.ctrl.ApplyPlan(m.ctx, plan); err != nil {
 			return issuesMsg{issues: []string{err.Error()}}
 		}
-		return appliedMsg{summary: summary}
+		return appliedMsg{summary: summary, back: back}
 	}
 }
 
@@ -160,7 +162,44 @@ func (m Model) written(commands []command.Command) tea.Msg {
 		}
 		summaries = append(summaries, m.ctrl.Describe(m.ctx, cmd))
 	}
-	return planMsg{plan: combined, summary: summarise(summaries)}
+	summary := summarise(summaries)
+	// The way back, worked out NOW, while the house still says what it said
+	// when the command was built. Asked afterwards it would be asked of a
+	// house that had already changed, which is the one moment it cannot
+	// answer.
+	back := undo.StepFor(summary, commands, m.before(commands))
+	return planMsg{plan: combined, summary: summary, back: back}
+}
+
+// before is what was true of each command's subject, read off the rows the
+// screen already has.
+//
+// From the CACHE rather than from a query, because these are the same rows
+// the person is looking at -- and because a read here would be a read per
+// keystroke for something the model was handed a moment ago.
+func (m Model) before(commands []command.Command) []undo.Before {
+	out := make([]undo.Before, 0, len(commands))
+	for _, cmd := range commands {
+		var was undo.Before
+		switch c := cmd.(type) {
+		case command.Move:
+			if row, ok := m.holding(int64(c.Holding)); ok {
+				was.Location = row.LocationID
+			}
+		case command.Rehome:
+			if row, ok := m.holding(int64(c.Holding)); ok {
+				was.Location = row.LocationID
+			}
+		case command.Reclassify:
+			if item, ok := m.item(c.Item); ok {
+				was.Category = item.CategoryID
+			}
+		case command.Rename:
+			was.Name = m.subject().Name
+		}
+		out = append(out, was)
+	}
+	return out
 }
 
 // splitArranging separates what organise mode stages from what it does not.

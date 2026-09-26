@@ -37,16 +37,14 @@ type view int
 
 const (
 	viewShell view = iota
-	viewIntegrity
 	viewHistory
 	viewHelp
 )
 
 var specs = map[view]viewSpec{
-	viewShell:     {name: "House", kind: surfaceShell},
-	viewIntegrity: {name: "Integrity", kind: surfaceText},
-	viewHistory:   {name: "History", kind: surfaceText},
-	viewHelp:      {name: "Help", kind: surfaceText},
+	viewShell:   {name: "House", kind: surfaceShell},
+	viewHistory: {name: "History", kind: surfaceText},
+	viewHelp:    {name: "Help", kind: surfaceText},
 }
 
 // spec is the view's description. An unknown view reads as empty prose rather

@@ -226,7 +226,18 @@ func (m Model) verbs() string {
 	// name a key the palette does not have or the other way round. Only the
 	// ones with a key of their own: the rest are behind `space`, which is
 	// what makes it worth pressing.
-	parts := []string{keys.Hint(keys.Browse, []keys.Action{keys.Act})}
+	// The way back comes FIRST, when there is one.
+	//
+	// Not because it is the most used -- it is the least -- but because it is
+	// the only thing on this line that expires. The verbs are permanent and
+	// a keystroke away behind `space`; the offer to undo is true for one
+	// action and then gone, and a line this full drops from the END, so last
+	// place meant it was computed correctly and then never shown.
+	var parts []string
+	if back := m.undoOffer(); back != "" {
+		parts = append(parts, back)
+	}
+	parts = append(parts, keys.Hint(keys.Browse, []keys.Action{keys.Act}))
 	if m.onRail() {
 		parts = append(parts, keys.Hint(keys.Tree, []keys.Action{keys.FoldToggle}))
 	}

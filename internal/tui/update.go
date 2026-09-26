@@ -6,6 +6,7 @@ import (
 	"home-management-system/internal/app"
 	"home-management-system/internal/resolve"
 	"home-management-system/internal/tui/tree"
+	"home-management-system/internal/tui/undo"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -51,6 +52,10 @@ type candidatesMsg struct {
 
 // planMsg carries a bound-and-planned command back from the controller.
 type planMsg struct {
+	// back is the way to reverse this, when there is one. Carried with the
+	// plan rather than worked out on the way back, because what it needs to
+	// know is what the house said BEFORE the write.
+	back    undo.Step
 	plan    app.Plan
 	summary string
 }
@@ -59,9 +64,12 @@ type planMsg struct {
 type issuesMsg struct{ issues []string }
 
 // appliedMsg reports that something happened, in the terms of the receipt.
-type appliedMsg struct{ summary string }
+type appliedMsg struct {
+	summary string
+	back    undo.Step
+}
 
-func (m Model) Init() tea.Cmd { return m.load(m.view) }
+func (m Model) Init() tea.Cmd { return m.reload(m.view) }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -179,7 +187,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.say = m.say.Clear()
 			return m, nil
 		}
-		return m, m.apply(msg.plan, msg.summary)
+		return m, m.apply(msg.plan, msg.summary, msg.back)
 
 	case importsMsg:
 		if msg.err != nil {
@@ -212,6 +220,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stagedMsg:
 		return m.staged(msg), nil
 
+	case attentionMsg:
+		return m.showAttention(msg)
+
+	case countedAttentionMsg:
+		m.nags, m.pressing = msg.n, msg.pressing
+		return m, nil
+
 	case walkMsg:
 		return m.openWalk(msg)
 
@@ -219,7 +234,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.closeAll()
 		m.say = m.say.Report(fmt.Sprintf("filed %s of %s checked in %s, in one transaction",
 			rowsPhrase(msg.checked), rowsPhrase(msg.of), msg.where))
-		return m, m.load(m.view)
+		return m, m.reload(m.view)
 
 	case stagedEditsMsg:
 		// A verb produced commands while organise mode was open, and they
@@ -237,7 +252,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.closeAll()
 		m.say = m.say.Report(fmt.Sprintf("arranged %s, in one transaction",
 			rowsPhrase(msg.edits)))
-		return m, m.load(m.view)
+		return m, m.reload(m.view)
 
 	case importedMsg:
 		m = m.withFlow(m.flow().done())
@@ -255,9 +270,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.say = m.say.Report(outcome)
 		m.view = viewShell
-		return m, m.load(m.view)
+		return m, m.reload(m.view)
 
 	case appliedMsg:
+		// The way back from what was just written, replacing whatever the
+		// write before it left. One step: see Model.back.
+		//
+		// Unless this write WAS the way back from the one before it, in
+		// which case it leaves none -- see Model.undoing.
+		if m.undoing {
+			m.back, m.undoing = undo.Step{}, false
+		} else {
+			m.back = msg.back
+		}
 		// The panel closes only once something was actually created. Escaping
 		// the confirmation returns to the panel with what was typed still in
 		// it, which is what makes the confirmation a step rather than a
@@ -273,7 +298,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Reload, because something changed. The list a person is looking at
 		// must not disagree with the house.
 		m.say = m.say.Report(msg.summary)
-		return m, m.load(m.view)
+		return m, m.reload(m.view)
 
 	case reboundMsg:
 		return m.rebound(msg), nil

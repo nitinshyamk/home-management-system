@@ -2,7 +2,9 @@ package testing_test
 
 import (
 	"testing"
+	"time"
 
+	"home-management-system/internal/ops"
 	sim "home-management-system/internal/tui/testing"
 )
 
@@ -261,4 +263,38 @@ func TestGoldenTheWalk(t *testing.T) {
 	}
 	s.FitsWidth(84)
 	s.AssertFrame("walk-answered")
+}
+
+// The attention banner, and the queue it opens.
+//
+// A new permanent line in the chrome, which is exactly the kind of thing a
+// frame holds still: it costs the house a row, so a version of it that
+// forgot to subtract that row would run the screen off the bottom of the
+// terminal and shift every line above it.
+func TestGoldenAttention(t *testing.T) {
+	s := sim.New(t)
+	awkwardHouse(t, s)
+	p, ctx := s.Planner(), s.Context()
+
+	// Something past its date, which is the condition the line is about.
+	// The fixtures have nothing overdue, which is why no frame showed this
+	// line until one was made to.
+	rows, err := s.Reader().Holdings(ctx)
+	if err != nil || len(rows) == 0 {
+		t.Fatalf("reading holdings: %v", err)
+	}
+	past := time.Now().AddDate(0, 0, -30)
+	s.Apply(p.SetExpiry(ctx, ops.SetExpiryRequest{
+		Holding: rows[0].Holding.Base().ID, On: &past,
+	}))
+
+	s.Resize(84, 24)
+	s.Send(sim.Press("g")) // refresh, which recounts
+	s.ByPlace()
+	s.FitsWidth(84)
+	s.AssertFrame("attention-banner")
+
+	s.Send(sim.Press("!"))
+	s.FitsWidth(84)
+	s.AssertFrame("attention-queue")
 }

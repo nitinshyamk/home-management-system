@@ -14,6 +14,7 @@ import (
 	"home-management-system/internal/tui/table"
 	"home-management-system/internal/tui/text"
 	"home-management-system/internal/tui/tree"
+	"home-management-system/internal/tui/undo"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -114,6 +115,38 @@ type Model struct {
 	// Model.top.
 	drawers  []drawer
 	fromView view
+
+	// nags is how many things want answering, and pressing is how many of
+	// those are past it rather than coming up. They are the one-line banner,
+	// and they are COUNTS rather than the list: the list is read when the
+	// queue is opened, because holding it would mean keeping it in step with
+	// every write.
+	nags, pressing int
+	// dismissed puts the banner away for this run. The nudge discipline says
+	// a nag is dismissible; a line that could not be silenced would be a line
+	// people learn to stop seeing, which is worse than one they can turn off
+	// on purpose.
+	dismissed bool
+
+	// back is the way to reverse the last thing written, when there IS one.
+	//
+	// One step, not a stack. A stack would promise walking backwards through
+	// an afternoon, and it cannot keep that promise: each inverse is worked
+	// out against the house as it was at the time, so the second step back
+	// would be computed from a state two writes stale. One step is the depth
+	// that can be honoured, and honouring it is the whole point -- see
+	// internal/tui/undo.
+	back undo.Step
+	// undoing marks the write in flight as being the way back from the last
+	// one, so that what it leaves behind is nothing rather than the way back
+	// from itself.
+	//
+	// Without it `z` toggles: the inverse of a move is a move, so undoing
+	// one leaves another undo on offer and the crate goes back and forth
+	// while the line claims to be undoing each time. Redo is a different
+	// question from undo, and a key that answered both without saying which
+	// would be answering neither.
+	undoing bool
 
 	// say is everything the interface has to say about itself: the view's
 	// hint, what just happened or why it did not, what is in hand, and what is
