@@ -94,7 +94,11 @@ const (
 	Count   Purpose = "count"
 	// WalkCount is the same question asked on a walk, where the answer goes
 	// into the batch the walk is building rather than being written at once.
-	WalkCount  Purpose = "walk count"
+	WalkCount Purpose = "walk count"
+	// ImportName names a new import folder. It writes nothing to the house --
+	// it makes a directory -- which is why it does not go through the command
+	// line the way every other field does.
+	ImportName Purpose = "import name"
 	Move       Purpose = "move"
 	Reclassify Purpose = "reclassify"
 )

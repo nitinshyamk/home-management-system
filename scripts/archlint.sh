@@ -556,6 +556,30 @@ else
   skip "the walk records observations, it does not decide outcomes" internal/tui/walk
 fi
 
+# The import walk does not block, and does not read a terminal.
+#
+# It was a conversation: print the paths, then sit on stdin until somebody
+# pressed enter. The pause it waited through is measured in hours, so the
+# program was unusable for the duration -- and the house the plan would be
+# imported against was the one thing not on screen while you prepared it.
+#
+# The steps are operations now and the waiting belongs to the drawer, which
+# waits by staying drawn. So internal/intake reads no input and prints no
+# output: os.Stdin, os.Stdout and bufio in here are the conversation growing
+# back, and the first symptom would be a screen that froze.
+if [ -d internal/intake ]; then
+  hits="$(grep -rnE 'os\.Stdin|os\.Stdout|bufio\.' --include='*.go' internal/intake \
+          | grep -v '_test\.go:' || true)"
+  if [ -n "$hits" ]; then
+    report "the import walk does not read a terminal"
+    printf '      %s\n' "$hits" >&2
+  else
+    ok "the import walk does not read a terminal"
+  fi
+else
+  skip "the import walk does not read a terminal" internal/intake
+fi
+
 # Undo is an inverse COMMAND, never a deletion.
 #
 # The ledger is append-only and that is load-bearing: it is why the house can

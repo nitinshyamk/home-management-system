@@ -139,8 +139,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.startOrganising()
 
 	case keys.OpenImport:
-		m.say = m.say.Working("looking for plans to review ...")
-		return m, m.openImports()
+		return m.openIntake()
 
 	case keys.Act:
 		offers := m.offersFor()

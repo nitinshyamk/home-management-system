@@ -114,14 +114,17 @@ acquire,Cumin,20,Cellar,,,,,
 	}
 }
 
-// A plan waiting in a folder is reached from inside the house.
+// Every import folder is reached from inside the house, with what each one
+// needs.
 //
 // Quitting the house to review a file, and coming back afterwards to see what
 // it did, was the "unlinked from the import" complaint in its plainest form.
-// The folder walk that MAKES a plan is still `hms import`, where a
-// conversation with a pause measured in hours belongs; what moved inside is
-// the half that happens once a plan exists.
-func TestAWaitingPlanIsReachedFromInsideTheHouse(t *testing.T) {
+// The whole walk is in here now -- including the half-finished folders, which
+// an earlier version of this list hid. Showing only the ready ones could not
+// answer the question people actually have, which is "what was I in the
+// middle of", and an import halfway through is the thing most worth being
+// reminded of.
+func TestEveryImportFolderIsReachedFromInsideTheHouse(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HMS_HOME", home)
 
@@ -145,10 +148,14 @@ func TestAWaitingPlanIsReachedFromInsideTheHouse(t *testing.T) {
 	s.ByPlace()
 
 	s.Send(sim.Press("i"))
-	s.ShowsText("1 waiting to review")
+	s.ShowsText("1 ready to review")
 	s.ShowsText("march-receipt")
-	s.HidesText("half-done")
+	// The half-finished one is listed, and says what it is waiting for.
+	s.ShowsText("half-done")
+	s.ShowsText("waiting for input")
 
+	// The ready one is second, because they are listed by name.
+	s.Send(sim.CtrlN)
 	s.Send(sim.Enter)
 	s.ShowsText("add 100 of Spices > Basmati Rice to Shelf 1")
 	// And the house came with it, steered to what the row would touch.
