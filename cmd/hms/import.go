@@ -2,14 +2,10 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
 
 	"home-management-system/internal/app"
-	"home-management-system/internal/command"
 	"home-management-system/internal/config"
-	"home-management-system/internal/intake"
 	"home-management-system/internal/tui"
 )
 
@@ -20,53 +16,40 @@ import (
 // have been written against a contract from a different house and nothing in
 // the program would have noticed.
 //
-// Now the folder is the thread. hms makes it, writes the contract into it
-// against the house as it is now, waits while a person fills it, takes the plan
-// out of it, and opens the review screen on that. The steps in the middle still
-// happen elsewhere -- they have to; reading a photograph is not something an
-// inventory does -- but what goes in and what comes back are the same folder.
-
-// errStopped is a person ending the workflow at a prompt. main treats it as a
-// clean exit: "you stopped" is not news to the person who stopped.
-var errStopped = intake.ErrStopped
-
+// The folder is the thread. hms makes it, writes the contract into it against
+// the house as it is now, waits while a person fills it, takes the plan out of
+// it, and reviews that. The steps in the middle still happen elsewhere -- they
+// have to; reading a photograph is not something an inventory does -- but what
+// goes in and what comes back are the same folder.
+//
+// # The walk is a screen now
+//
+// It used to be a conversation on stdin: hms printed the paths and blocked on
+// `press enter when it is there`. The reasoning was that the pause in the
+// middle of an import is measured in hours and a person spends it in a file
+// manager, so a full-screen interface would be in the way.
+//
+// What that missed is that blocking is not the only way to wait. The drawer
+// waits by staying drawn, with the house visible behind it and `r` to look
+// again -- the same pause, without hms being unusable for the duration. And
+// it makes the thing the folder is for true rather than asserted: you are
+// importing against THIS house, and the house is on screen while you do it.
+//
+// So this command has one job left: open the interface, with the intake
+// drawer up, on the import named or on the list of them.
 func runImport(ctx context.Context, ctrl app.Controller, name string) error {
-	root, err := config.ImportsDir()
-	if err != nil {
-		return err
-	}
-	house, err := app.House(ctx, ctrl)
-	if err != nil {
-		return err
-	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
-
-	guide := &intake.Guide{
-		Root:        root,
-		Contract:    command.NewSchema().WithHouse(house),
-		Planner:     intake.NewShell(cfg.ImportPlanner, os.Stdout),
-		PlannerHint: config.FileName,
-		In:          os.Stdin,
-		Out:         os.Stdout,
-	}
-
-	plan, err := guide.Run(ctx, name)
+	path, err := config.Path()
 	if err != nil {
-		if errors.Is(err, intake.ErrStopped) {
-			return errStopped
-		}
 		return err
 	}
 
-	// The review screen, on the plan the folder produced. Built before the
-	// terminal is touched, so a plan that cannot be bound fails as a message on
-	// the line below the walk rather than as a blank screen.
-	model, err := tui.Import(ctx, ctrl, plan)
+	model, err := tui.ImportWalk(ctx, ctrl, name)
 	if err != nil {
-		return fmt.Errorf("%s: %w", plan, err)
+		return fmt.Errorf("import: %w", err)
 	}
-	return tui.RunModel(model)
+	return tui.RunModel(model.WithPlanner(cfg.ImportPlanner, path))
 }

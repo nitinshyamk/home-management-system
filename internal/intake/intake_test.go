@@ -1,14 +1,21 @@
 package intake
 
 import (
-	"context"
-	"errors"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
+
+// write puts a file there, making its directory if it is missing.
+func write(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestCleanName(t *testing.T) {
 	for _, tc := range []struct {
@@ -145,195 +152,113 @@ func TestInputListsOnlyVisibleFiles(t *testing.T) {
 	}
 }
 
-// The whole walk, with the answers a person would type.
-func TestGuideRunsTheWholeWalk(t *testing.T) {
-	root := t.TempDir()
-	var out strings.Builder
-
-	g := &Guide{
-		Root:     root,
-		Contract: fakeContract{},
-		Planner: plannerFunc(func(w Workspace) error {
-			// What a real planner does: read input/, write the plan file.
-			if files, _ := w.Input(); len(files) == 0 {
-				t.Error("the planner ran before there was any input")
-			}
-			return os.WriteFile(w.PlanFile(),
-				[]byte(`{"op":"acquire","item":"Basmati Rice","qty":"2bag","at":"Left Pantry"}`+"\n"), 0o644)
-		}),
-		// name, then "the input is there"
-		In:  strings.NewReader("kitchen receipt\n\n"),
-		Out: &out,
-	}
-
-	// The input has to be there by the time the pause is answered, and the
-	// pause is answered from a string. Put it there first: the test is about
-	// the order of the STEPS, not about the timing of a person's hands.
-	w, _ := Create(root, "kitchen-receipt")
-	write(t, filepath.Join(w.InputDir(), "receipt.txt"), "2 bags basmati")
-
-	plan, err := g.Run(context.Background(), "")
-	if err != nil {
-		t.Fatalf("Run: %v\n%s", err, out.String())
-	}
-	if plan != w.PlanFile() {
-		t.Errorf("plan = %s, want %s", plan, w.PlanFile())
-	}
-
-	// The contract is rewritten on every run, against the house as it is now.
-	for _, name := range []string{"import-schema.txt", HandoffName} {
-		if _, err := os.Stat(filepath.Join(w.SchemaDir(), name)); err != nil {
-			t.Errorf("%s: %v", name, err)
-		}
-	}
-
-	// The handoff carries the paths, which is the half of the instruction the
-	// schema cannot give.
-	note, _ := os.ReadFile(filepath.Join(w.SchemaDir(), HandoffName))
-	for _, want := range []string{w.InputDir(), w.PlanFile(), "SCHEMA BODY"} {
-		if !strings.Contains(string(note), want) {
-			t.Errorf("handoff does not mention %q", want)
-		}
-	}
-	if !strings.Contains(out.String(), "1 row to review") {
-		t.Errorf("the walk never said what it found:\n%s", out.String())
-	}
-}
-
-// A name given on the command line skips the question and nothing else.
-func TestGuideTakesAGivenName(t *testing.T) {
+// What a folder needs, which is the one thing a list of them has to say.
+func TestLookSaysWhatAFolderNeeds(t *testing.T) {
 	root := t.TempDir()
 	w, _ := Create(root, "groceries")
-	write(t, filepath.Join(w.InputDir(), "list.txt"), "rice")
-	write(t, w.PlanFile(), `{"op":"acquire","item":"Rice","qty":"1bag","at":"Left Pantry"}`+"\n")
 
-	var out strings.Builder
-	// The plan is already there, so the first question is whether to review it.
-	g := &Guide{Root: root, Contract: fakeContract{}, In: strings.NewReader("y\n"), Out: &out}
+	if got := Look(w); got.State != NeedsInput {
+		t.Errorf("an empty folder needs %v, want NeedsInput", got.State)
+	}
 
-	plan, err := g.Run(context.Background(), "groceries")
-	if err != nil {
-		t.Fatalf("Run: %v\n%s", err, out.String())
+	write(t, filepath.Join(w.InputDir(), "receipt.txt"), "rice")
+	got := Look(w)
+	if got.State != NeedsPlan {
+		t.Errorf("a folder with input needs %v, want NeedsPlan", got.State)
 	}
-	if plan != w.PlanFile() {
-		t.Errorf("plan = %s, want %s", plan, w.PlanFile())
+	if len(got.Input) != 1 {
+		t.Errorf("Input = %v, want the one file", got.Input)
 	}
-	if !strings.Contains(out.String(), "resuming") {
-		t.Errorf("a second run did not say it was resuming:\n%s", out.String())
-	}
-}
 
-// Nothing more is coming: a pause cannot be answered from an exhausted reader,
-// and spinning on one would be a hang rather than an answer.
-func TestGuideStopsAtEndOfInput(t *testing.T) {
-	g := &Guide{Root: t.TempDir(), Contract: fakeContract{}, In: strings.NewReader(""), Out: &strings.Builder{}}
-	if _, err := g.Run(context.Background(), ""); !errors.Is(err, ErrStopped) {
-		t.Errorf("Run = %v, want ErrStopped", err)
+	write(t, w.PlanFile(), `{"op":"acquire","item":"Rice","qty":"1kg","at":"Shelf"}`+"\n")
+	if got := Look(w); got.State != Ready || got.Rows != 1 {
+		t.Errorf("a folder with a plan is %v with %d rows, want Ready with 1", got.State, got.Rows)
 	}
 }
 
-// A planner that writes nothing leaves the workflow where it would have been
-// without one. Ending the import there would throw the folder away over a step
-// somebody can still do by hand.
-func TestGuideFallsBackWhenThePlannerWritesNothing(t *testing.T) {
+// A file that will not read is not a plan.
+//
+// This was the walk's final check, and it has to survive the walk: calling it
+// ready would send somebody to a review screen with nothing on it, which
+// reads as "the import was empty" rather than "the file is broken". An agent
+// that failed halfway leaves exactly this.
+func TestAPlanThatWillNotReadIsNotReady(t *testing.T) {
 	root := t.TempDir()
 	w, _ := Create(root, "groceries")
-	write(t, filepath.Join(w.InputDir(), "list.txt"), "rice")
+	write(t, filepath.Join(w.InputDir(), "receipt.txt"), "rice")
 
-	var out strings.Builder
-	g := &Guide{
-		Root:     root,
-		Contract: fakeContract{},
-		Planner:  plannerFunc(func(Workspace) error { return nil }),
-		Out:      &out,
-	}
-	// The plan lands WHILE the workflow is paused, which is the thing being
-	// tested: the second prompt has to re-read the directory rather than
-	// remember what was in it when it first looked.
-	g.In = &answers{lines: []answer{
-		{text: ""}, // the input is there
-		{text: "", do: func() {
-			write(t, w.PlanFile(), `{"op":"acquire","item":"Rice","qty":"1bag","at":"Left Pantry"}`+"\n")
-		}},
-	}}
-
-	plan, err := g.Run(context.Background(), "groceries")
-	if err != nil {
-		t.Fatalf("Run: %v\n%s", err, out.String())
-	}
-	if plan != w.PlanFile() {
-		t.Errorf("plan = %s", plan)
-	}
-	if !strings.Contains(out.String(), "it wrote no plan") {
-		t.Errorf("the failure was not reported:\n%s", out.String())
+	for _, body := range []string{
+		"not json at all\n",
+		"# a comment an agent added\n",
+	} {
+		write(t, w.PlanFile(), body)
+		if got := Look(w); got.State == Ready {
+			t.Errorf("a plan file containing %q was called ready", body)
+		}
 	}
 }
 
-// A file that is not a plan fails here, naming the file, rather than as an
-// empty review screen.
-func TestGuideRefusesAPlanWithNoRows(t *testing.T) {
+// Survey lists every folder, not only the ones with plans. Showing only those
+// could not answer "what was I in the middle of".
+func TestSurveyListsEveryFolder(t *testing.T) {
 	root := t.TempDir()
-	w, _ := Create(root, "groceries")
-	write(t, filepath.Join(w.InputDir(), "list.txt"), "rice")
-	write(t, w.PlanFile(), "not a command\n")
+	ready, _ := Create(root, "ready")
+	write(t, ready.PlanFile(), `{"op":"acquire","item":"Rice","qty":"1kg","at":"Shelf"}`+"\n")
+	if _, err := Create(root, "half-done"); err != nil {
+		t.Fatal(err)
+	}
 
-	g := &Guide{Root: root, Contract: fakeContract{}, In: strings.NewReader("y\n"), Out: &strings.Builder{}}
-	if _, err := g.Run(context.Background(), "groceries"); err == nil {
-		t.Fatal("a file of prose was accepted as a plan")
+	found, err := Survey(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) != 2 {
+		t.Fatalf("Survey found %d folders, want 2", len(found))
+	}
+	// By name, so the list does not reorder itself between one look and the
+	// next.
+	if found[0].Workspace.Name != "half-done" || found[0].State != NeedsInput {
+		t.Errorf("first = %q/%v, want half-done/NeedsInput", found[0].Workspace.Name, found[0].State)
+	}
+	if found[1].Workspace.Name != "ready" || found[1].State != Ready {
+		t.Errorf("second = %q/%v, want ready/Ready", found[1].Workspace.Name, found[1].State)
 	}
 }
 
-// answers is a scripted person: each line can put a file in place before it is
-// typed, which is how a test stands in for somebody dragging a receipt into a
-// folder while the workflow waits.
-type answer struct {
-	text string
-	do   func()
-}
+// Start makes the folder, writes the contract into it, and says whether it
+// was already there -- which is what "resuming" is told from.
+func TestStartResumesByName(t *testing.T) {
+	root := t.TempDir()
 
-type answers struct {
-	lines []answer
-	cur   *strings.Reader
-}
-
-func (a *answers) Read(p []byte) (int, error) {
-	for a.cur == nil || a.cur.Len() == 0 {
-		if len(a.lines) == 0 {
-			return 0, io.EOF
-		}
-		next := a.lines[0]
-		a.lines = a.lines[1:]
-		if next.do != nil {
-			next.do()
-		}
-		a.cur = strings.NewReader(next.text + "\n")
+	w, instructions, resumed, err := Start(root, "groceries", fakeContract{})
+	if err != nil {
+		t.Fatal(err)
 	}
-	return a.cur.Read(p)
+	if resumed {
+		t.Error("the first Start said it was resuming")
+	}
+	if instructions == "" {
+		t.Error("Start returned no handoff to give a planner")
+	}
+	if _, err := os.Stat(w.HandoffFile()); err != nil {
+		t.Errorf("the handoff was not written: %v", err)
+	}
+
+	if _, _, resumed, err = Start(root, "groceries", fakeContract{}); err != nil {
+		t.Fatal(err)
+	}
+	if !resumed {
+		t.Error("naming an import twice did not resume it")
+	}
 }
 
+// fakeContract writes a schema without needing a house.
 type fakeContract struct{}
 
 func (fakeContract) Export(dir, format string) (string, error) {
-	name := "import-schema.txt"
-	if format == "json" {
-		name = "import-schema.json"
+	path := filepath.Join(dir, "schema."+format)
+	if err := os.WriteFile(path, []byte("SCHEMA\n"), 0o644); err != nil {
+		return "", err
 	}
-	path := filepath.Join(dir, name)
-	return path, os.WriteFile(path, []byte("SCHEMA BODY\n"), 0o644)
-}
-
-type plannerFunc func(Workspace) error
-
-func (plannerFunc) Describe() string { return "a test planner" }
-
-func (f plannerFunc) Plan(_ context.Context, w Workspace, _ string) error { return f(w) }
-
-func write(t *testing.T, path, content string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	return path, nil
 }

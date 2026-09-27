@@ -61,7 +61,9 @@ var verbs = []verbSpec{
 type Invocation struct {
 	Verb Verb
 	// Arg is the verb's one positional argument, or "". Only import takes one,
-	// and even there it is optional: an import with no name asks for one.
+	// and even there it is optional: with no name the walk opens on the list
+	// of import folders, which answers "what was I in the middle of" better
+	// than a prompt asking into the dark ever did.
 	Arg string
 	// DBPath overrides the configured database. It is the only setting on the
 	// command line, because it is the only one that has to be decided before

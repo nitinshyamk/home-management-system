@@ -1,6 +1,8 @@
 package testing_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -265,6 +267,32 @@ func TestGoldenTheWalk(t *testing.T) {
 	s.AssertFrame("walk-answered")
 }
 
+// The list of import folders, and what each one needs.
+//
+// Only the LIST has a frame. The screen for one folder names the directory it
+// is in, and in a test that directory is a temporary path that differs every
+// run -- a frame containing one would fail on the second run for a reason
+// that has nothing to do with the layout, which is the opposite of what a
+// golden is for. That screen is asserted by its content instead, in
+// intake_flow_test.go, and its width is checked there too.
+func TestGoldenTheImportFolders(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HMS_HOME", home)
+	for _, name := range []string{"march-receipt", "half-done"} {
+		if err := os.MkdirAll(filepath.Join(home, "imports", name, "input"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	s := sim.New(t)
+	kitchen(t, s)
+	s.Resize(96, 24)
+	s.ByPlace()
+	s.Send(sim.Press("i"))
+	s.FitsWidth(96)
+	s.AssertFrame("import-folders")
+}
+
 // The attention banner, and the queue it opens.
 //
 // A new permanent line in the chrome, which is exactly the kind of thing a
@@ -283,7 +311,12 @@ func TestGoldenAttention(t *testing.T) {
 	if err != nil || len(rows) == 0 {
 		t.Fatalf("reading holdings: %v", err)
 	}
-	past := time.Now().AddDate(0, 0, -30)
+	// A FIXED date, not one counted back from today. The frame contains the
+	// date it renders, so `time.Now().AddDate(0, 0, -30)` put a different
+	// string in the file every day -- a golden that fails tomorrow for a
+	// reason that has nothing to do with the layout. This one is past
+	// forever.
+	past := time.Date(2020, time.January, 2, 0, 0, 0, 0, time.UTC)
 	s.Apply(p.SetExpiry(ctx, ops.SetExpiryRequest{
 		Holding: rows[0].Holding.Base().ID, On: &past,
 	}))

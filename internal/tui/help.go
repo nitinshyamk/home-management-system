@@ -225,6 +225,29 @@ func (m Model) generalHelp() []helpSection {
 			pair(keys.Browse, "make a new one inside this", keys.Create),
 			pair(keys.Browse, "retire it -- it asks first", keys.Kill),
 		}},
+		{topic: "importing", what: "the folder walk, from naming one to reviewing it", title: "IMPORTING", rows: [][2]string{
+			pair(keys.Browse, "every import folder, and what each one needs", keys.OpenImport),
+			pair(keys.Intake, "open the one under the cursor, or review its plan", keys.Confirm),
+			pair(keys.Intake, "look at the folder again", keys.Refresh),
+			pair(keys.Intake, "run the configured planner over it", keys.RunPlanner),
+			pair(keys.Intake, "back to the list, and then out", keys.Cancel),
+		}, prose: []string{
+			"An import IS a folder. hms makes it, writes the contract into it " +
+				"against the house as it is now, and reviews the plan that " +
+				"comes back. The three subdirectories have three different " +
+				"authors: schema/ is written by hms, input/ by you, plan/ by " +
+				"whatever reads input/.",
+			"The middle of it happens elsewhere -- reading a photograph of a " +
+				"receipt is not something an inventory does. So the screen " +
+				"names the two paths to hand on and then waits by staying " +
+				"drawn: press r when the file is there. Naming an import " +
+				"again resumes it, which is how a job with a pause in the " +
+				"middle gets picked up the next day.",
+			"hms runs that step itself only if you configure a command for " +
+				"it, and ships no default -- shelling out to whatever agent " +
+				"happened to be installed would send a photograph of your " +
+				"kitchen somewhere you never named.",
+		}},
 		{topic: "attention", what: "what wants answering, and taking it back", title: "ATTENTION, AND UNDO", rows: [][2]string{
 			pair(keys.Browse, "open what wants answering", keys.ViewAttention),
 			pair(keys.Browse, "hush the line, and bring it back", keys.DismissBanner),

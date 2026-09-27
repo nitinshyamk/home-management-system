@@ -74,6 +74,23 @@ func (m Model) handleEditor(msg tea.KeyMsg) (Model, tea.Cmd) {
 		// is the same question the count prompt asks and deliberately not the
 		// same answer path: everything a walk decides is filed together, in
 		// one transaction, at the end.
+		// Naming an import writes no command: it makes a directory. So it
+		// answers to the drawer that asked rather than going through the
+		// command line, which every field that touches the HOUSE does.
+		if m.editor.Purpose() == editor.ImportName {
+			answer := strings.TrimSpace(m.editor.Value())
+			m.editor = m.editor.Close()
+			in, ok := m.top().(*intaking)
+			if !ok {
+				return m, nil
+			}
+			if answer == "" {
+				in.phase = intakeChoosing
+				m.say = m.say.Report("nothing named")
+				return m, nil
+			}
+			return m.namedImport(in, answer)
+		}
 		if m.editor.Purpose() == editor.WalkCount {
 			answer := strings.TrimSpace(m.editor.Value())
 			m.editor = m.editor.Close()

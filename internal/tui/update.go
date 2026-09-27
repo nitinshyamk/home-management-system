@@ -69,7 +69,18 @@ type appliedMsg struct {
 	back    undo.Step
 }
 
-func (m Model) Init() tea.Cmd { return m.reload(m.view) }
+func (m Model) Init() tea.Cmd {
+	// An import named on the command line is opened here rather than while
+	// the model was built: opening a folder writes the contract into it, and
+	// writing the contract reads the house.
+	if in, ok := m.top().(*intaking); ok && in.pending != "" {
+		name := in.pending
+		in.pending = ""
+		_, cmd := m.fill(in, name)
+		return tea.Batch(m.reload(m.view), cmd)
+	}
+	return m.reload(m.view)
+}
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -189,16 +200,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.apply(msg.plan, msg.summary, msg.back)
 
-	case importsMsg:
-		if msg.err != nil {
-			m.say = m.say.Refuse(humanise(msg.err.Error()))
+	case intakeMsg:
+		return m.showIntake(msg)
+
+	case intakeOpenedMsg:
+		in, ok := m.top().(*intaking)
+		if !ok {
 			return m, nil
 		}
-		// Sized to what is waiting: the picker never scrolls, because a list
-		// of the imports on disk is a handful of rows and a scrollbar on it
-		// would be chrome around nothing.
-		picker := newPickImport(msg.found, m.width, len(msg.found)+1)
-		return m.open(&picker), nil
+		return m.opened(in, msg)
+
+	case plannedMsg:
+		in, ok := m.top().(*intaking)
+		if !ok {
+			// The drawer was closed while the planner ran, which is allowed:
+			// it writes a file, and the file is still there to be found by
+			// looking again.
+			return m, nil
+		}
+		return m.planned(in, msg)
 
 	case issuesMsg:
 		// Humanised HERE, where an error crosses from the controller into

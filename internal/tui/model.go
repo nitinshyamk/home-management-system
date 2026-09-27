@@ -148,6 +148,21 @@ type Model struct {
 	// would be answering neither.
 	undoing bool
 
+	// plannerCommand is the shell line configured to turn an import's input
+	// into its plan, and plannerHint is the file to name when there is none.
+	//
+	// The COMMAND rather than a built planner, because each run needs its own
+	// output writer: the planner's own words go into the drawer that started
+	// it, and a writer chosen at startup would be writing to a screen that
+	// did not exist yet.
+	//
+	// Empty is the ordinary case. hms ships no default planner, and that is a
+	// privacy position rather than an omission -- shelling out to whatever
+	// agent happened to be installed would send a photograph of somebody's
+	// kitchen somewhere they never named.
+	plannerCommand string
+	plannerHint    string
+
 	// say is everything the interface has to say about itself: the view's
 	// hint, what just happened or why it did not, what is in hand, and what is
 	// in flight. Four lifetimes, which is why it is a value of its own rather
@@ -182,6 +197,18 @@ func New(ctx context.Context, ctrl app.Controller) Model {
 		railKey: map[lens]int64{},
 		folds:   map[lens]map[int64]bool{},
 	}
+}
+
+// WithPlanner says what to run to turn an import's input into its plan, and
+// where somebody would go to change it.
+//
+// Handed in rather than read here, because reading configuration is the
+// command's job and this package is the screen. It is also optional in the
+// strong sense: with nothing configured the import walk says what needs to
+// happen and waits, which is the same workflow with a person doing that step.
+func (m Model) WithPlanner(command, hint string) Model {
+	m.plannerCommand, m.plannerHint = command, hint
+	return m
 }
 
 // Run starts the program.

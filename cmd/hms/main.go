@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 
@@ -30,9 +29,6 @@ import (
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		if errors.Is(err, errStopped) {
-			return
-		}
 		fmt.Fprintf(os.Stderr, "hms: %v\n", err)
 		os.Exit(1)
 	}

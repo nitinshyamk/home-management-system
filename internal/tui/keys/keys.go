@@ -102,9 +102,15 @@ const (
 	// back. A nag that cannot be silenced is one people learn to stop
 	// seeing.
 	DismissBanner
-	// OpenImport lists the plans waiting to be reviewed, so a review happens
-	// against the house rather than after quitting it.
+	// OpenImport lists every import folder and what each one needs, so the
+	// whole walk happens against the house rather than after quitting it.
 	OpenImport
+	// RunPlanner hands an import's input to whatever is configured to read
+	// it. Offered only where something is configured: hms ships no default,
+	// because a program that shelled out to whatever agent happened to be
+	// installed would be sending a photograph of somebody's kitchen
+	// somewhere they never named.
+	RunPlanner
 	// Organise stages the arrangement rather than committing it, so a shape
 	// can be tried before it is owned.
 	Organise
@@ -196,6 +202,8 @@ const (
 	Staging
 	// Walk is the drawer that asks about one holding at a time.
 	Walk
+	// Intake is the import walk: the folders, and the one being filled.
+	Intake
 )
 
 // binding is one action and the keys that mean it. The first key is the one
@@ -283,6 +291,18 @@ var contexts = map[Context][]binding{
 	//
 	// y and n because the question really is yes-or-no most of the time, and
 	// a walk is done at arm's length with a box in your other hand.
+	// The import walk. `r` is the whole of how the pause is answered: the
+	// folder is filled somewhere else, with another program, and this looks
+	// again rather than blocking on a `press enter` that made hms unusable
+	// for the hours that step takes.
+	Intake: append(append([]binding{}, motion...), []binding{
+		{Confirm, []string{"enter"}, "open it"},
+		{Refresh, []string{"r"}, "look again"},
+		{RunPlanner, []string{"p"}, "run the planner"},
+		{Quit, []string{"q"}, "close"},
+		cancel,
+	}...),
+
 	Walk: append(append([]binding{}, motion...), []binding{
 		{Right, []string{"y"}, "it is right"},
 		{Amount, []string{"#"}, "this much instead"},
@@ -522,5 +542,5 @@ func Bindings(ctx Context) [][]string {
 
 // Contexts is every surface, so a test can walk the whole keymap.
 func Contexts() []Context {
-	return []Context{Browse, Table, Tree, Line, Creator, Plan, Staging, Walk}
+	return []Context{Browse, Table, Tree, Line, Creator, Plan, Staging, Walk, Intake}
 }

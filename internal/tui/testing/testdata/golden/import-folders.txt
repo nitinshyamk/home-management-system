@@ -1,0 +1,14 @@
+BY PLACE  the house                                                                   2 holdings
+------------------------------------------------------------------------------------------------
+  NAME                              │  ITEM ^                                       QTY  WHERE  
+  ▾ the house                      2│  Basmati Rice                               500 g  Shelf 1
+      Shelf 1                      2│  Cumin                                      500 g  Shelf 1
+------------------------------------------------------------------------------------------------
+IMPORT  2 folders
+  IMPORT                                          WHAT IT NEEDS                                 
+> half-done                                       waiting for input                             
+  march-receipt                                   waiting for input                             
+  start a new import                              names a folder and writes the contract into it
+------------------------------------------------------------------------------------------------
+0 ready to review - 2 in all
+            enter open it - esc cancel
